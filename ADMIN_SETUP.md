@@ -228,6 +228,29 @@ When ready to deploy:
 
 ---
 
+## 🧠 Optional: Local Open-Source LLM (runs on your machine)
+
+If you want a fully free, open-source model that runs locally (no API keys), you can install `transformers` and a small CPU-friendly model such as `distilgpt2`. This is useful for offline demos or to avoid external API usage.
+
+Install (may be large):
+```powershell
+# Install transformers (and torch if you need faster inference)
+pip install transformers
+# Optional: install a CPU or GPU build of PyTorch for performance
+# See https://pytorch.org/get-started/locally/ for platform-specific instructions
+pip install torch
+```
+
+How it works:
+- The app will try a local model first (if installed), then Hugging Face Inference API (if `HUGGINGFACE_API_KEY` is set), then Gemini, then fallback questions.
+- Local models are slower on CPU and may produce less fluent answers than larger remote models, but they require no API keys.
+
+Notes:
+- Installing PyTorch may take extra time and disk space.
+- For production, remote inference (Hugging Face or Gemini) is recommended for speed and quality.
+
+---
+
 **Last Updated**: May 31, 2026  
 **Project Version**: 2.0  
 **Status**: ✅ Ready for Production

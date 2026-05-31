@@ -7,6 +7,7 @@ import requests
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+from ai.local_llm import LocalLLM
 
 
 class HuggingFaceAPI:
@@ -73,6 +74,7 @@ class GeminiService:
         self.hf_api = None
         self.api_key = os.getenv('GEMINI_API_KEY')
         self.client = None
+        self.local_llm = LocalLLM()
         self._initialize_hf()
         self._initialize()
 
@@ -109,24 +111,34 @@ class GeminiService:
 
     def is_available(self) -> bool:
         """Check if any AI API is available"""
-        # Prefer HF if available, fallback to Gemini
-        if self.hf_api is not None:
-            return True  # HF is preferred
+        # Priority: LocalLLM -> Hugging Face -> Gemini
+        if self.local_llm and self.local_llm.is_available():
+            return True
         return self.client is not None and self.api_key is not None
 
     def generate_content(self, prompt: str, temperature: float = 0.7) -> Optional[str]:
         """Generate content - tries HF first, then Gemini, then fails gracefully"""
         if not self.is_available():
-            logger.warning("No API available, returning None")
+            logger.warning("No AI provider available, returning None")
             return None
 
-        # Try Hugging Face first
+        # Try LocalLLM first
+        if self.local_llm and self.local_llm.is_available():
+            try:
+                result = self.local_llm.generate_content(prompt)
+                if result:
+                    logger.info("Generated content using LocalLLM")
+                    return result
+            except Exception:
+                logger.debug("LocalLLM generation failed, continuing to HF/Gemini")
+
+        # Try Hugging Face next
         if self.hf_api is not None:
             result = self.hf_api.generate_content(prompt)
             if result:
                 return result
             logger.warning("Hugging Face failed, trying Gemini...")
-        
+
         # Fallback to Gemini
         if self.client is None:
             return None
