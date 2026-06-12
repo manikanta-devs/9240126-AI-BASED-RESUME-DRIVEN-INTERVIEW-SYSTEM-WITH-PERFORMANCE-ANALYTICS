@@ -41,12 +41,14 @@ class LocalLLM:
             return None
 
         try:
-            outputs = self.generator(prompt, max_length=len(prompt.split()) + max_tokens, do_sample=True, top_p=0.95, temperature=0.8)
+            outputs = self.generator(
+                prompt, max_length=len(prompt.split()) + max_tokens, do_sample=True, top_p=0.95, temperature=0.8
+            )
             if outputs and isinstance(outputs, list):
                 text = outputs[0].get("generated_text", "")
                 # Remove the prompt prefix if present
                 if text.startswith(prompt):
-                    text = text[len(prompt):].strip()
+                    text = text[len(prompt) :].strip()
                 return text
         except Exception as e:
             logger.debug(f"LocalLLM generation failed: {e}")

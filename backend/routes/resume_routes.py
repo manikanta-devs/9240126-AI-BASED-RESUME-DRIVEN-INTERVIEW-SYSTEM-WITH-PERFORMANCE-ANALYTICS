@@ -6,35 +6,33 @@ import logging
 from services.resume_service import ResumeService
 
 logger = logging.getLogger(__name__)
-resume_bp = Blueprint('resume', __name__)
+resume_bp = Blueprint("resume", __name__)
 resume_service = ResumeService()
 
-ALLOWED_EXTENSIONS = {'pdf', 'docx', 'doc', 'txt'}
+ALLOWED_EXTENSIONS = {"pdf", "docx", "doc", "txt"}
 
 
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-@resume_bp.route('/resume/upload', methods=['POST'])
+@resume_bp.route("/resume/upload", methods=["POST"])
 def upload_resume():
     """Upload and analyze a resume file"""
     try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file provided'}), 400
+        if "file" not in request.files:
+            return jsonify({"error": "No file provided"}), 400
 
-        file = request.files['file']
+        file = request.files["file"]
 
-        if file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
+        if file.filename == "":
+            return jsonify({"error": "No file selected"}), 400
 
         if not allowed_file(file.filename):
-            return jsonify({
-                'error': f'Invalid file type. Allowed: {", ".join(ALLOWED_EXTENSIONS)}'
-            }), 400
+            return jsonify({"error": f'Invalid file type. Allowed: {", ".join(ALLOWED_EXTENSIONS)}'}), 400
 
         filename = secure_filename(file.filename)
-        upload_folder = current_app.config['UPLOAD_FOLDER']
+        upload_folder = current_app.config["UPLOAD_FOLDER"]
         filepath = os.path.join(upload_folder, filename)
         file.save(filepath)
 
@@ -47,91 +45,87 @@ def upload_resume():
         except Exception:
             pass
 
-        job_description = request.form.get('job_description', '').strip()
+        job_description = request.form.get("job_description", "").strip()
         job_match = None
         if job_description:
             job_match = resume_service.compare_resume_to_job(result, job_description)
 
-        response = {
-            'success': True,
-            'filename': filename,
-            'analysis': result
-        }
+        response = {"success": True, "filename": filename, "analysis": result}
         if job_match:
-            response['job_match'] = job_match
+            response["job_match"] = job_match
 
         return jsonify(response), 200
 
     except Exception as e:
         logger.error(f"Resume upload error: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
-@resume_bp.route('/resume/analyze-text', methods=['POST'])
+@resume_bp.route("/resume/analyze-text", methods=["POST"])
 def analyze_text():
     """Analyze plain text resume"""
     try:
         data = request.get_json()
-        if not data or 'text' not in data:
-            return jsonify({'error': 'No text provided'}), 400
+        if not data or "text" not in data:
+            return jsonify({"error": "No text provided"}), 400
 
-        text = data['text'].strip()
+        text = data["text"].strip()
         if len(text) < 50:
-            return jsonify({'error': 'Resume text too short (minimum 50 characters)'}), 400
+            return jsonify({"error": "Resume text too short (minimum 50 characters)"}), 400
 
         result = resume_service.analyze_text(text)
-        response = {'success': True, 'analysis': result}
+        response = {"success": True, "analysis": result}
 
-        job_description = (data.get('job_description') or '').strip()
+        job_description = (data.get("job_description") or "").strip()
         if job_description:
-            response['job_match'] = resume_service.compare_resume_to_job(result, job_description)
+            response["job_match"] = resume_service.compare_resume_to_job(result, job_description)
 
         return jsonify(response), 200
 
     except Exception as e:
         logger.error(f"Text analysis error: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
-@resume_bp.route('/resume/match-job', methods=['POST'])
+@resume_bp.route("/resume/match-job", methods=["POST"])
 def match_resume_to_job():
     """Compare analyzed resume data against a job description."""
     try:
         data = request.get_json()
         if not data:
-            return jsonify({'error': 'No data provided'}), 400
+            return jsonify({"error": "No data provided"}), 400
 
-        resume_data = data.get('resume_data')
-        job_description = (data.get('job_description') or '').strip()
+        resume_data = data.get("resume_data")
+        job_description = (data.get("job_description") or "").strip()
 
         if not resume_data:
-            return jsonify({'error': 'Resume data required'}), 400
+            return jsonify({"error": "Resume data required"}), 400
         if len(job_description) < 30:
-            return jsonify({'error': 'Job description too short'}), 400
+            return jsonify({"error": "Job description too short"}), 400
 
         match = resume_service.compare_resume_to_job(resume_data, job_description)
-        return jsonify({'success': True, 'job_match': match}), 200
+        return jsonify({"success": True, "job_match": match}), 200
 
     except Exception as e:
         logger.error(f"Job match error: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 
-@resume_bp.route('/resume/roles', methods=['GET'])
+@resume_bp.route("/resume/roles", methods=["GET"])
 def get_roles():
     """Get available interview roles"""
     roles = [
-        {'id': 'software_engineer', 'label': 'Software Engineer', 'icon': 'code'},
-        {'id': 'frontend_developer', 'label': 'Frontend Developer', 'icon': 'palette'},
-        {'id': 'backend_developer', 'label': 'Backend Developer', 'icon': 'settings'},
-        {'id': 'fullstack_developer', 'label': 'Full Stack Developer', 'icon': 'wrench'},
-        {'id': 'data_scientist', 'label': 'Data Scientist', 'icon': 'bar-chart'},
-        {'id': 'ml_engineer', 'label': 'ML Engineer', 'icon': 'brain'},
-        {'id': 'devops_engineer', 'label': 'DevOps Engineer', 'icon': 'rocket'},
-        {'id': 'product_manager', 'label': 'Product Manager', 'icon': 'clipboard'},
-        {'id': 'ui_ux_designer', 'label': 'UI/UX Designer', 'icon': 'target'},
-        {'id': 'cybersecurity', 'label': 'Cybersecurity Engineer', 'icon': 'shield'},
-        {'id': 'cloud_engineer', 'label': 'Cloud Engineer', 'icon': 'cloud'},
-        {'id': 'mobile_developer', 'label': 'Mobile Developer', 'icon': 'smartphone'},
+        {"id": "software_engineer", "label": "Software Engineer", "icon": "code"},
+        {"id": "frontend_developer", "label": "Frontend Developer", "icon": "palette"},
+        {"id": "backend_developer", "label": "Backend Developer", "icon": "settings"},
+        {"id": "fullstack_developer", "label": "Full Stack Developer", "icon": "wrench"},
+        {"id": "data_scientist", "label": "Data Scientist", "icon": "bar-chart"},
+        {"id": "ml_engineer", "label": "ML Engineer", "icon": "brain"},
+        {"id": "devops_engineer", "label": "DevOps Engineer", "icon": "rocket"},
+        {"id": "product_manager", "label": "Product Manager", "icon": "clipboard"},
+        {"id": "ui_ux_designer", "label": "UI/UX Designer", "icon": "target"},
+        {"id": "cybersecurity", "label": "Cybersecurity Engineer", "icon": "shield"},
+        {"id": "cloud_engineer", "label": "Cloud Engineer", "icon": "cloud"},
+        {"id": "mobile_developer", "label": "Mobile Developer", "icon": "smartphone"},
     ]
-    return jsonify({'roles': roles}), 200
+    return jsonify({"roles": roles}), 200

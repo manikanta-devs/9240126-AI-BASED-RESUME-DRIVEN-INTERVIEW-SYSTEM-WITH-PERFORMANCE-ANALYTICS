@@ -5,48 +5,43 @@ import json
 import re
 import requests
 from typing import Optional
+from ai.local_llm import LocalLLM
 
 logger = logging.getLogger(__name__)
-from ai.local_llm import LocalLLM
 
 
 class HuggingFaceAPI:
     """Hugging Face Inference API wrapper - preferred over Gemini"""
-    
+
     MODEL_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1"
     MAX_RETRIES = 3
     RETRY_DELAY = 2
-    
+
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.headers = {"Authorization": f"Bearer {api_key}"}
-    
+
     def is_available(self) -> bool:
         """Quick connectivity check"""
         try:
             response = requests.head(self.MODEL_URL, headers=self.headers, timeout=5)
             return response.status_code in [200, 403, 429]  # 403/429 = rate limited but working
-        except:
+        except Exception:
             return False
-    
+
     def generate_content(self, prompt: str) -> Optional[str]:
         """Generate text using Hugging Face API"""
         for attempt in range(self.MAX_RETRIES):
             try:
-                response = requests.post(
-                    self.MODEL_URL,
-                    headers=self.headers,
-                    json={"inputs": prompt},
-                    timeout=30
-                )
-                
+                response = requests.post(self.MODEL_URL, headers=self.headers, json={"inputs": prompt}, timeout=30)
+
                 if response.status_code == 200:
                     result = response.json()
                     if isinstance(result, list) and len(result) > 0:
                         generated_text = result[0].get("generated_text", "")
                         # Remove the prompt from the response (HF includes it)
                         if generated_text.startswith(prompt):
-                            generated_text = generated_text[len(prompt):].strip()
+                            generated_text = generated_text[len(prompt) :].strip()
                         logger.info(f"HF response in attempt {attempt + 1}")
                         return generated_text
                 elif response.status_code == 429:  # Rate limited
@@ -56,10 +51,10 @@ class HuggingFaceAPI:
                     logger.error(f"HF API error {response.status_code}: {response.text[:200]}")
             except Exception as e:
                 logger.error(f"HF API attempt {attempt + 1}/{self.MAX_RETRIES} failed: {e}")
-            
+
             if attempt < self.MAX_RETRIES - 1:
                 time.sleep(self.RETRY_DELAY * (attempt + 1))
-        
+
         return None
 
 
@@ -72,7 +67,7 @@ class GeminiService:
 
     def __init__(self):
         self.hf_api = None
-        self.api_key = os.getenv('GEMINI_API_KEY')
+        self.api_key = os.getenv("GEMINI_API_KEY")
         self.client = None
         self.local_llm = LocalLLM()
         self._initialize_hf()
@@ -80,7 +75,7 @@ class GeminiService:
 
     def _initialize_hf(self):
         """Initialize Hugging Face API if key is available"""
-        hf_key = os.getenv('HUGGINGFACE_API_KEY')
+        hf_key = os.getenv("HUGGINGFACE_API_KEY")
         if hf_key:
             self.hf_api = HuggingFaceAPI(hf_key)
             if self.hf_api.is_available():
@@ -101,6 +96,7 @@ class GeminiService:
 
         try:
             import google.generativeai as genai
+
             genai.configure(api_key=self.api_key)
             self.client = genai.GenerativeModel(self.MODEL_NAME)
             logger.info(f"✓ Gemini AI initialized with model: {self.MODEL_NAME} (FALLBACK)")
@@ -114,7 +110,38 @@ class GeminiService:
         # Priority: LocalLLM -> Hugging Face -> Gemini
         if self.local_llm and self.local_llm.is_available():
             return True
+        if self.hf_api is not None:
+            return True
         return self.client is not None and self.api_key is not None
+
+    def provider_status(self) -> dict:
+        """Return a UI-friendly provider status without exposing keys."""
+        local_available = bool(self.local_llm and self.local_llm.is_available())
+        huggingface_configured = self.hf_api is not None
+        gemini_configured = self.client is not None and self.api_key is not None
+
+        if local_available:
+            active_provider = "Local Transformers"
+            mode = "local"
+        elif huggingface_configured:
+            active_provider = "Hugging Face Inference API"
+            mode = "free-api"
+        elif gemini_configured:
+            active_provider = self.MODEL_NAME
+            mode = "cloud-api"
+        else:
+            active_provider = "Rule-based fallback"
+            mode = "offline-fallback"
+
+        return {
+            "active_provider": active_provider,
+            "mode": mode,
+            "local_available": local_available,
+            "huggingface_configured": huggingface_configured,
+            "gemini_configured": gemini_configured,
+            "fallback_available": True,
+            "cost_note": "Core demo works with browser APIs and rule-based fallback. Hugging Face/Gemini keys are optional.",
+        }
 
     def generate_content(self, prompt: str, temperature: float = 0.7) -> Optional[str]:
         """Generate content - tries HF first, then Gemini, then fails gracefully"""
@@ -142,19 +169,17 @@ class GeminiService:
         # Fallback to Gemini
         if self.client is None:
             return None
-            
+
         for attempt in range(self.MAX_RETRIES):
             try:
                 start_time = time.time()
                 import google.generativeai as genai
+
                 generation_config = genai.types.GenerationConfig(
                     temperature=temperature,
                     max_output_tokens=4096,
                 )
-                response = self.client.generate_content(
-                    prompt,
-                    generation_config=generation_config
-                )
+                response = self.client.generate_content(prompt, generation_config=generation_config)
                 elapsed = round(time.time() - start_time, 2)
                 logger.info(f"Gemini response in {elapsed}s (attempt {attempt + 1})")
                 return response.text.strip()
@@ -186,14 +211,14 @@ Just the raw JSON object or array."""
 
         # Strategy 2: Strip markdown code fences
         cleaned = response.strip()
-        if cleaned.startswith('```'):
-            lines = cleaned.split('\n')
+        if cleaned.startswith("```"):
+            lines = cleaned.split("\n")
             # Remove first line (```json or ```) and last line (```)
             if len(lines) >= 3:
-                cleaned = '\n'.join(lines[1:-1])
+                cleaned = "\n".join(lines[1:-1])
             else:
-                cleaned = '\n'.join(lines[1:])
-        cleaned = cleaned.strip('`').strip()
+                cleaned = "\n".join(lines[1:])
+        cleaned = cleaned.strip("`").strip()
 
         try:
             return json.loads(cleaned)
@@ -201,7 +226,7 @@ Just the raw JSON object or array."""
             pass
 
         # Strategy 3: Regex extract JSON object or array
-        json_match = re.search(r'(\{[\s\S]*\}|\[[\s\S]*\])', cleaned)
+        json_match = re.search(r"(\{[\s\S]*\}|\[[\s\S]*\])", cleaned)
         if json_match:
             try:
                 return json.loads(json_match.group(1))

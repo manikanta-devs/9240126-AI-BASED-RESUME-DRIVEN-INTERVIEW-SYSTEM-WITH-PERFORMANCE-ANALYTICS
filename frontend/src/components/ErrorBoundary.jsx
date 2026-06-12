@@ -13,9 +13,10 @@ export class ErrorBoundary extends React.Component {
       errorInfo: null,
       errorCount: 0
     };
+    this.resetError = this.resetError.bind(this);
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError() {
     return { hasError: true };
   }
 
@@ -36,13 +37,13 @@ export class ErrorBoundary extends React.Component {
     }
   }
 
-  resetError = () => {
+  resetError() {
     this.setState({
       hasError: false,
       error: null,
       errorInfo: null
     });
-  };
+  }
 
   render() {
     if (this.state.hasError) {
@@ -72,7 +73,7 @@ export class ErrorBoundary extends React.Component {
             </h2>
 
             <p className="text-gray-600 text-sm mb-4">
-              We're sorry, but the application encountered an unexpected error.
+              We are sorry, but the application encountered an unexpected error.
               Please try refreshing the page or contact support if the problem persists.
             </p>
 

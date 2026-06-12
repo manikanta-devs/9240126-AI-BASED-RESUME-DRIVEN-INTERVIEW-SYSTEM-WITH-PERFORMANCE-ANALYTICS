@@ -34,7 +34,6 @@ class WikiService:
                 return None
 
             page_title = search_results[0]
-            page = wikipedia.page(page_title, auto_suggest=False)
             summary = wikipedia.summary(page_title, sentences=sentences, auto_suggest=False)
             # Trim excessively long summaries
             return summary.strip()

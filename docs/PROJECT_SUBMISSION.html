@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Project Submission - AI-Based Resume Driven Interview System</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; max-width: 900px; margin: 2rem auto; line-height: 1.5; color: #111; padding: 0 1rem; }
+    h1,h2,h3 { color: #0b5; }
+    pre { background:#f6f6f6; padding:1rem; overflow:auto }
+    ul { margin-left: 1.2rem }
+    .meta { color: #555; margin-bottom: 1rem }
+  </style>
+</head>
+<body>
+  <h1>AI-BASED RESUME DRIVEN INTERVIEW SYSTEM WITH PERFORMANCE ANALYTICS</h1>
+  <p class="meta">Prepared by: Project Team — Date: May 31, 2026</p>
+
+  <h2>Project Title and Objective</h2>
+  <p><strong>Title:</strong> AI-BASED RESUME DRIVEN INTERVIEW SYSTEM WITH PERFORMANCE ANALYTICS</p>
+  <p><strong>Objective:</strong> Automatically generate personalized interview questions from a resume, evaluate text and voice answers with AI, and provide analytics and coaching to improve candidate performance.</p>
+
+  <h2>Problem Statement</h2>
+  <p>Generic interview practice does not tailor to candidate resumes and lacks measurable feedback; students need personalized practice and actionable analytics.</p>
+
+  <h2>Literature Survey (short)</h2>
+  <ul>
+    <li>Resume parsing & NER: historical pipelines and modern transformer approaches.</li>
+    <li>Question generation: LLM prompt engineering vs. template-based fallbacks.</li>
+    <li>Automated evaluation: combine LLM scoring with deterministic heuristics for reliability.</li>
+    <li>Learning analytics: dashboards and skill-gap reports improve targeted practice.</li>
+  </ul>
+
+  <h2>Methodology / Approach</h2>
+  <ol>
+    <li><strong>Resume Analysis:</strong> extract skills/roles to seed prompts.</li>
+    <li><strong>Question Generation:</strong> AI-first prompts producing structured JSON; fallback bank used offline.</li>
+    <li><strong>Interview Flow:</strong> Frontend simulates interviews (text/voice); backend handles sessions and adaptation.</li>
+    <li><strong>Answer Evaluation:</strong> LLM-based when available; deterministic fallback heuristics otherwise.</li>
+    <li><strong>Analytics:</strong> aggregate session data into dashboards and skill-gap reports.</li>
+  </ol>
+
+  <h2>Dataset and Tools Used</h2>
+  <ul>
+    <li>Data: <code>data/quizzes.json</code>, <code>data/sessions.json</code></li>
+    <li>Backend: Python 3.10+, Flask, requests, wikipedia</li>
+    <li>AI Providers: Hugging Face Inference, optional local LLM (transformers), Gemini fallback</li>
+    <li>Frontend: React + Vite + Tailwind (source in <code>frontend/src/</code>)</li>
+    <li>Dev tools: black, flake8, pytest, ESLint</li>
+  </ul>
+
+  <h2>Work Completed So Far</h2>
+  <ul>
+    <li>AI provider chain & JSON parsing: <code>backend/ai/gemini_service.py</code></li>
+    <li>Question generator & fallback templates: <code>backend/ai/question_generator.py</code></li>
+    <li>Answer evaluator: <code>backend/ai/answer_evaluator.py</code></li>
+    <li>Frontend interview & analytics UI: <code>frontend/src/pages/InterviewPage.jsx</code>, <code>frontend/src/pages/AnalyticsPage.jsx</code></li>
+    <li>Basic testing/linting and docs for handoff</li>
+  </ul>
+
+  <h2>Future Plan and Expected Outcomes</h2>
+  <p>Short term: fix frontend lint issues, add unit tests and privacy docs. Medium term: add CI, improve evaluation robustness, and run a user study. Expected: personalized interviews, actionable analytics, and improved student performance.</p>
+
+  <h2>Demo / Run Notes</h2>
+  <pre>
+# Backend dev
+python backend/app.py
+
+# Frontend dev
+cd frontend && npm run dev
+
+# Docker
+docker-compose up --build
+  </pre>
+
+  <h2>Common Viva / Submission Questions and Suggested Answers</h2>
+  <h3>Q: What is the core contribution?</h3>
+  <p>A: Personalization of interview practice based on resume + AI evaluation and analytics.</p>
+  <h3>Q: Which AI providers and why?</h3>
+  <p>A: Priority chain LocalLLM → Hugging Face → Gemini for flexibility and fallback behavior.</p>
+  <h3>Q: How to ensure evaluation without LLM?</h3>
+  <p>A: Deterministic heuristic evaluator scoring structure, examples, numbers, and trade-offs.</p>
+
+  <h2>Appendix: Useful File References</h2>
+  <ul>
+    <li><a href="../backend/app.py">backend/app.py</a></li>
+    <li><a href="../backend/ai/question_generator.py">backend/ai/question_generator.py</a></li>
+    <li><a href="../backend/ai/answer_evaluator.py">backend/ai/answer_evaluator.py</a></li>
+    <li><a href="../backend/ai/gemini_service.py">backend/ai/gemini_service.py</a></li>
+    <li><a href="../frontend/src/pages/InterviewPage.jsx">frontend/src/pages/InterviewPage.jsx</a></li>
+  </ul>
+
+  <p>Prepared by: Project Team</p>
+</body>
+</html>

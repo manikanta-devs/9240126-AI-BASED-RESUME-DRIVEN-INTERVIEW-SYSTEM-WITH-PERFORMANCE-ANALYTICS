@@ -9,6 +9,7 @@ build/
 venv/
 env/
 .venv/
+.venv_prod/
 *.so
 .Python
 
@@ -53,6 +54,9 @@ desktop.ini
 # Logs
 *.log
 logs/
+
+# Generated packages / archives
+*.zip
 
 # Testing
 .pytest_cache/

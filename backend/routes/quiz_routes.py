@@ -4,80 +4,80 @@ import logging
 from services.quiz_service import QuizService
 
 logger = logging.getLogger(__name__)
-quiz_bp = Blueprint('quiz', __name__)
+quiz_bp = Blueprint("quiz", __name__)
 quiz_service = QuizService()
 
 
-@quiz_bp.route('/quiz/topics', methods=['GET'])
+@quiz_bp.route("/quiz/topics", methods=["GET"])
 def get_topics():
     try:
-        return jsonify({'success': True, 'topics': quiz_service.get_topics()}), 200
+        return jsonify({"success": True, "topics": quiz_service.get_topics()}), 200
     except Exception as exc:
-        logger.error(f'Quiz topics error: {exc}')
-        return jsonify({'error': str(exc)}), 500
+        logger.error(f"Quiz topics error: {exc}")
+        return jsonify({"error": str(exc)}), 500
 
 
-@quiz_bp.route('/quiz/start', methods=['POST'])
+@quiz_bp.route("/quiz/start", methods=["POST"])
 def start_quiz():
     try:
         data = request.get_json() or {}
-        topic = data.get('topic', 'python')
-        difficulty = data.get('difficulty', 'medium')
-        num_questions = min(max(int(data.get('num_questions', 5)), 3), 10)
-        candidate_name = data.get('candidate_name', 'Candidate')
+        topic = data.get("topic", "python")
+        difficulty = data.get("difficulty", "medium")
+        num_questions = min(max(int(data.get("num_questions", 5)), 3), 10)
+        candidate_name = data.get("candidate_name", "Candidate")
         session = quiz_service.start_quiz(topic, difficulty, num_questions, candidate_name)
-        return jsonify({'success': True, **session}), 200
+        return jsonify({"success": True, **session}), 200
     except Exception as exc:
-        logger.error(f'Start quiz error: {exc}')
-        return jsonify({'error': str(exc)}), 500
+        logger.error(f"Start quiz error: {exc}")
+        return jsonify({"error": str(exc)}), 500
 
 
-@quiz_bp.route('/quiz/answer', methods=['POST'])
+@quiz_bp.route("/quiz/answer", methods=["POST"])
 def submit_quiz_answer():
     try:
         data = request.get_json() or {}
-        session_id = data.get('session_id')
-        question_index = int(data.get('question_index', 0))
-        selected_index = int(data.get('selected_index', -1))
+        session_id = data.get("session_id")
+        question_index = int(data.get("question_index", 0))
+        selected_index = int(data.get("selected_index", -1))
         if not session_id:
-            return jsonify({'error': 'Session ID required'}), 400
+            return jsonify({"error": "Session ID required"}), 400
         result = quiz_service.submit_answer(session_id, question_index, selected_index)
-        return jsonify({'success': True, **result}), 200
+        return jsonify({"success": True, **result}), 200
     except Exception as exc:
-        logger.error(f'Submit quiz answer error: {exc}')
-        return jsonify({'error': str(exc)}), 500
+        logger.error(f"Submit quiz answer error: {exc}")
+        return jsonify({"error": str(exc)}), 500
 
 
-@quiz_bp.route('/quiz/complete', methods=['POST'])
+@quiz_bp.route("/quiz/complete", methods=["POST"])
 def complete_quiz():
     try:
         data = request.get_json() or {}
-        session_id = data.get('session_id')
+        session_id = data.get("session_id")
         if not session_id:
-            return jsonify({'error': 'Session ID required'}), 400
+            return jsonify({"error": "Session ID required"}), 400
         results = quiz_service.complete_quiz(session_id)
-        return jsonify({'success': True, 'results': results}), 200
+        return jsonify({"success": True, "results": results}), 200
     except Exception as exc:
-        logger.error(f'Complete quiz error: {exc}')
-        return jsonify({'error': str(exc)}), 500
+        logger.error(f"Complete quiz error: {exc}")
+        return jsonify({"error": str(exc)}), 500
 
 
-@quiz_bp.route('/quiz/sessions', methods=['GET'])
+@quiz_bp.route("/quiz/sessions", methods=["GET"])
 def get_sessions():
     try:
-        return jsonify({'success': True, 'sessions': quiz_service.get_sessions()}), 200
+        return jsonify({"success": True, "sessions": quiz_service.get_sessions()}), 200
     except Exception as exc:
-        logger.error(f'Quiz sessions error: {exc}')
-        return jsonify({'error': str(exc)}), 500
+        logger.error(f"Quiz sessions error: {exc}")
+        return jsonify({"error": str(exc)}), 500
 
 
-@quiz_bp.route('/quiz/session/<session_id>', methods=['GET'])
+@quiz_bp.route("/quiz/session/<session_id>", methods=["GET"])
 def get_session(session_id):
     try:
         session = quiz_service.get_session(session_id)
         if not session:
-            return jsonify({'error': 'Session not found'}), 404
-        return jsonify({'success': True, 'session': session}), 200
+            return jsonify({"error": "Session not found"}), 404
+        return jsonify({"success": True, "session": session}), 200
     except Exception as exc:
-        logger.error(f'Quiz session error: {exc}')
-        return jsonify({'error': str(exc)}), 500
+        logger.error(f"Quiz session error: {exc}")
+        return jsonify({"error": str(exc)}), 500
