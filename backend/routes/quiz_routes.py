@@ -8,6 +8,13 @@ quiz_bp = Blueprint("quiz", __name__)
 quiz_service = QuizService()
 
 
+def safe_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 @quiz_bp.route("/quiz/topics", methods=["GET"])
 def get_topics():
     try:
@@ -23,7 +30,7 @@ def start_quiz():
         data = request.get_json() or {}
         topic = data.get("topic", "python")
         difficulty = data.get("difficulty", "medium")
-        num_questions = min(max(int(data.get("num_questions", 5)), 3), 10)
+        num_questions = min(max(safe_int(data.get("num_questions", 5), 5), 3), 10)
         candidate_name = data.get("candidate_name", "Candidate")
         session = quiz_service.start_quiz(topic, difficulty, num_questions, candidate_name)
         return jsonify({"success": True, **session}), 200
@@ -37,8 +44,8 @@ def submit_quiz_answer():
     try:
         data = request.get_json() or {}
         session_id = data.get("session_id")
-        question_index = int(data.get("question_index", 0))
-        selected_index = int(data.get("selected_index", -1))
+        question_index = safe_int(data.get("question_index", 0), 0)
+        selected_index = safe_int(data.get("selected_index", -1), -1)
         if not session_id:
             return jsonify({"error": "Session ID required"}), 400
         result = quiz_service.submit_answer(session_id, question_index, selected_index)

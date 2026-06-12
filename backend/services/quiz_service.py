@@ -5,10 +5,12 @@ import random
 import uuid
 from datetime import datetime
 from typing import Dict, List
+from config import get_config
 
 logger = logging.getLogger(__name__)
 
-DATA_FILE = "data/quizzes.json"
+config = get_config()
+DATA_FILE = config.QUIZZES_FILE
 
 QUIZ_BANK = {
     "coding": {
@@ -762,6 +764,8 @@ class QuizService:
             if os.path.exists(DATA_FILE):
                 with open(DATA_FILE, "r") as handle:
                     self._sessions = json.load(handle)
+            else:
+                self._sessions = {}
         except Exception as exc:
             logger.error(f"Failed to load quiz data: {exc}")
             self._sessions = {}
@@ -800,6 +804,7 @@ class QuizService:
         return questions
 
     def start_quiz(self, topic: str, difficulty: str, num_questions: int, candidate_name: str = "Candidate") -> dict:
+        self._load_from_disk()
         session_id = str(uuid.uuid4())
         questions = self.build_questions(topic, difficulty, num_questions)
         session = {
@@ -825,9 +830,11 @@ class QuizService:
         }
 
     def get_session(self, session_id: str) -> dict:
+        self._load_from_disk()
         return self._sessions.get(session_id)
 
     def submit_answer(self, session_id: str, question_index: int, selected_index: int) -> dict:
+        self._load_from_disk()
         session = self._sessions.get(session_id)
         if not session:
             raise ValueError("Quiz session not found")
@@ -886,6 +893,7 @@ class QuizService:
         }
 
     def complete_quiz(self, session_id: str) -> dict:
+        self._load_from_disk()
         session = self._sessions.get(session_id)
         if not session:
             raise ValueError("Quiz session not found")
@@ -921,6 +929,7 @@ class QuizService:
         return results
 
     def get_sessions(self) -> List[dict]:
+        self._load_from_disk()
         sessions = list(self._sessions.values())
         sessions.sort(key=lambda item: item.get("started_at", ""), reverse=True)
         return [

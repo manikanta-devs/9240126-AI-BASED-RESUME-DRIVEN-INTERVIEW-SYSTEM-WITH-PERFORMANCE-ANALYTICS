@@ -34,9 +34,11 @@ class Config:
     SLOW_REQUEST_THRESHOLD_MS = 2000  # Log requests taking longer than 2s
     
     # Data persistence
-    DATA_FOLDER = "data"
-    SESSIONS_FILE = "data/sessions.json"
-    QUIZZES_FILE = "data/quizzes.json"
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DATA_FOLDER = os.path.join(BASE_DIR, "data")
+    SESSIONS_FILE = os.path.join(DATA_FOLDER, "sessions.json")
+    DATABASE_FILE = os.path.join(DATA_FOLDER, "interviews.db")
+    QUIZZES_FILE = os.path.join(DATA_FOLDER, "quizzes.json")
 
 
 class DevelopmentConfig(Config):

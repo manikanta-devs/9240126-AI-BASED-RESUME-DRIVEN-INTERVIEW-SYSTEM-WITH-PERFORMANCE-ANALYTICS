@@ -1,5 +1,6 @@
 import logging
 import random
+from typing import Optional, List, Dict
 from ai.gemini_service import GeminiService
 
 logger = logging.getLogger(__name__)
@@ -16,9 +17,9 @@ class AnswerEvaluator:
         question: dict,
         answer: str,
         role: str = "software_engineer",
-        voice_metrics: dict | None = None,
-        emotion_metrics: dict | None = None,
-        previous_scores: list | None = None,
+        voice_metrics: Optional[dict] = None,
+        emotion_metrics: Optional[dict] = None,
+        previous_scores: Optional[list] = None,
     ) -> dict:
         """Evaluate an answer and return detailed feedback with adaptive fields"""
         if self.gemini.is_available():
@@ -220,8 +221,8 @@ Return JSON:
     def _validate_evaluation(
         self,
         result: dict,
-        voice_metrics: dict | None = None,
-        emotion_metrics: dict | None = None,
+        voice_metrics: Optional[dict] = None,
+        emotion_metrics: Optional[dict] = None,
     ) -> dict:
         """Validate and normalize evaluation result"""
 
@@ -316,9 +317,9 @@ Return JSON:
         self,
         answer: str,
         question: dict = None,
-        voice_metrics: dict | None = None,
-        emotion_metrics: dict | None = None,
-        previous_scores: list | None = None,
+        voice_metrics: Optional[dict] = None,
+        emotion_metrics: Optional[dict] = None,
+        previous_scores: Optional[list] = None,
     ) -> dict:
         """Generate a smart fallback evaluation when Gemini is unavailable"""
 

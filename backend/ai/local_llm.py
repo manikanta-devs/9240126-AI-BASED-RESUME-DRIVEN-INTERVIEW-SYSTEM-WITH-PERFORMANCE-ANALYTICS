@@ -9,6 +9,9 @@ except Exception:
     pipeline = None
 
 
+_shared_generator = None
+
+
 class LocalLLM:
     """Optional local LLM runner using Hugging Face `transformers` pipeline.
 
@@ -20,14 +23,20 @@ class LocalLLM:
     MODEL_NAME = "distilgpt2"
 
     def __init__(self):
+        global _shared_generator
         self.generator = None
         if pipeline is None:
             logger.info("transformers not installed — LocalLLM disabled")
             return
 
+        if _shared_generator is not None:
+            self.generator = _shared_generator
+            return
+
         try:
             # Load a small model suitable for CPU inference
             self.generator = pipeline("text-generation", model=self.MODEL_NAME)
+            _shared_generator = self.generator
             logger.info(f"LocalLLM initialized with model: {self.MODEL_NAME}")
         except Exception as e:
             logger.warning(f"Failed to initialize LocalLLM: {e}")

@@ -13,6 +13,13 @@ question_generator = QuestionGenerator()
 answer_evaluator = AnswerEvaluator()
 
 
+def safe_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 @interview_bp.route("/interview/generate-questions", methods=["POST"])
 def generate_questions():
     """Generate interview questions from resume data or role"""
@@ -24,7 +31,7 @@ def generate_questions():
         resume_data = data.get("resume_data", {})
         role = data.get("role", "software_engineer")
         difficulty = data.get("difficulty", "medium")
-        num_questions = min(int(data.get("num_questions", 8)), 10)
+        num_questions = min(safe_int(data.get("num_questions", 8), 8), 10)
 
         panel_mode = data.get("panel_mode", False)
 
@@ -111,7 +118,7 @@ def submit_answer():
 
         session_id = data.get("session_id")
         answer = data.get("answer", "").strip()
-        question_index = data.get("question_index", 0)
+        question_index = safe_int(data.get("question_index", 0), 0)
         voice_metrics = data.get("voice_metrics", {}) or {}
         emotion_metrics = data.get("emotion_metrics", {}) or {}
 
@@ -124,6 +131,9 @@ def submit_answer():
 
         if not answer:
             return jsonify({"error": "Answer cannot be empty"}), 400
+
+        if question_index < 0 or question_index >= len(session["questions"]):
+            return jsonify({"error": "Question index out of range"}), 400
 
         current_question = session["questions"][question_index]
 
@@ -186,7 +196,7 @@ def submit_answer():
                             nq["id"] = next_index + i + 1
                         session["questions"][next_index:] = new_questions
                         session["difficulty"] = new_diff
-                        interview_service._save_to_disk()
+                        interview_service.save_session(session_id, session)
             except Exception as e:
                 logger.error(f"Adaptive regeneration failed: {e}")
 
@@ -250,7 +260,7 @@ def generate_follow_up():
 def complete_interview():
     """Complete the interview and get full results"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         session_id = data.get("session_id")
 
         if not session_id:

@@ -77,11 +77,16 @@ def create_app():
     app.register_blueprint(quiz_bp, url_prefix="/api")
 
     # ─── Health endpoint ─────────────────────────────────────
+    _health_gemini_service = None
+
     @app.route("/health")
     def health():
-        from ai.gemini_service import GeminiService
+        nonlocal _health_gemini_service
+        if _health_gemini_service is None:
+            from ai.gemini_service import GeminiService
+            _health_gemini_service = GeminiService()
 
-        gemini = GeminiService()
+        gemini = _health_gemini_service
         provider = gemini.provider_status()
         return jsonify(
             {

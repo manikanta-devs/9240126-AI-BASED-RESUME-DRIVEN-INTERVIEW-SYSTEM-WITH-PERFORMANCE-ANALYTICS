@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 resume_bp = Blueprint("resume", __name__)
 resume_service = ResumeService()
 
-ALLOWED_EXTENSIONS = {"pdf", "docx", "doc", "txt"}
+ALLOWED_EXTENSIONS = {"pdf", "docx", "txt"}
 
 
 def allowed_file(filename):

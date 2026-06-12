@@ -1,39 +1,31 @@
-import json
-import os
 import logging
 from collections import defaultdict
+from services import database as db
 
 logger = logging.getLogger(__name__)
-DATA_FILE = "data/sessions.json"
 
 
 class AnalyticsService:
-    """Computes analytics from stored interview sessions"""
+    """Computes analytics from stored interview sessions."""
 
     def _load_sessions(self) -> dict:
-        """Load all sessions from disk"""
-        try:
-            if os.path.exists(DATA_FILE):
-                with open(DATA_FILE, "r") as f:
-                    return json.load(f)
-        except Exception as e:
-            logger.error(f"Failed to load sessions: {e}")
-        return {}
+        """Load all sessions from SQLite, keyed by ID."""
+        sessions = db.get_all_sessions()
+        return {s["id"]: s for s in sessions}
 
     def get_all_sessions(self, limit: int = 20) -> list:
-        """Get all sessions with results"""
+        """Get all sessions with results."""
         sessions = self._load_sessions()
         completed = [s for s in sessions.values() if s.get("status") == "completed" and s.get("results")]
         completed.sort(key=lambda x: x.get("completed_at", ""), reverse=True)
         return [self._session_summary(s) for s in completed[:limit]]
 
     def get_session_details(self, session_id: str) -> dict:
-        """Get full details for a session"""
-        sessions = self._load_sessions()
-        return sessions.get(session_id)
+        """Get full details for a session."""
+        return db.get_session(session_id)
 
     def get_summary(self) -> dict:
-        """Get overall performance summary"""
+        """Get overall performance summary."""
         sessions = self._load_sessions()
         completed = [s for s in sessions.values() if s.get("status") == "completed" and s.get("results")]
 
@@ -49,9 +41,9 @@ class AnalyticsService:
                 "improvement_rate": 0,
             }
 
-        scores_overall = [s["results"]["scores"]["overall"] for s in completed]
-        scores_tech = [s["results"]["scores"]["technical"] for s in completed]
-        scores_clarity = [s["results"]["scores"]["clarity"] for s in completed]
+        scores_overall = [s.get("results", {}).get("scores", {}).get("overall", 0) for s in completed]
+        scores_tech = [s.get("results", {}).get("scores", {}).get("technical", 0) for s in completed]
+        scores_clarity = [s.get("results", {}).get("scores", {}).get("clarity", 0) for s in completed]
         roles = [s.get("role", "unknown") for s in completed]
 
         role_count = defaultdict(int)
@@ -59,7 +51,6 @@ class AnalyticsService:
             role_count[r] += 1
         most_common = max(role_count, key=role_count.get) if role_count else None
 
-        # Improvement: compare first half vs second half
         improvement = 0
         if len(scores_overall) >= 4:
             mid = len(scores_overall) // 2
@@ -79,7 +70,7 @@ class AnalyticsService:
         }
 
     def get_performance_trend(self) -> list:
-        """Get performance over time"""
+        """Get performance over time."""
         sessions = self._load_sessions()
         completed = [s for s in sessions.values() if s.get("status") == "completed" and s.get("results")]
         completed.sort(key=lambda x: x.get("completed_at", ""))
@@ -100,7 +91,7 @@ class AnalyticsService:
         return trend
 
     def get_weak_areas(self) -> list:
-        """Aggregate weak areas across sessions"""
+        """Aggregate weak areas across sessions."""
         sessions = self._load_sessions()
         area_count = defaultdict(int)
         for s in sessions.values():
@@ -111,7 +102,7 @@ class AnalyticsService:
         return [{"area": k, "count": v} for k, v in sorted_areas[:10]]
 
     def get_skill_breakdown(self) -> list:
-        """Get skill-wise performance analysis"""
+        """Get skill-wise performance analysis."""
         sessions = self._load_sessions()
         skill_scores = defaultdict(list)
 
@@ -338,7 +329,7 @@ class AnalyticsService:
         }
 
     def _session_summary(self, session: dict) -> dict:
-        """Create a summary dict for a session"""
+        """Create a summary dict for a session."""
         results = session.get("results", {})
         scores = results.get("scores", {})
         return {
@@ -358,9 +349,5 @@ class AnalyticsService:
         }
 
     def clear_all(self):
-        """Clear all data"""
-        try:
-            if os.path.exists(DATA_FILE):
-                os.remove(DATA_FILE)
-        except Exception as e:
-            logger.error(f"Failed to clear data: {e}")
+        """Clear all data."""
+        db.delete_all()

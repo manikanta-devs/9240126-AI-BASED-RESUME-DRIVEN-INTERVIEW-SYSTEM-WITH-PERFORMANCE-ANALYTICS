@@ -1,39 +1,18 @@
-import json
-import os
 import logging
 from datetime import datetime
+from services import database as db
 
 logger = logging.getLogger(__name__)
 
-DATA_FILE = "data/sessions.json"
-
 
 class InterviewService:
-    """Manages interview sessions with JSON persistence"""
+    """Manages interview sessions with SQLite persistence."""
 
-    def __init__(self):
-        self._sessions: dict = {}
-        self._load_from_disk()
-
-    def _load_from_disk(self):
-        """Load existing sessions from JSON"""
-        try:
-            if os.path.exists(DATA_FILE):
-                with open(DATA_FILE, "r") as f:
-                    self._sessions = json.load(f)
-                logger.info(f"Loaded {len(self._sessions)} sessions from disk")
-        except Exception as e:
-            logger.error(f"Failed to load sessions: {e}")
-            self._sessions = {}
-
-    def _save_to_disk(self):
-        """Persist sessions to JSON"""
-        try:
-            os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
-            with open(DATA_FILE, "w") as f:
-                json.dump(self._sessions, f, indent=2, default=str)
-        except Exception as e:
-            logger.error(f"Failed to save sessions: {e}")
+    def save_session(self, session_id, session_data):
+        """Update and save an existing session (public API)."""
+        session_data["id"] = session_id
+        db.save_session(session_data)
+        return True
 
     def create_session(
         self,
@@ -46,7 +25,7 @@ class InterviewService:
         difficulty="medium",
         panel_mode=False,
     ):
-        """Create a new interview session"""
+        """Create a new interview session."""
         session = {
             "id": session_id,
             "candidate_name": candidate_name,
@@ -62,27 +41,26 @@ class InterviewService:
             "completed_at": None,
             "results": None,
         }
-        self._sessions[session_id] = session
-        self._save_to_disk()
+        db.save_session(session)
         return session
 
     def get_session(self, session_id):
-        """Retrieve a session by ID"""
-        return self._sessions.get(session_id)
+        """Retrieve a session by ID."""
+        return db.get_session(session_id)
 
     def add_answer(self, session_id, answer_data):
-        """Add an answer to a session"""
-        session = self._sessions.get(session_id)
+        """Add an answer to a session."""
+        session = db.get_session(session_id)
         if not session:
             return False
         answer_data["timestamp"] = datetime.utcnow().isoformat()
         session["answers"].append(answer_data)
-        self._save_to_disk()
+        db.save_session(session)
         return True
 
     def complete_session(self, session_id):
-        """Complete an interview and compute aggregate results"""
-        session = self._sessions.get(session_id)
+        """Complete an interview and compute aggregate results."""
+        session = db.get_session(session_id)
         if not session:
             raise ValueError("Session not found")
 
@@ -110,19 +88,19 @@ class InterviewService:
 
         for ans in answers:
             ev = ans.get("evaluation", {})
-            if ev.get("technical_score"):
+            if ev.get("technical_score") is not None:
                 tech_scores.append(ev["technical_score"])
-            if ev.get("clarity_score"):
+            if ev.get("clarity_score") is not None:
                 clarity_scores.append(ev["clarity_score"])
-            if ev.get("completeness_score"):
+            if ev.get("completeness_score") is not None:
                 completeness_scores.append(ev["completeness_score"])
-            if ev.get("relevance_score"):
+            if ev.get("relevance_score") is not None:
                 relevance_scores.append(ev["relevance_score"])
-            if ev.get("depth_score"):
+            if ev.get("depth_score") is not None:
                 depth_scores.append(ev["depth_score"])
             if ev.get("voice_delivery_score") is not None:
                 voice_delivery_scores.append(ev["voice_delivery_score"])
-            if ev.get("speaking_pace_wpm"):
+            if ev.get("speaking_pace_wpm") is not None:
                 speaking_paces.append(ev["speaking_pace_wpm"])
             if ev.get("filler_word_count") is not None:
                 filler_word_counts.append(ev["filler_word_count"])
@@ -141,11 +119,10 @@ class InterviewService:
             if ev.get("difficulty_adjustment"):
                 difficulty_history.append(ev["difficulty_adjustment"])
 
-            # Track per-topic scores for skill gap report
             topic = ev.get("topic") or ans.get("question", {}).get("category", "General")
             if topic not in topic_scores:
                 topic_scores[topic] = []
-            if ev.get("overall_score"):
+            if ev.get("overall_score") is not None:
                 topic_scores[topic].append(ev["overall_score"])
 
         def safe_avg(lst):
@@ -169,7 +146,6 @@ class InterviewService:
         grade_map = [(90, "A+"), (80, "A"), (70, "B+"), (60, "B"), (50, "C+"), (0, "C")]
         grade = next(g for threshold, g in grade_map if overall >= threshold)
 
-        # Build skill gaps
         skill_gaps = []
         for topic, scores in topic_scores.items():
             avg = round(sum(scores) / len(scores), 1)
@@ -217,11 +193,11 @@ class InterviewService:
         session["status"] = "completed"
         session["completed_at"] = results["completed_at"]
         session["results"] = results
-        self._save_to_disk()
+        db.save_session(session)
         return results
 
     def _calc_duration(self, start_iso: str) -> int:
-        """Calculate interview duration in minutes"""
+        """Calculate interview duration in minutes."""
         try:
             start = datetime.fromisoformat(start_iso)
             diff = datetime.utcnow() - start
@@ -230,9 +206,10 @@ class InterviewService:
             return 0
 
     def get_all_sessions(self):
-        """Get all sessions (summary only)"""
+        """Get all sessions (summary only)."""
+        sessions = db.get_all_sessions()
         summaries = []
-        for s in self._sessions.values():
+        for s in sessions:
             summaries.append(
                 {
                     "id": s["id"],
@@ -250,7 +227,5 @@ class InterviewService:
         return sorted(summaries, key=lambda x: x.get("started_at", ""), reverse=True)
 
     def delete_session(self, session_id):
-        """Delete a session"""
-        if session_id in self._sessions:
-            del self._sessions[session_id]
-            self._save_to_disk()
+        """Delete a session."""
+        db.delete_session(session_id)
