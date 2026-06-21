@@ -121,7 +121,7 @@ export default function LandingPage() {
               <button onClick={() => navigate('/dashboard/interview')} className="btn-primary px-8 py-3.5 text-base">
                 <Sparkles className="w-5 h-5" /> Start AI Interview
               </button>
-              <button onClick={() => navigate('/dashboard/resume')} className="btn-secondary px-8 py-3.5 text-base bg-white/6 border-white/10 text-white hover:bg-white/10 hover:border-white/20">
+              <button onClick={() => navigate('/dashboard/resume')} className="inline-flex items-center gap-2 px-8 py-3.5 font-semibold rounded-xl border transition-all duration-300 shadow-sm focus:outline-none bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/20 text-base">
                 <FileText className="w-5 h-5" /> Analyze Resume
               </button>
             </motion.div>

@@ -51,7 +51,11 @@ class LocalLLM:
 
         try:
             outputs = self.generator(
-                prompt, max_length=len(prompt.split()) + max_tokens, do_sample=True, top_p=0.95, temperature=0.8
+                prompt,
+                max_length=len(prompt.split()) + max_tokens,
+                do_sample=True,
+                top_p=0.95,
+                temperature=0.8,
             )
             if outputs and isinstance(outputs, list):
                 text = outputs[0].get("generated_text", "")

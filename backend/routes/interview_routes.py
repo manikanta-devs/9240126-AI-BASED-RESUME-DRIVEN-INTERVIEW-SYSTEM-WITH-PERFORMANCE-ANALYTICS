@@ -34,10 +34,16 @@ def generate_questions():
         num_questions = min(safe_int(data.get("num_questions", 8), 8), 10)
 
         panel_mode = data.get("panel_mode", False)
+        company = data.get("company", "General")
+        company_context = data.get("company_context", "")
 
-        skills = resume_data.get("skills", {}).get("all", []) if isinstance(resume_data, dict) else []
+        skills = (
+            resume_data.get("skills", {}).get("all", [])
+            if isinstance(resume_data, dict)
+            else []
+        )
         logger.info(
-            f"Generating questions: role={role}, difficulty={difficulty}, skills={skills[:10]}, has_resume={'yes' if skills else 'no'}, panel_mode={panel_mode}"
+            f"Generating questions: role={role}, difficulty={difficulty}, skills={skills[:10]}, has_resume={'yes' if skills else 'no'}, panel_mode={panel_mode}, company={company}"
         )
 
         questions = question_generator.generate(
@@ -46,9 +52,14 @@ def generate_questions():
             difficulty=difficulty,
             num_questions=num_questions,
             panel_mode=panel_mode,
+            company=company,
+            company_context=company_context,
         )
 
-        return jsonify({"success": True, "questions": questions, "total": len(questions)}), 200
+        return (
+            jsonify({"success": True, "questions": questions, "total": len(questions)}),
+            200,
+        )
 
     except Exception as e:
         logger.error(f"Question generation error: {e}")
@@ -155,17 +166,16 @@ def submit_answer():
         )
 
         # Store the answer + evaluation
-        interview_service.add_answer(
-            session_id,
-            {
-                "question_index": question_index,
-                "question": current_question,
-                "answer": answer,
-                "voice_metrics": voice_metrics,
-                "emotion_metrics": emotion_metrics,
-                "evaluation": evaluation,
-            },
-        )
+        new_answer = {
+            "question_index": question_index,
+            "question": current_question,
+            "answer": answer,
+            "voice_metrics": voice_metrics,
+            "emotion_metrics": emotion_metrics,
+            "evaluation": evaluation,
+        }
+        interview_service.add_answer(session_id, new_answer)
+        session.setdefault("answers", []).append(new_answer)
 
         # Determine next question
         next_index = question_index + 1
@@ -178,7 +188,11 @@ def submit_answer():
             current_diff = session.get("difficulty", "medium")
             try:
                 curr_idx = diff_levels.index(current_diff)
-                new_idx = curr_idx + 1 if difficulty_adjustment == "increase" else curr_idx - 1
+                new_idx = (
+                    curr_idx + 1
+                    if difficulty_adjustment == "increase"
+                    else curr_idx - 1
+                )
                 new_idx = max(0, min(2, new_idx))
                 new_diff = diff_levels[new_idx]
 
@@ -211,9 +225,13 @@ def submit_answer():
                     "next_index": next_index,
                     "is_complete": is_complete,
                     "progress": round((next_index / total) * 100),
-                    "difficulty_adjustment": evaluation.get("difficulty_adjustment", "maintain"),
+                    "difficulty_adjustment": evaluation.get(
+                        "difficulty_adjustment", "maintain"
+                    ),
                     "updated_questions": (
-                        session["questions"] if (not is_complete and difficulty_adjustment != "maintain") else None
+                        session["questions"]
+                        if (not is_complete and difficulty_adjustment != "maintain")
+                        else None
                     ),
                 }
             ),
@@ -246,7 +264,10 @@ def generate_follow_up():
             return jsonify({"error": "Session not found"}), 404
 
         follow_up = answer_evaluator.generate_follow_up(
-            question=question, answer=answer, evaluation=evaluation, role=session.get("role", "software_engineer")
+            question=question,
+            answer=answer,
+            evaluation=evaluation,
+            role=session.get("role", "software_engineer"),
         )
 
         return jsonify({"success": True, "follow_up_question": follow_up}), 200

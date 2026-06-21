@@ -85,7 +85,8 @@ export default function ResultsPage() {
       `Voice Delivery Score: ${results.voice?.delivery ?? results.voice_delivery_score ?? 0}%`,
       `Speaking Pace: ${results.voice?.speaking_pace_wpm ?? 0} WPM`,
       `Filler Words: ${results.voice?.filler_word_count ?? 0} (${results.voice?.filler_word_ratio ?? 0}%)`,
-      `Video Presence: ${results.video?.engagement_score ?? 0}% engagement, ${results.video?.eye_contact_score ?? 0}% eye contact, ${results.video?.primary_emotion ?? 'uncertain'}`,
+      `Voice Tremor: ${results.voice?.tremor_score ?? 0}%`,
+      `Video Presence: ${results.video?.engagement_score ?? 0}% engagement, ${results.video?.eye_contact_score ?? 0}% eye contact, ${results.video?.posture_score ?? 0}% posture, ${results.video?.primary_emotion ?? 'uncertain'}`,
       ``,
       `Strong Areas: ${results.strong_areas?.join(', ') || 'N/A'}`,
       `Weak Areas: ${results.weak_areas?.join(', ') || 'N/A'}`,
@@ -297,7 +298,7 @@ export default function ResultsPage() {
                           {(ans.evaluation.voice_feedback || ans.evaluation.speaking_pace_wpm || ans.evaluation.filler_word_count !== undefined) && (
                             <div className="bg-slate-50 dark:bg-slate-900/30 rounded-xl p-3 text-sm text-slate-700 dark:text-slate-300">
                               <p className="font-semibold text-slate-900 dark:text-white mb-1">Voice analysis</p>
-                              <p className="mb-1">{ans.evaluation.speaking_pace_wpm || 0} WPM, {ans.evaluation.filler_word_count || 0} filler words, {ans.evaluation.filler_word_ratio || 0}% filler ratio.</p>
+                              <p className="mb-1">{ans.evaluation.speaking_pace_wpm || 0} WPM, {ans.evaluation.filler_word_count || 0} filler words, {ans.evaluation.filler_word_ratio || 0}% filler ratio, {ans.voice_metrics?.tremor_score || 0}% voice tremor.</p>
                               {ans.evaluation.voice_feedback && <p>{ans.evaluation.voice_feedback}</p>}
                             </div>
                           )}
@@ -307,7 +308,7 @@ export default function ResultsPage() {
                                 <Eye className="w-3.5 h-3.5" /> Video presence
                               </p>
                               <p className="mb-1">
-                                {ans.evaluation.emotion_label || 'uncertain'} presence, {ans.evaluation.engagement_score || 0}/100 engagement, {ans.evaluation.eye_contact_score || 0}/100 eye contact.
+                                {ans.evaluation.emotion_label || 'uncertain'} presence, {ans.evaluation.engagement_score || 0}/100 engagement, {ans.evaluation.eye_contact_score || 0}/100 eye contact, {ans.evaluation.posture_score || 0}/100 posture ({ans.evaluation.posture_label || 'Good'}).
                               </p>
                               {ans.evaluation.emotion_feedback && <p>{ans.evaluation.emotion_feedback}</p>}
                             </div>

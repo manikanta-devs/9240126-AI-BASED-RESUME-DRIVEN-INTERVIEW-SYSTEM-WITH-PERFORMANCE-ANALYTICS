@@ -26,7 +26,7 @@ const PANEL_DATA = {
     icon: FileSearch,
     actions: ['Skill extraction', 'Job match scoring', 'Gap-based prep'],
     stats: [
-      { label: 'Inputs', value: 'PDF/DOCX/TXT' },
+      { label: 'Inputs', value: 'PDF / DOCX / TXT' },
       { label: 'Signals', value: 'Skills + fit' },
       { label: 'Output', value: 'Action plan' },
     ],
@@ -38,7 +38,7 @@ const PANEL_DATA = {
     icon: Mic,
     actions: ['Live mic waveform', 'Speech transcript', 'AI scoring'],
     stats: [
-      { label: 'Modes', value: 'Text/Voice/Video' },
+      { label: 'Modes', value: 'Text / Voice / Video' },
       { label: 'Capture', value: 'Mic + camera' },
       { label: 'Signals', value: 'WPM + clarity' },
     ],
@@ -50,7 +50,7 @@ const PANEL_DATA = {
     icon: Brain,
     actions: ['Topic drills', 'Instant explanations', 'Weak area tracking'],
     stats: [
-      { label: 'Topics', value: 'Coding/SQL/HR' },
+      { label: 'Topics', value: 'Coding / SQL / HR' },
       { label: 'Difficulty', value: '3 levels' },
       { label: 'Review', value: 'Per question' },
     ],
@@ -118,11 +118,11 @@ export default function AdvancedToolPanel({ type = 'dashboard', compact = false 
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {data.stats.map(({ label, value }) => (
-              <div key={label} className="rounded-xl border border-white/10 bg-white/[0.06] p-4">
-                <div className="text-lg font-black text-white">{value}</div>
-                <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-white/45">{label}</div>
+              <div key={label} className="rounded-xl border border-white/10 bg-white/[0.06] p-3 sm:p-4 flex flex-col justify-between min-w-0">
+                <div className="text-xs sm:text-sm md:text-base lg:text-xs xl:text-lg font-black text-white leading-tight break-words">{value}</div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-white/45 truncate">{label}</div>
               </div>
             ))}
           </div>

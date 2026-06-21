@@ -1,9 +1,44 @@
 import logging
 import random
-from typing import Optional, List, Dict
+from typing import Optional, List
+from pydantic import BaseModel, Field
 from ai.gemini_service import GeminiService
 
 logger = logging.getLogger(__name__)
+
+
+class EvaluationSchema(BaseModel):
+    technical_score: int = Field(..., ge=0, le=100)
+    clarity_score: int = Field(..., ge=0, le=100)
+    completeness_score: int = Field(..., ge=0, le=100)
+    relevance_score: int = Field(..., ge=0, le=100)
+    depth_score: int = Field(..., ge=0, le=100)
+    overall_score: int = Field(..., ge=0, le=100)
+    topic: str
+    strong_areas: List[str]
+    weak_areas: List[str]
+    feedback: str
+    ideal_answer_hints: str
+    confidence_score: int = Field(..., ge=0, le=100)
+    structure_score: int = Field(..., ge=0, le=100)
+    priority_focus: str
+    suggested_next_action: str
+    follow_up_prompt: str
+    coach_notes: List[str]
+    live_tips: List[str]
+    difficulty_adjustment: str
+    speaking_pace_wpm: int
+    filler_word_count: int
+    filler_word_ratio: int
+    voice_delivery_score: int
+    voice_feedback: str
+    emotion_label: str
+    engagement_score: int = Field(..., ge=0, le=100)
+    eye_contact_score: int = Field(..., ge=0, le=100)
+    posture_score: int = Field(..., ge=0, le=100)
+    posture_label: str
+    emotion_feedback: str
+    sentiment: str
 
 
 class AnswerEvaluator:
@@ -44,7 +79,11 @@ class AnswerEvaluator:
         )
 
     def generate_follow_up(
-        self, question: dict, answer: str, evaluation: dict, role: str = "software_engineer"
+        self,
+        question: dict,
+        answer: str,
+        evaluation: dict,
+        role: str = "software_engineer",
     ) -> dict:
         """Generate a personalized follow-up question based on the answer"""
         if self.gemini.is_available():
@@ -53,12 +92,32 @@ class AnswerEvaluator:
                 return result
         return self._fallback_follow_up(question, evaluation)
 
-    def _evaluate_with_gemini(self, question, answer, role, voice_metrics=None, emotion_metrics=None, previous_scores=None):
+    def _evaluate_with_gemini(
+        self,
+        question,
+        answer,
+        role,
+        voice_metrics=None,
+        emotion_metrics=None,
+        previous_scores=None,
+    ):
         """Evaluate answer using Gemini API"""
-        question_text = question.get("text", "") if isinstance(question, dict) else str(question)
-        question_type = question.get("type", "technical") if isinstance(question, dict) else "technical"
-        category = question.get("category", "General") if isinstance(question, dict) else "General"
-        persona_id = question.get("persona_id", "") if isinstance(question, dict) else ""
+        question_text = (
+            question.get("text", "") if isinstance(question, dict) else str(question)
+        )
+        question_type = (
+            question.get("type", "technical")
+            if isinstance(question, dict)
+            else "technical"
+        )
+        category = (
+            question.get("category", "General")
+            if isinstance(question, dict)
+            else "General"
+        )
+        persona_id = (
+            question.get("persona_id", "") if isinstance(question, dict) else ""
+        )
 
         persona_context = ""
         if persona_id == "strict_manager":
@@ -89,11 +148,9 @@ Use these browser-derived coaching signals to inform eye contact, engagement, an
         adaptive_context = ""
         if previous_scores:
             avg = sum(previous_scores) / len(previous_scores)
-            adaptive_context = (
-                f"\nCandidate's average score so far: {avg:.0f}/100 across {len(previous_scores)} questions."
-            )
+            adaptive_context = f"\nCandidate's average score so far: {avg:.0f}/100 across {len(previous_scores)} questions."
 
-        prompt = f"""You are an expert technical interviewer evaluating a candidate's response.{persona_context}
+        prompt = f"""You are an expert technical interviewer conducting a live coding/technical and behavioral interview.{persona_context}
 
 Role: {role.replace('_', ' ').title()}
 Question Category: {category}
@@ -106,50 +163,105 @@ Candidate's Answer: {answer}
 {voice_context}
 {emotion_context}
 
-Evaluate this answer and return a JSON object with these exact fields:
+Evaluate this answer and return a JSON object. You must grade strictly, realistically, and constructively.
+
+Scoring Rubric & Accuracy Guidelines:
+1. Length-Based Cap: If the candidate's answer is extremely short or lazy (e.g. under 15 words, or repeats the question, or says "I don't know"), the overall_score, technical_score, clarity_score, relevance_score, and depth_score must be capped at 30.
+2. Textbook Cap: If the answer is a simple definition or theoretical explanation without any concrete examples, architecture context, or trade-offs, the overall_score must be capped at 70.
+3. High Scores (>80): Only award high scores if the answer provides deep technical accuracy, refers to concrete project details/experiences, highlights engineering trade-offs, and addresses potential edge cases.
+4. Structural Check (STAR Method): For behavioral and situational questions, verify if the candidate used the STAR (Situation, Task, Action, Result) method. Specifically note which elements were present or missing in the "feedback" and "coach_notes" fields.
+5. Delivery & Composition: Combine the candidate's answer depth with the provided voice and emotion metrics (if any) to construct precise coaching tips.
+
+Return a JSON object with these exact fields:
 {{
-  "technical_score": <0-100>,
-  "clarity_score": <0-100>,
-  "completeness_score": <0-100>,
-  "relevance_score": <0-100, how relevant is the answer to the specific question asked>,
-  "depth_score": <0-100, how deep the technical explanation goes>,
-  "overall_score": <0-100>,
-  "topic": "<main technical topic>",
-  "strong_areas": ["<strength 1>", "<strength 2>"],
-  "weak_areas": ["<weakness 1>", "<weakness 2>"],
-  "feedback": "<2-3 sentences of constructive feedback>",
-  "ideal_answer_hints": "<brief hint about what an ideal answer would include>",
-  "confidence_score": <0-100>,
-  "structure_score": <0-100>,
-  "priority_focus": "<single coaching focus for the next answer>",
-  "suggested_next_action": "<one concrete action to improve>",
-  "follow_up_prompt": "<a follow-up question to dig deeper into a weak area>",
-  "coach_notes": ["<coaching note 1>", "<coaching note 2>"],
-  "live_tips": ["<real-time coaching tip 1>", "<tip 2>", "<tip 3>"],
-  "difficulty_adjustment": "<increase|maintain|decrease> based on answer quality",
+  "technical_score": <0-100, based on technical correctness and depth>,
+  "clarity_score": <0-100, based on articulation and logic>,
+  "completeness_score": <0-100, did they answer all parts of the question>,
+  "relevance_score": <0-100, how directly they answered the prompt>,
+  "depth_score": <0-100, how deep the technical/situational details go>,
+  "overall_score": <0-100, weighted combination of the above based on your rubric>,
+  "topic": "<main technical topic of the question>",
+  "strong_areas": ["<specific strength 1>", "<specific strength 2>"],
+  "weak_areas": ["<specific gap/weakness 1>", "<specific gap/weakness 2>"],
+  "feedback": "<2-3 sentences of constructive and realistic feedback, describing exactly what was good and what was missing or shallow>",
+  "ideal_answer_hints": "<brief hint showing what a perfect, industry-grade response would look like>",
+  "confidence_score": <0-100, estimated based on clarity, structure, and pacing>,
+  "structure_score": <0-100, based on STAR method for behavioral, or logical layout for technical>,
+  "priority_focus": "<single coaching focus for their next answer, e.g. 'Use quantitative metrics' or 'Explain trade-offs first'>",
+  "suggested_next_action": "<one concrete step to improve, e.g. 'Read up on event delegation' or 'Practice framing conflicts using STAR'>",
+  "follow_up_prompt": "<a follow-up question to dig deeper into a weak/unclear part of their answer>",
+  "coach_notes": ["<coaching note 1, e.g. 'Missing Action element in STAR'>", "<coaching note 2, e.g. 'Good technical depth on indexing'>"],
+  "live_tips": ["<real-time tip 1>", "<tip 2>", "<tip 3>"],
+  "difficulty_adjustment": "<increase|maintain|decrease> (increase if overall_score >= 80, decrease if overall_score < 45, maintain otherwise)",
   "speaking_pace_wpm": <integer or 0>,
   "filler_word_count": <integer>,
   "filler_word_ratio": <0-100>,
   "voice_delivery_score": <0-100>,
-  "voice_feedback": "<short feedback on pacing, fillers, or confidence>",
+  "voice_feedback": "<short constructive feedback on pace and voice delivery>",
   "emotion_label": "<focused|calm|energetic|nervous|disengaged|uncertain>",
   "engagement_score": <0-100>,
   "eye_contact_score": <0-100>,
-  "emotion_feedback": "<short feedback on eye contact, composure, and camera presence>",
-  "sentiment": "positive" | "neutral" | "negative"
+  "posture_score": <0-100, based on posture quality, reading from the provided posture_score if present>,
+  "posture_label": "<Good|Slouched|Leaning Left|Leaning Right>",
+  "emotion_feedback": "<short constructive feedback on camera presence, eye contact, and posture>",
+  "sentiment": "positive" | "neutral" | "negative" (must be "positive" if overall_score >= 75, "neutral" if 45-74, "negative" if < 45)
 }}
 
 Be fair but honest. If the answer is very short or vague, score accordingly."""
 
         result = self.gemini.generate_json(prompt)
         if result and isinstance(result, dict):
-            return self._validate_evaluation(result, voice_metrics=voice_metrics, emotion_metrics=emotion_metrics)
+            import json
+            try:
+                check_dict = result.copy()
+                for f in ["technical_score", "clarity_score", "completeness_score", "relevance_score", "depth_score", "overall_score", "confidence_score", "structure_score", "speaking_pace_wpm", "filler_word_count", "filler_word_ratio", "voice_delivery_score", "engagement_score", "eye_contact_score", "posture_score"]:
+                    check_dict[f] = int(check_dict.get(f, 50))
+                for f in ["strong_areas", "weak_areas", "coach_notes", "live_tips"]:
+                    if f not in check_dict or not isinstance(check_dict[f], list):
+                        check_dict[f] = []
+                EvaluationSchema(**check_dict)
+                return self._validate_evaluation(
+                    result, voice_metrics=voice_metrics, emotion_metrics=emotion_metrics
+                )
+            except Exception as e:
+                logger.warning(f"AI JSON result failed schema validation: {e}. Starting self-repair loop...")
+                repair_prompt = f"""You previously evaluated an interview response and returned JSON, but it failed validation.
+
+Error trace: {e}
+
+Your Invalid JSON Output:
+{json.dumps(result, indent=2)}
+
+Please fix the output to strictly comply with the schema format. Adhere to integer bounds (0-100) and ensure all requested keys are present. Return ONLY valid JSON."""
+                
+                repaired = self.gemini.generate_json(repair_prompt)
+                if repaired and isinstance(repaired, dict):
+                    try:
+                        check_repaired = repaired.copy()
+                        for f in ["technical_score", "clarity_score", "completeness_score", "relevance_score", "depth_score", "overall_score", "confidence_score", "structure_score", "speaking_pace_wpm", "filler_word_count", "filler_word_ratio", "voice_delivery_score", "engagement_score", "eye_contact_score", "posture_score"]:
+                            check_repaired[f] = int(check_repaired.get(f, 50))
+                        for f in ["strong_areas", "weak_areas", "coach_notes", "live_tips"]:
+                            if f not in check_repaired or not isinstance(check_repaired[f], list):
+                                check_repaired[f] = []
+                        EvaluationSchema(**check_repaired)
+                        logger.info("✓ AI Self-repair loop successfully healed the JSON evaluation!")
+                        return self._validate_evaluation(
+                            repaired, voice_metrics=voice_metrics, emotion_metrics=emotion_metrics
+                        )
+                    except Exception as err:
+                        logger.warning(f"Self-repair output still invalid: {err}. Using default coercion.")
+                
+                return self._validate_evaluation(
+                    result, voice_metrics=voice_metrics, emotion_metrics=emotion_metrics
+                )
 
         return None
 
     def _follow_up_with_gemini(self, question, answer, evaluation, role):
         """Generate follow-up question using Gemini"""
-        question_text = question.get("text", "") if isinstance(question, dict) else str(question)
+        question_text = (
+            question.get("text", "") if isinstance(question, dict) else str(question)
+        )
         weak_areas = evaluation.get("weak_areas", [])
         score = evaluation.get("overall_score", 50)
 
@@ -183,8 +295,14 @@ Return JSON:
 
     def _fallback_follow_up(self, question, evaluation):
         """Generate rule-based follow-up question"""
-        question_text = question.get("text", "") if isinstance(question, dict) else str(question)
-        question_type = question.get("type", "technical") if isinstance(question, dict) else "technical"
+        question_text = (
+            question.get("text", "") if isinstance(question, dict) else str(question)
+        )
+        question_type = (
+            question.get("type", "technical")
+            if isinstance(question, dict)
+            else "technical"
+        )
         topic = evaluation.get("topic", "this topic")
         score = evaluation.get("overall_score", 50)
 
@@ -238,24 +356,59 @@ Return JSON:
         relevance = clamp(result.get("relevance_score", tech))
         depth = clamp(result.get("depth_score", round((tech + completeness) / 2)))
         overall = clamp(
-            result.get("overall_score", round(tech * 0.4 + clarity * 0.2 + completeness * 0.2 + relevance * 0.2))
+            result.get(
+                "overall_score",
+                round(
+                    tech * 0.4 + clarity * 0.2 + completeness * 0.2 + relevance * 0.2
+                ),
+            )
         )
-        confidence = clamp(result.get("confidence_score", round((clarity + completeness) / 2)))
-        structure = clamp(result.get("structure_score", round((clarity + completeness + tech) / 3)))
+        confidence = clamp(
+            result.get("confidence_score", round((clarity + completeness) / 2))
+        )
+        structure = clamp(
+            result.get("structure_score", round((clarity + completeness + tech) / 3))
+        )
 
         default_pace = int((voice_metrics or {}).get("speaking_pace_wpm") or 0)
         default_filler_count = int((voice_metrics or {}).get("filler_count") or 0)
-        default_filler_ratio = clamp((voice_metrics or {}).get("filler_ratio", 0), default=0)
-        default_voice_delivery = clamp((voice_metrics or {}).get("delivery_score", 0), default=0)
-        default_emotion_label = (emotion_metrics or {}).get("primary_emotion", "uncertain")
-        default_engagement_score = clamp((emotion_metrics or {}).get("engagement_score", 0), default=0)
-        default_eye_contact_score = clamp((emotion_metrics or {}).get("eye_contact_score", 0), default=0)
+        default_filler_ratio = clamp(
+            (voice_metrics or {}).get("filler_ratio", 0), default=0
+        )
+        default_voice_delivery = clamp(
+            (voice_metrics or {}).get("delivery_score", 0), default=0
+        )
+        default_emotion_label = (emotion_metrics or {}).get(
+            "primary_emotion", "uncertain"
+        )
+        default_engagement_score = clamp(
+            (emotion_metrics or {}).get("engagement_score", 0), default=0
+        )
+        default_eye_contact_score = clamp(
+            (emotion_metrics or {}).get("eye_contact_score", 0), default=0
+        )
+        default_posture_score = clamp(
+            (emotion_metrics or {}).get("posture_score", 0), default=0
+        )
+        default_posture_label = (emotion_metrics or {}).get("posture_label", "Good")
 
-        speaking_pace_wpm = max(0, int(result.get("speaking_pace_wpm", default_pace) or default_pace))
-        filler_word_count = max(0, int(result.get("filler_word_count", default_filler_count) or default_filler_count))
-        filler_word_ratio = clamp(result.get("filler_word_ratio", default_filler_ratio), default=default_filler_ratio)
+        speaking_pace_wpm = max(
+            0, int(result.get("speaking_pace_wpm", default_pace) or default_pace)
+        )
+        filler_word_count = max(
+            0,
+            int(
+                result.get("filler_word_count", default_filler_count)
+                or default_filler_count
+            ),
+        )
+        filler_word_ratio = clamp(
+            result.get("filler_word_ratio", default_filler_ratio),
+            default=default_filler_ratio,
+        )
         voice_delivery_score = clamp(
-            result.get("voice_delivery_score", default_voice_delivery), default=default_voice_delivery
+            result.get("voice_delivery_score", default_voice_delivery),
+            default=default_voice_delivery,
         )
 
         coach_notes = result.get("coach_notes", [])
@@ -276,7 +429,7 @@ Return JSON:
             else:
                 difficulty_adjustment = "maintain"
 
-        return {
+        validated = {
             "technical_score": tech,
             "clarity_score": clarity,
             "completeness_score": completeness,
@@ -290,10 +443,15 @@ Return JSON:
             "ideal_answer_hints": result.get("ideal_answer_hints", ""),
             "confidence_score": confidence,
             "structure_score": structure,
-            "priority_focus": result.get("priority_focus", "Be more specific and use a concrete example."),
-            "suggested_next_action": result.get("suggested_next_action", "Rewrite the answer with the STAR method."),
+            "priority_focus": result.get(
+                "priority_focus", "Be more specific and use a concrete example."
+            ),
+            "suggested_next_action": result.get(
+                "suggested_next_action", "Rewrite the answer with the STAR method."
+            ),
             "follow_up_prompt": result.get(
-                "follow_up_prompt", "How would you explain that to a non-technical interviewer?"
+                "follow_up_prompt",
+                "How would you explain that to a non-technical interviewer?",
             ),
             "coach_notes": coach_notes[:4],
             "live_tips": live_tips[:3],
@@ -302,16 +460,55 @@ Return JSON:
             "filler_word_count": filler_word_count,
             "filler_word_ratio": filler_word_ratio,
             "voice_delivery_score": voice_delivery_score,
-            "voice_feedback": result.get("voice_feedback", "Good voice delivery. Focus on pace and clarity."),
+            "voice_feedback": result.get(
+                "voice_feedback", "Good voice delivery. Focus on pace and clarity."
+            ),
             "emotion_label": result.get("emotion_label", default_emotion_label),
-            "engagement_score": clamp(result.get("engagement_score", default_engagement_score), default=default_engagement_score),
-            "eye_contact_score": clamp(result.get("eye_contact_score", default_eye_contact_score), default=default_eye_contact_score),
+            "engagement_score": clamp(
+                result.get("engagement_score", default_engagement_score),
+                default=default_engagement_score,
+            ),
+            "eye_contact_score": clamp(
+                result.get("eye_contact_score", default_eye_contact_score),
+                default=default_eye_contact_score,
+            ),
+            "posture_score": clamp(
+                result.get("posture_score", default_posture_score),
+                default=default_posture_score,
+            ),
+            "posture_label": result.get("posture_label", default_posture_label),
             "emotion_feedback": result.get(
                 "emotion_feedback",
                 "Maintain steady eye contact, balanced posture, and consistent camera framing.",
             ),
             "sentiment": result.get("sentiment", "neutral"),
         }
+
+        # Coerce lists to list of strings
+        for list_field in ["strong_areas", "weak_areas", "coach_notes", "live_tips"]:
+            validated[list_field] = [str(x) for x in validated.get(list_field, []) if x]
+            if not validated[list_field]:
+                validated[list_field] = ["Feedback provided"]
+
+        # Validate difficulty adjustment values
+        if validated["difficulty_adjustment"] not in ("increase", "maintain", "decrease"):
+            validated["difficulty_adjustment"] = "maintain"
+
+        # Validate sentiment value
+        if validated["sentiment"] not in ("positive", "neutral", "negative"):
+            if validated["overall_score"] >= 75:
+                validated["sentiment"] = "positive"
+            elif validated["overall_score"] >= 45:
+                validated["sentiment"] = "neutral"
+            else:
+                validated["sentiment"] = "negative"
+
+        try:
+            schema_instance = EvaluationSchema(**validated)
+            return schema_instance.model_dump()
+        except Exception as e:
+            logger.warning(f"Pydantic validation failed, returning raw validated: {e}")
+            return validated
 
     def _fallback_evaluation(
         self,
@@ -334,14 +531,40 @@ Return JSON:
 
         # Detect answer quality signals
         has_example = any(
-            w in lower for w in ["for example", "for instance", "in my", "we built", "project", "implementation"]
+            w in lower
+            for w in [
+                "for example",
+                "for instance",
+                "in my",
+                "we built",
+                "project",
+                "implementation",
+            ]
         )
         has_structure = any(
-            w in lower for w in ["first", "then", "finally", "as a result", "situation", "task", "action", "result"]
+            w in lower
+            for w in [
+                "first",
+                "then",
+                "finally",
+                "as a result",
+                "situation",
+                "task",
+                "action",
+                "result",
+            ]
         )
         has_numbers = bool(__import__("re").search(r"\d+%?|\$\d+", answer))
         has_tradeoff = any(
-            w in lower for w in ["trade-off", "tradeoff", "downside", "however", "on the other hand", "alternative"]
+            w in lower
+            for w in [
+                "trade-off",
+                "tradeoff",
+                "downside",
+                "however",
+                "on the other hand",
+                "alternative",
+            ]
         )
 
         if word_count < 10:
@@ -373,17 +596,35 @@ Return JSON:
         tech = max(0, min(100, tech + jitter))
         clarity = max(0, min(100, clarity + jitter))
         completeness = max(0, min(100, completeness + jitter))
-        relevance = max(0, min(100, round(tech * 0.7 + completeness * 0.3) + random.randint(-3, 3)))
-        depth = max(0, min(100, round((tech + completeness) / 2) + random.randint(-3, 3)))
-        overall = round(tech * 0.4 + clarity * 0.2 + completeness * 0.2 + relevance * 0.2)
+        relevance = max(
+            0, min(100, round(tech * 0.7 + completeness * 0.3) + random.randint(-3, 3))
+        )
+        depth = max(
+            0, min(100, round((tech + completeness) / 2) + random.randint(-3, 3))
+        )
+        overall = round(
+            tech * 0.4 + clarity * 0.2 + completeness * 0.2 + relevance * 0.2
+        )
 
         speaking_pace_wpm = int((voice_metrics or {}).get("speaking_pace_wpm") or 0)
         filler_word_count = int((voice_metrics or {}).get("filler_count") or 0)
-        filler_word_ratio = clamp((voice_metrics or {}).get("filler_ratio", 0), default=0)
-        voice_delivery_score = clamp((voice_metrics or {}).get("delivery_score", 0), default=0)
+        filler_word_ratio = clamp(
+            (voice_metrics or {}).get("filler_ratio", 0), default=0
+        )
+        voice_delivery_score = clamp(
+            (voice_metrics or {}).get("delivery_score", 0), default=0
+        )
         emotion_label = (emotion_metrics or {}).get("primary_emotion", "uncertain")
-        engagement_score = clamp((emotion_metrics or {}).get("engagement_score", 0), default=0)
-        eye_contact_score = clamp((emotion_metrics or {}).get("eye_contact_score", 0), default=0)
+        engagement_score = clamp(
+            (emotion_metrics or {}).get("engagement_score", 0), default=0
+        )
+        eye_contact_score = clamp(
+            (emotion_metrics or {}).get("eye_contact_score", 0), default=0
+        )
+        posture_score = clamp(
+            (emotion_metrics or {}).get("posture_score", 0), default=0
+        )
+        posture_label = (emotion_metrics or {}).get("posture_label", "Good")
 
         # Adaptive difficulty
         if previous_scores and len(previous_scores) > 0:
@@ -402,11 +643,15 @@ Return JSON:
         if not has_example:
             live_tips.append("Add a specific example from your experience")
         if not has_structure:
-            live_tips.append("Structure your answer with a clear beginning, middle, and end")
+            live_tips.append(
+                "Structure your answer with a clear beginning, middle, and end"
+            )
         if not has_numbers:
             live_tips.append("Include metrics or numbers to quantify your impact")
         if filler_word_count > 5:
             live_tips.append("Reduce filler words for clearer delivery")
+        if posture_label != "Good":
+            live_tips.append(f"Adjust your sitting position; currently flagged as {posture_label}")
 
         # Strong/weak areas
         strong = []
@@ -435,13 +680,19 @@ Return JSON:
             "relevance_score": relevance,
             "depth_score": depth,
             "overall_score": overall,
-            "topic": (question or {}).get("category", "General") if isinstance(question, dict) else "General",
+            "topic": (
+                (question or {}).get("category", "General")
+                if isinstance(question, dict)
+                else "General"
+            ),
             "strong_areas": strong[:3] or ["Attempt made"],
             "weak_areas": weak[:3] or ["Add more detail"],
             "feedback": feedback,
             "ideal_answer_hints": "Structure your answer with: context, approach, implementation, and outcome.",
             "confidence_score": clamp(clarity + random.randint(-5, 5), 50),
-            "structure_score": clamp((clarity + completeness) / 2 + (10 if has_structure else 0), 50),
+            "structure_score": clamp(
+                (clarity + completeness) / 2 + (10 if has_structure else 0), 50
+            ),
             "priority_focus": "Use a clear structure and add one example with measurable impact.",
             "suggested_next_action": "Try a STAR response: situation, task, action, result.",
             "follow_up_prompt": "Walk me through one project where you solved a hard problem.",
@@ -455,7 +706,11 @@ Return JSON:
             "speaking_pace_wpm": speaking_pace_wpm,
             "filler_word_count": filler_word_count,
             "filler_word_ratio": filler_word_ratio,
-            "voice_delivery_score": voice_delivery_score if voice_metrics else clamp((clarity + completeness) / 2, 50),
+            "voice_delivery_score": (
+                voice_delivery_score
+                if voice_metrics
+                else clamp((clarity + completeness) / 2, 50)
+            ),
             "voice_feedback": (
                 "Good voice delivery. Keep your pace steady and reduce filler words."
                 if voice_metrics
@@ -464,10 +719,16 @@ Return JSON:
             "emotion_label": emotion_label,
             "engagement_score": engagement_score,
             "eye_contact_score": eye_contact_score,
+            "posture_score": posture_score,
+            "posture_label": posture_label,
             "emotion_feedback": (
-                "Strong camera presence. Keep your gaze steady and posture composed."
-                if engagement_score >= 70
-                else "Improve camera presence by facing the camera, reducing excess movement, and keeping lighting clear."
+                f"Strong camera presence ({emotion_label} presence). Keep your gaze steady and posture composed. Posture is {posture_label.lower()}."
+                if engagement_score >= 70 and posture_score >= 70
+                else f"Improve camera presence by facing the camera directly, reducing excess movement, and sitting centered. Posture is currently {posture_label.lower()}."
             ),
-            "sentiment": "positive" if overall >= 70 else "neutral" if overall >= 45 else "negative",
+            "sentiment": (
+                "positive"
+                if overall >= 70
+                else "neutral" if overall >= 45 else "negative"
+            ),
         }

@@ -6,13 +6,60 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value))
 }
 
-function useLiveAudioLevel(stream, isActive) {
+function autoCorrelate(buffer, sampleRate) {
+  let size = buffer.length
+  let rms = 0
+  for (let i = 0; i < size; i++) {
+    const val = buffer[i]
+    rms += val * val
+  }
+  rms = Math.sqrt(rms / size)
+  if (rms < 0.01) return -1
+
+  let r1 = 0, r2 = size - 1
+  const thres = 0.2
+  for (let i = 0; i < size / 2; i++) {
+    if (Math.abs(buffer[i]) < thres) { r1 = i; break; }
+  }
+  for (let i = size - 1; i >= size / 2; i--) {
+    if (Math.abs(buffer[i]) < thres) { r2 = i; break; }
+  }
+
+  const subBuffer = buffer.slice(r1, r2)
+  const subSize = subBuffer.length
+  if (subSize < 64) return -1
+
+  const c = new Float32Array(subSize)
+  for (let i = 0; i < subSize; i++) {
+    for (let j = 0; j < subSize - i; j++) {
+      c[i] += subBuffer[j] * subBuffer[j + i]
+    }
+  }
+
+  let d = 0
+  while (c[d] > c[d + 1]) d++
+  let maxval = -1, maxpos = -1
+  for (let i = d; i < subSize; i++) {
+    if (c[i] > maxval) {
+      maxval = c[i]
+      maxpos = i
+    }
+  }
+  let T0 = maxpos
+  if (T0 > 0) return sampleRate / T0
+  return -1
+}
+
+function useLiveAudioLevel(stream, isActive, onTelemetry) {
   const canvasRef = useRef(null)
   const animationRef = useRef(null)
   const analyserRef = useRef(null)
   const audioContextRef = useRef(null)
   const sourceRef = useRef(null)
   const [level, setLevel] = useState(0)
+  const [pitch, setPitch] = useState(0)
+  const [tremorScore, setTremorScore] = useState(0)
+  const pitchHistoryRef = useRef([])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -75,8 +122,10 @@ function useLiveAudioLevel(stream, isActive) {
 
       let peak = 0
       const slice = width / buffer.length
+      const floatBuffer = new Float32Array(buffer.length)
       for (let index = 0; index < buffer.length; index += 1) {
         const normalized = (buffer[index] - 128) / 128
+        floatBuffer[index] = normalized
         peak = Math.max(peak, Math.abs(normalized))
         const x = index * slice
         const y = height / 2 + normalized * (height * 0.42)
@@ -84,6 +133,27 @@ function useLiveAudioLevel(stream, isActive) {
         else canvasContext.lineTo(x, y)
       }
       canvasContext.stroke()
+
+      const currentPitch = autoCorrelate(floatBuffer, context.sampleRate)
+      let newPitch = 0
+      let newTremor = 0
+      if (currentPitch > 50 && currentPitch < 500) {
+        newPitch = Math.round(currentPitch)
+        setPitch(newPitch)
+        pitchHistoryRef.current.push(currentPitch)
+        if (pitchHistoryRef.current.length > 50) {
+          pitchHistoryRef.current.shift()
+        }
+
+        // Calculate pitch variance (tremor score)
+        const avgPitch = pitchHistoryRef.current.reduce((a, b) => a + b, 0) / pitchHistoryRef.current.length
+        const variance = pitchHistoryRef.current.reduce((sum, p) => sum + Math.pow(p - avgPitch, 2), 0) / pitchHistoryRef.current.length
+        newTremor = Math.min(100, Math.round(variance * 1.5))
+        setTremorScore(newTremor)
+        onTelemetry?.({ pitch: newPitch, tremorScore: newTremor })
+      } else {
+        setPitch(0)
+      }
 
       setLevel(Math.round(clamp(peak * 140, 0, 100)))
       animationRef.current = requestAnimationFrame(draw)
@@ -102,7 +172,7 @@ function useLiveAudioLevel(stream, isActive) {
     }
   }, [stream, isActive])
 
-  return { canvasRef, level }
+  return { canvasRef, level, pitch, tremorScore }
 }
 
 export default function VoiceCaptureStudio({
@@ -114,12 +184,28 @@ export default function VoiceCaptureStudio({
   elapsedSeconds = 0,
   recordingUrl = '',
   interviewFormat = 'voice',
+  onVoiceTelemetryUpdate,
 }) {
-  const { canvasRef, level } = useLiveAudioLevel(stream, isListening)
+  const tremorScoresRef = useRef([])
+
+  const { canvasRef, level, pitch, tremorScore } = useLiveAudioLevel(stream, isListening, (telemetry) => {
+    if (isListening) {
+      tremorScoresRef.current.push(telemetry.tremorScore)
+    }
+  })
+
+  useEffect(() => {
+    if (!isListening && tremorScoresRef.current.length > 0) {
+      const avgTremor = Math.round(
+        tremorScoresRef.current.reduce((a, b) => a + b, 0) / tremorScoresRef.current.length
+      )
+      onVoiceTelemetryUpdate?.({ avg_tremor: avgTremor })
+      tremorScoresRef.current = []
+    }
+  }, [isListening, onVoiceTelemetryUpdate])
   const combinedTranscript = `${transcript} ${interimTranscript}`.trim()
   const words = useMemo(() => combinedTranscript.split(/\s+/).filter(Boolean), [combinedTranscript])
   const estimatedWpm = elapsedSeconds > 0 ? Math.round((words.length / elapsedSeconds) * 60) : 0
-  const confidence = voiceMetrics?.transcript_confidence || (isListening && combinedTranscript ? 72 : 0)
 
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-950 p-5 shadow-xl">
@@ -148,12 +234,17 @@ export default function VoiceCaptureStudio({
               Start voice or video mode to connect the microphone and draw the real waveform.
             </div>
           )}
+          {pitch > 0 && tremorScore > 40 && (
+            <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-200">
+              Voice tremor detected. Try to take a deep breath and speak slowly to steady your delivery.
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
           <Metric icon={Mic} label="Words" value={words.length || voiceMetrics?.word_count || 0} />
           <Metric icon={Volume2} label="Live WPM" value={voiceMetrics?.speaking_pace_wpm || estimatedWpm || 0} />
-          <Metric icon={AudioLines} label="Clarity" value={`${confidence}%`} />
+          <Metric icon={AudioLines} label="Tremor/Jitter" value={pitch > 0 ? `${tremorScore}% (${pitch}Hz)` : 'No Voice'} />
           <Metric icon={FileText} label="Mode" value={interviewFormat} />
         </div>
       </div>
@@ -191,7 +282,7 @@ function Metric({ icon: Icon, label, value }) {
     >
       <Icon className="mb-2 h-4 w-4 text-cyan-200" />
       <p className="text-[10px] uppercase tracking-wider text-gray-500">{label}</p>
-      <p className="truncate text-sm font-black capitalize text-white">{value}</p>
+      <p className="truncate text-sm font-mono font-black capitalize text-white">{value}</p>
     </motion.div>
   )
 }

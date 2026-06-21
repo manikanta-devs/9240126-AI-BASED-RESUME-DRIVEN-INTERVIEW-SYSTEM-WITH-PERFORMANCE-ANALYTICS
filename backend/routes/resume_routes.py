@@ -29,7 +29,14 @@ def upload_resume():
             return jsonify({"error": "No file selected"}), 400
 
         if not allowed_file(file.filename):
-            return jsonify({"error": f'Invalid file type. Allowed: {", ".join(ALLOWED_EXTENSIONS)}'}), 400
+            return (
+                jsonify(
+                    {
+                        "error": f'Invalid file type. Allowed: {", ".join(ALLOWED_EXTENSIONS)}'
+                    }
+                ),
+                400,
+            )
 
         filename = secure_filename(file.filename)
         upload_folder = current_app.config["UPLOAD_FOLDER"]
@@ -71,14 +78,19 @@ def analyze_text():
 
         text = data["text"].strip()
         if len(text) < 50:
-            return jsonify({"error": "Resume text too short (minimum 50 characters)"}), 400
+            return (
+                jsonify({"error": "Resume text too short (minimum 50 characters)"}),
+                400,
+            )
 
         result = resume_service.analyze_text(text)
         response = {"success": True, "analysis": result}
 
         job_description = (data.get("job_description") or "").strip()
         if job_description:
-            response["job_match"] = resume_service.compare_resume_to_job(result, job_description)
+            response["job_match"] = resume_service.compare_resume_to_job(
+                result, job_description
+            )
 
         return jsonify(response), 200
 
@@ -118,7 +130,11 @@ def get_roles():
         {"id": "software_engineer", "label": "Software Engineer", "icon": "code"},
         {"id": "frontend_developer", "label": "Frontend Developer", "icon": "palette"},
         {"id": "backend_developer", "label": "Backend Developer", "icon": "settings"},
-        {"id": "fullstack_developer", "label": "Full Stack Developer", "icon": "wrench"},
+        {
+            "id": "fullstack_developer",
+            "label": "Full Stack Developer",
+            "icon": "wrench",
+        },
         {"id": "data_scientist", "label": "Data Scientist", "icon": "bar-chart"},
         {"id": "ml_engineer", "label": "ML Engineer", "icon": "brain"},
         {"id": "devops_engineer", "label": "DevOps Engineer", "icon": "rocket"},

@@ -209,6 +209,7 @@ export default function LiveFeedbackPanel({
           </h4>
           <ScoreBar label="Engage" score={emotionSnapshot.engagement_score || 0} />
           <ScoreBar label="Eye line" score={emotionSnapshot.eye_contact_score || 0} />
+          <ScoreBar label="Posture" score={emotionSnapshot.posture_score || 0} />
           <p className="text-[11px] text-gray-400 leading-relaxed">{emotionSnapshot.summary}</p>
         </div>
       )}

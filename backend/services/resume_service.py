@@ -164,10 +164,14 @@ class ResumeService:
             try:
                 return spacy.load("en_core_web_sm")
             except OSError:
-                logger.warning("spaCy model not found. Run: python -m spacy download en_core_web_sm")
+                logger.warning(
+                    "spaCy model not found. Run: python -m spacy download en_core_web_sm"
+                )
                 return None
         except Exception as exc:
-            logger.warning("spaCy unavailable, falling back to regex extraction: %s", exc)
+            logger.warning(
+                "spaCy unavailable, falling back to regex extraction: %s", exc
+            )
             return None
 
     def extract_text_from_pdf(self, filepath: str) -> str:
@@ -354,7 +358,10 @@ class ResumeService:
             for ent in doc.ents:
                 if ent.label_ == "ORG" and ent.text not in entities["organizations"]:
                     entities["organizations"].append(ent.text)
-                elif ent.label_ in ["GPE", "LOC"] and ent.text not in entities["locations"]:
+                elif (
+                    ent.label_ in ["GPE", "LOC"]
+                    and ent.text not in entities["locations"]
+                ):
                     entities["locations"].append(ent.text)
                 elif ent.label_ == "PERSON" and ent.text not in entities["persons"]:
                     entities["persons"].append(ent.text)
@@ -364,7 +371,9 @@ class ResumeService:
             logger.error(f"spaCy entity extraction error: {e}")
             return {"organizations": [], "locations": [], "persons": []}
 
-    def _calculate_resume_score(self, skills: dict, education: list, experience: dict, text: str) -> dict:
+    def _calculate_resume_score(
+        self, skills: dict, education: list, experience: dict, text: str
+    ) -> dict:
         """Calculate a resume quality score"""
         scores = {}
         # Skills score (0-25)
@@ -394,9 +403,19 @@ class ResumeService:
 
         total = sum(scores.values())
         grades = {90: "A+", 80: "A", 70: "B+", 60: "B", 50: "C+", 0: "C"}
-        grade = next(g for threshold, g in sorted(grades.items(), reverse=True) if total >= threshold)
+        grade = next(
+            g
+            for threshold, g in sorted(grades.items(), reverse=True)
+            if total >= threshold
+        )
 
-        return {"total": total, "max": 100, "grade": grade, "breakdown": scores, "percentage": total}
+        return {
+            "total": total,
+            "max": 100,
+            "grade": grade,
+            "breakdown": scores,
+            "percentage": total,
+        }
 
     def _generate_summary(self, skills: dict, education: list, experience: dict) -> str:
         """Generate a brief resume summary"""
@@ -439,7 +458,9 @@ class ResumeService:
         missing_keys = sorted(job_skill_keys - resume_skill_keys)
         extra_keys = sorted(resume_skill_keys - job_skill_keys)
 
-        matched_skills = [resume_skill_map.get(key) or job_skill_map.get(key) for key in matched_keys]
+        matched_skills = [
+            resume_skill_map.get(key) or job_skill_map.get(key) for key in matched_keys
+        ]
         missing_skills = [job_skill_map[key] for key in missing_keys]
         extra_skills = [resume_skill_map[key] for key in extra_keys]
 
@@ -448,12 +469,18 @@ class ResumeService:
         resume_years = int(resume_experience.get("years") or 0)
         required_years = int(job_experience.get("years") or 0)
 
-        skill_coverage = len(matched_skills) / len(job_skill_keys) if job_skill_keys else 0.65
+        skill_coverage = (
+            len(matched_skills) / len(job_skill_keys) if job_skill_keys else 0.65
+        )
         experience_alignment = 1.0
         if required_years > 0:
-            experience_alignment = min(1.0, resume_years / required_years) if resume_years else 0.0
+            experience_alignment = (
+                min(1.0, resume_years / required_years) if resume_years else 0.0
+            )
 
-        resume_completion = (resume_data.get("resume_score", {}) or {}).get("percentage", 0) / 100
+        resume_completion = (resume_data.get("resume_score", {}) or {}).get(
+            "percentage", 0
+        ) / 100
         education_alignment = 1.0 if resume_data.get("education") else 0.6
 
         total_score = round(
@@ -479,16 +506,24 @@ class ResumeService:
 
         recommendations = []
         if missing_skills:
-            recommendations.append(f"Add or emphasize these keywords: {', '.join(missing_skills[:5])}.")
+            recommendations.append(
+                f"Add or emphasize these keywords: {', '.join(missing_skills[:5])}."
+            )
         if required_years and resume_years < required_years:
             recommendations.append(
                 f"Highlight projects that show at least {required_years - resume_years} more year(s) of relevant impact."
             )
         if not resume_data.get("contact", {}).get("email"):
-            recommendations.append("Make sure your contact details are visible and complete.")
+            recommendations.append(
+                "Make sure your contact details are visible and complete."
+            )
         if len(recommendations) < 3:
-            recommendations.append("Tailor your professional summary to mirror the language in the job description.")
-            recommendations.append("Quantify outcomes in bullets with metrics, scale, or impact.")
+            recommendations.append(
+                "Tailor your professional summary to mirror the language in the job description."
+            )
+            recommendations.append(
+                "Quantify outcomes in bullets with metrics, scale, or impact."
+            )
 
         priority_actions = [
             "Rewrite the top summary line with the role title and 2-3 matching keywords.",
@@ -513,7 +548,11 @@ class ResumeService:
             "priority_actions": priority_actions,
             "job_keywords": list(job_skill_map.values())[:12],
             "summary": self._build_match_summary(
-                total_score, matched_skills, missing_skills, required_years, resume_years
+                total_score,
+                matched_skills,
+                missing_skills,
+                required_years,
+                resume_years,
             ),
         }
 
@@ -544,7 +583,12 @@ class ResumeService:
         return "foundation-needed"
 
     def _build_match_summary(
-        self, score: int, matched_skills: list, missing_skills: list, required_years: int, resume_years: int
+        self,
+        score: int,
+        matched_skills: list,
+        missing_skills: list,
+        required_years: int,
+        resume_years: int,
     ) -> str:
         """Generate a short executive summary for the match report."""
         if score >= 85:

@@ -721,17 +721,45 @@ class QuestionGenerator:
         self.gemini = GeminiService()
         self.wiki = WikiService()
 
-    def generate(self, resume_data, role, difficulty="medium", num_questions=8, panel_mode=False):
+    def generate(
+        self,
+        resume_data,
+        role,
+        difficulty="medium",
+        num_questions=8,
+        panel_mode=False,
+        company="General",
+        company_context="",
+    ):
         """Generate questions using Gemini, with resume-aware fallback"""
         if self.gemini.is_available():
-            questions = self._generate_with_gemini(resume_data, role, difficulty, num_questions, panel_mode)
+            questions = self._generate_with_gemini(
+                resume_data,
+                role,
+                difficulty,
+                num_questions,
+                panel_mode,
+                company,
+                company_context,
+            )
             if questions:
                 return questions
 
         logger.info("Using fallback questions")
-        return self._get_fallback_questions(role, num_questions, resume_data, difficulty, panel_mode)
+        return self._get_fallback_questions(
+            role, num_questions, resume_data, difficulty, panel_mode
+        )
 
-    def _generate_with_gemini(self, resume_data, role, difficulty, num_questions, panel_mode=False):
+    def _generate_with_gemini(
+        self,
+        resume_data,
+        role,
+        difficulty,
+        num_questions,
+        panel_mode=False,
+        company="General",
+        company_context="",
+    ):
         """Generate questions using Gemini API"""
         skills = resume_data.get("skills", {}).get("all", [])
         experience = resume_data.get("experience", {})
@@ -758,7 +786,26 @@ You are generating questions for a Panel Interview. There are 3 personas on the 
 For each question, explicitly assign a "persona_id" from the 3 choices above. Distribute the questions roughly equally among the 3 personas. Write the "text" of the question exactly as that persona would speak it.
 """
 
-        prompt = f"""You are an expert technical interviewer conducting a real interview. Generate {num_questions} interview questions.
+        company_instruction = ""
+        if company and company != "General":
+            company_instruction = f"\nTarget Company: {company}"
+            style_notes = {
+                "google": "Google's interview style focuses heavily on scale, algorithmic efficiency, complex system design, and Googlyness (navigating ambiguity, doing the right thing).",
+                "amazon": "Amazon's interview style focuses heavily on the Amazon Leadership Principles (customer obsession, ownership, deliver results, etc.), operational excellence, scale, and diving deep.",
+                "meta": "Meta's interview style focuses heavily on moving fast, direct impact, system design at massive scale, and practical, pragmatic engineering trade-offs.",
+                "microsoft": "Microsoft's interview style focuses on robust software engineering, architectural clarity, growth mindset, and collaborative problem solving.",
+                "netflix": "Netflix's interview style focuses on freedom & responsibility, high performance culture, resilience/chaos engineering, and technical independence.",
+            }
+            note = style_notes.get(company.lower())
+            if note:
+                company_instruction += f" ({note})"
+            if company_context:
+                company_instruction += f"\nCompany/Team Context/Background: {company_context}"
+            company_instruction += "\nMake sure that both the technical/system design questions and behavioral questions reflect this company's culture, values, and engineering standards.\n"
+
+        prompt = f"""You are an expert technical interviewer conducting a realistic live job interview. Generate {num_questions} high-quality interview questions.
+
+Target Company / Context Info: {company_instruction or "General"}
 
 Role: {role.replace('_', ' ').title()}
 Difficulty: {difficulty}
@@ -774,21 +821,21 @@ Relevant background from Wikipedia (if available):
 Relevant background on top skill (if available):
 {self.wiki.get_summary(skills[0]) if skills else ''}
 
-Requirements:
-- Questions MUST be tailored to the candidate's specific skills and experience
-- If they know React, ask about React. If they know Python, ask about Python.
-- Mix of technical, coding, behavioral, and situational questions
-- {difficulty} difficulty level
-- Cover different topic areas from their skill set
-- Make questions feel like a real interview, not textbook definitions
-- Reference their background: "Given your experience with X..." or "You mentioned Y on your resume..."
-- For {difficulty} difficulty: {"keep questions foundational and clear" if difficulty == "easy" else "expect depth and real-world examples" if difficulty == "medium" else "push for system design thinking and edge cases"}
+Requirements for Question Generation:
+1. Tailoring & Accuracy: Questions MUST be highly specific to the candidate's background and target role. Do NOT ask generic questions.
+2. Technical & Coding: For technical questions, construct a realistic scenario (e.g., debugging a memory leak, optimizing database query speed, designing an API endpoint, or refactoring components). Ask them to explain the implementation details, trade-offs, and edge cases. Avoid textbook definitions (do not ask "Explain what X is", ask "How would you design/optimize/debug X under constraint Y?").
+3. Behavioral & Situational: For behavioral questions, prompt the candidate for a specific past situation from their experience, their exact action, and the outcome/metrics. Enforce that they describe a real-world project conflict, system failure, or leadership challenge.
+4. Difficulty Level: The questions must strictly match the '{difficulty}' level:
+   - 'easy': Foundational concepts applied to real-world tasks, clear and structured.
+   - 'medium': System design trade-offs, debugging medium-complexity problems, and common production issues.
+   - 'hard': Deep architectural decisions, high scale bottlenecks, distributed system tradeoffs, security vulnerabilities, and complex debugging scenarios.
+5. Natural Conversational Tone: Frame the questions as if you are a senior practitioner or hiring manager speaking to them: "I see you listed X on your resume. In your previous role as Y, how did you handle..." or "Suppose you are building a system that uses Z...".
 
 Return a JSON array. Each question object must have:
 - "id": number (1 to {num_questions})
 - "text": the full question text (personalized to their resume)
-- "category": topic category
-- "difficulty": "easy", "medium", or "hard"
+- "category": topic category (e.g., System Design, React, Python, Incident Response, etc.)
+- "difficulty": "{difficulty}"
 - "type": "technical", "behavioral", or "situational"
 - "persona_id": "<technical_lead|hr_manager|strict_manager>" (only include if panel mode is enabled)
 """
@@ -813,11 +860,20 @@ Return a JSON array. Each question object must have:
 
         return None
 
-    def _get_fallback_questions(self, role, num_questions, resume_data=None, difficulty="medium", panel_mode=False):
+    def _get_fallback_questions(
+        self,
+        role,
+        num_questions,
+        resume_data=None,
+        difficulty="medium",
+        panel_mode=False,
+    ):
         """Generate smart fallback questions based on resume data"""
         pool = []
 
-        has_resume = resume_data and isinstance(resume_data, dict) and resume_data.get("skills")
+        has_resume = (
+            resume_data and isinstance(resume_data, dict) and resume_data.get("skills")
+        )
 
         if has_resume:
             # ── 1. Skill-specific questions from resume ──────────────
@@ -825,7 +881,11 @@ Return a JSON array. Each question object must have:
             for skill in all_skills:
                 skill_key = skill.lower().replace(".", "").replace(" ", "")
                 # Try exact match and common variants
-                for key in [skill_key, skill_key.rstrip("s"), skill_key.replace("js", "")]:
+                for key in [
+                    skill_key,
+                    skill_key.rstrip("s"),
+                    skill_key.replace("js", ""),
+                ]:
                     if key in SKILL_QUESTIONS:
                         for q in SKILL_QUESTIONS[key]:
                             pool.append({**q})
@@ -833,12 +893,18 @@ Return a JSON array. Each question object must have:
 
             # ── 2. Experience-level questions ─────────────────────────
             experience = resume_data.get("experience", {})
-            level = experience.get("level", "entry") if isinstance(experience, dict) else "entry"
+            level = (
+                experience.get("level", "entry")
+                if isinstance(experience, dict)
+                else "entry"
+            )
             if level in EXPERIENCE_QUESTIONS:
                 pool.extend([{**q} for q in EXPERIENCE_QUESTIONS[level]])
 
             # ── 3. Job-title-based questions ─────────────────────────
-            titles = experience.get("titles", []) if isinstance(experience, dict) else []
+            titles = (
+                experience.get("titles", []) if isinstance(experience, dict) else []
+            )
             if titles:
                 title = titles[0]  # Use most recent title
                 for tq in TITLE_QUESTIONS:
@@ -851,14 +917,23 @@ Return a JSON array. Each question object must have:
                         }
                     )
 
-            logger.info(f"Built {len(pool)} resume-tailored questions from {len(all_skills)} skills, level={level}")
+            logger.info(
+                f"Built {len(pool)} resume-tailored questions from {len(all_skills)} skills, level={level}"
+            )
 
         # ── 4. Add role-based fallbacks to fill gaps ─────────────
         role_questions = FALLBACK_QUESTIONS.get(role, FALLBACK_QUESTIONS["default"])
         pool.extend([{**q} for q in role_questions])
 
         # ── 5. Add scenario-based questions ──────────────────────
-        pool.extend([{**q} for q in random.sample(SCENARIO_QUESTIONS, min(3, len(SCENARIO_QUESTIONS)))])
+        pool.extend(
+            [
+                {**q}
+                for q in random.sample(
+                    SCENARIO_QUESTIONS, min(3, len(SCENARIO_QUESTIONS))
+                )
+            ]
+        )
 
         # ── 6. Add generic defaults last ─────────────────────────
         if role != "default":

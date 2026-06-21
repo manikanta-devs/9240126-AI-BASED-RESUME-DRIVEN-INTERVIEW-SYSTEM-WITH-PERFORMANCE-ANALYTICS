@@ -4,7 +4,7 @@ import { clsx } from 'clsx'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText, Mic, BarChart2, Home, ChevronLeft, Brain,
-  ChevronRight, Moon, Sun, Sparkles
+  ChevronRight, Moon, Sun, Sparkles, LogOut
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import AppLogo from './AppLogo'
@@ -102,6 +102,22 @@ export default function Sidebar() {
             : <Moon className="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:-rotate-12" />
           }
           {!collapsed && <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
+        </button>
+
+        <button
+          onClick={() => {
+            localStorage.removeItem('token')
+            localStorage.removeItem('username')
+            window.location.href = '/'
+          }}
+          className={clsx(
+            'sidebar-link w-full group text-red-500 hover:text-red-600 hover:bg-red-500/10',
+            collapsed ? 'justify-center px-0' : ''
+          )}
+          title="Logout"
+        >
+          <LogOut className="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
+          {!collapsed && <span>Logout</span>}
         </button>
       </div>
 

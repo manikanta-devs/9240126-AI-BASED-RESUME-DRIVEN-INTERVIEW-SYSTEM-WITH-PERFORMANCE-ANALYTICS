@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, List
 from config import get_config
+from ai.gemini_service import GeminiService
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,12 @@ QUIZ_BANK = {
             },
             {
                 "question": "Which algorithmic idea helps when you need to check whether an item exists in a sorted list quickly?",
-                "options": ["Linear scan", "Binary search", "Bubble sort", "Backtracking"],
+                "options": [
+                    "Linear scan",
+                    "Binary search",
+                    "Bubble sort",
+                    "Backtracking",
+                ],
                 "correct_index": 1,
                 "explanation": "Binary search is efficient on sorted lists.",
                 "option_feedback": [
@@ -240,7 +246,12 @@ QUIZ_BANK = {
             },
             {
                 "question": "You want to transform a list of interview scores into pass/fail labels in one line. What is list comprehension best for?",
-                "options": ["Creating classes", "Writing compact loops", "Compiling code", "Managing imports"],
+                "options": [
+                    "Creating classes",
+                    "Writing compact loops",
+                    "Compiling code",
+                    "Managing imports",
+                ],
                 "correct_index": 1,
                 "explanation": "List comprehensions are a compact way to build new lists from existing iterables.",
                 "option_feedback": [
@@ -252,7 +263,12 @@ QUIZ_BANK = {
             },
             {
                 "question": "Your interview app needs separate package versions for backend and scripts. What is the purpose of a virtual environment?",
-                "options": ["Run faster code", "Isolate project dependencies", "Encrypt files", "Replace pip"],
+                "options": [
+                    "Run faster code",
+                    "Isolate project dependencies",
+                    "Encrypt files",
+                    "Replace pip",
+                ],
                 "correct_index": 1,
                 "explanation": "Virtual environments isolate dependencies so projects do not conflict.",
                 "option_feedback": [
@@ -264,7 +280,12 @@ QUIZ_BANK = {
             },
             {
                 "question": "You are writing a function that should not keep large results in memory if you only need to iterate once. What is the best choice?",
-                "options": ["Generator", "Global variable", "Static string", "Nested class"],
+                "options": [
+                    "Generator",
+                    "Global variable",
+                    "Static string",
+                    "Nested class",
+                ],
                 "correct_index": 0,
                 "explanation": "Generators yield values lazily, which keeps memory use lower.",
                 "option_feedback": [
@@ -362,7 +383,12 @@ QUIZ_BANK = {
             },
             {
                 "question": "You want to pull candidate names from the database. What does SELECT do?",
-                "options": ["Deletes rows", "Retrieves data", "Creates tables", "Updates records"],
+                "options": [
+                    "Deletes rows",
+                    "Retrieves data",
+                    "Creates tables",
+                    "Updates records",
+                ],
                 "correct_index": 1,
                 "explanation": "SELECT retrieves data from a table.",
                 "option_feedback": [
@@ -388,7 +414,12 @@ QUIZ_BANK = {
         "medium": [
             {
                 "question": "Your analytics page needs average score per topic. What is the purpose of GROUP BY?",
-                "options": ["Sorts rows", "Aggregates rows into groups", "Deletes duplicates", "Creates indexes"],
+                "options": [
+                    "Sorts rows",
+                    "Aggregates rows into groups",
+                    "Deletes duplicates",
+                    "Creates indexes",
+                ],
                 "correct_index": 1,
                 "explanation": "GROUP BY groups rows so aggregate functions can summarize each group.",
                 "option_feedback": [
@@ -465,7 +496,12 @@ QUIZ_BANK = {
             },
             {
                 "question": "You need the top 3 scoring candidates per department. Which SQL feature is the cleanest fit?",
-                "options": ["Window function with ROW_NUMBER()", "DROP TABLE", "UNION ALL only", "Cartesian product"],
+                "options": [
+                    "Window function with ROW_NUMBER()",
+                    "DROP TABLE",
+                    "UNION ALL only",
+                    "Cartesian product",
+                ],
                 "correct_index": 0,
                 "explanation": "Window functions like ROW_NUMBER() are ideal for ranking rows within partitions such as departments.",
                 "option_feedback": [
@@ -597,7 +633,12 @@ QUIZ_BANK = {
         "easy": [
             {
                 "question": 'The interviewer says, "Tell me about yourself." What structure is strongest?',
-                "options": ["Random facts", "Past, present, future", "Just education", "Only hobbies"],
+                "options": [
+                    "Random facts",
+                    "Past, present, future",
+                    "Just education",
+                    "Only hobbies",
+                ],
                 "correct_index": 1,
                 "explanation": "A clear intro uses past, present, and future.",
                 "option_feedback": [
@@ -757,6 +798,7 @@ class QuizService:
 
     def __init__(self):
         self._sessions: Dict[str, dict] = {}
+        self.gemini = GeminiService()
         self._load_from_disk()
 
     def _load_from_disk(self):
@@ -781,7 +823,61 @@ class QuizService:
     def get_topics(self) -> List[str]:
         return sorted(QUIZ_BANK.keys())
 
-    def build_questions(self, topic: str, difficulty: str, num_questions: int) -> List[dict]:
+    def build_questions(
+        self, topic: str, difficulty: str, num_questions: int
+    ) -> List[dict]:
+        if self.gemini.is_available():
+            prompt = f"""You are a professional quiz maker and technical interviewer. Generate a JSON list of exactly {num_questions} multiple choice questions.
+
+Topic: {topic.title()}
+Difficulty Level: {difficulty}
+
+Generate fresh, realistic, and highly educational questions. For technical topics, include coding scenarios or code snippets where appropriate. For behavioral/HR, include typical scenarios.
+
+The output must be a JSON array. Each object in the array must contain:
+1. "question": "<the question text>"
+2. "options": ["<option 1>", "<option 2>", "<option 3>", "<option 4>"]
+3. "correct_index": <0, 1, 2, or 3 - the index of the correct option>
+4. "explanation": "<a detailed explanation of why the correct option is right>"
+5. "option_feedback": ["<feedback for option 1>", "<feedback for option 2>", "<feedback for option 3>", "<feedback for option 4>"]
+
+Return ONLY the raw JSON array."""
+            try:
+                res = self.gemini.generate_json(prompt)
+                if isinstance(res, list) and len(res) > 0:
+                    questions = []
+                    for index, item in enumerate(res[:num_questions]):
+                        correct_index = int(item.get("correct_index", 0))
+                        if correct_index < 0 or correct_index > 3:
+                            correct_index = 0
+                        options = item.get("options", ["Option 1", "Option 2", "Option 3", "Option 4"])
+                        if len(options) < 4:
+                            options = (options + ["Option 1", "Option 2", "Option 3", "Option 4"])[:4]
+
+                        option_feedback = item.get("option_feedback", [])
+                        if len(option_feedback) < 4:
+                            option_feedback = (option_feedback + [
+                                "Incorrect option.",
+                                "Incorrect option.",
+                                "Incorrect option.",
+                                "Incorrect option."
+                            ])[:4]
+                        option_feedback[correct_index] = item.get("explanation", "Correct!")
+
+                        questions.append({
+                            "id": f"q-{index + 1}",
+                            "question": item.get("question", "Question?"),
+                            "options": options,
+                            "correct_index": correct_index,
+                            "explanation": item.get("explanation", "No explanation provided."),
+                            "option_feedback": option_feedback,
+                            "topic": topic,
+                            "difficulty": difficulty,
+                        })
+                    return questions
+            except Exception as e:
+                logger.error(f"Failed to generate quiz questions with Gemini: {e}. Falling back to static bank.")
+
         topic_bank = QUIZ_BANK.get(topic.lower(), QUIZ_BANK["python"])
         question_pool = topic_bank.get(difficulty.lower(), topic_bank["medium"])
         randomized_pool = question_pool[:]
@@ -803,7 +899,13 @@ class QuizService:
             )
         return questions
 
-    def start_quiz(self, topic: str, difficulty: str, num_questions: int, candidate_name: str = "Candidate") -> dict:
+    def start_quiz(
+        self,
+        topic: str,
+        difficulty: str,
+        num_questions: int,
+        candidate_name: str = "Candidate",
+    ) -> dict:
         self._load_from_disk()
         session_id = str(uuid.uuid4())
         questions = self.build_questions(topic, difficulty, num_questions)
@@ -833,7 +935,9 @@ class QuizService:
         self._load_from_disk()
         return self._sessions.get(session_id)
 
-    def submit_answer(self, session_id: str, question_index: int, selected_index: int) -> dict:
+    def submit_answer(
+        self, session_id: str, question_index: int, selected_index: int
+    ) -> dict:
         self._load_from_disk()
         session = self._sessions.get(session_id)
         if not session:
@@ -845,7 +949,9 @@ class QuizService:
         is_correct = int(selected_index) == int(question["correct_index"])
         score = 1 if is_correct else 0
         selected_option = (
-            question["options"][selected_index] if 0 <= selected_index < len(question["options"]) else None
+            question["options"][selected_index]
+            if 0 <= selected_index < len(question["options"])
+            else None
         )
         correct_option = (
             question["options"][question["correct_index"]]
@@ -853,7 +959,11 @@ class QuizService:
             else None
         )
         option_feedback = question.get("option_feedback", [])
-        selected_reason = option_feedback[selected_index] if 0 <= selected_index < len(option_feedback) else None
+        selected_reason = (
+            option_feedback[selected_index]
+            if 0 <= selected_index < len(option_feedback)
+            else None
+        )
         correct_reason = (
             option_feedback[question["correct_index"]]
             if 0 <= question["correct_index"] < len(option_feedback)
@@ -901,7 +1011,11 @@ class QuizService:
         responses = session.get("responses", [])
         total_questions = len(session.get("questions", []))
         correct_answers = sum(1 for response in responses if response.get("is_correct"))
-        score = round((correct_answers / total_questions) * 100, 1) if total_questions else 0
+        score = (
+            round((correct_answers / total_questions) * 100, 1)
+            if total_questions
+            else 0
+        )
         accuracy = score
 
         weak_topics = []
@@ -939,7 +1053,11 @@ class QuizService:
                 "topic": session.get("topic", "general"),
                 "difficulty": session.get("difficulty", "medium"),
                 "status": session.get("status", "active"),
-                "score": session.get("results", {}).get("score") if session.get("results") else None,
+                "score": (
+                    session.get("results", {}).get("score")
+                    if session.get("results")
+                    else None
+                ),
                 "started_at": session.get("started_at"),
                 "completed_at": session.get("completed_at"),
             }

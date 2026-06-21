@@ -176,6 +176,16 @@ const FORMAT_OPTIONS = [
 
 ]
 
+const COMPANY_OPTIONS = [
+  { value: 'General', label: 'General', desc: 'Standard industry questions' },
+  { value: 'Google', label: 'Google', desc: 'Scale, Algorithmic & Googlyness' },
+  { value: 'Amazon', label: 'Amazon', desc: 'Leadership Principles & Depth' },
+  { value: 'Microsoft', label: 'Microsoft', desc: 'Robust Design & Collaboration' },
+  { value: 'Netflix', label: 'Netflix', desc: 'Freedom & Responsibility, Chaos' },
+  { value: 'Meta', label: 'Meta', desc: 'Fast execution & System design' },
+  { value: 'Custom', label: 'Custom', desc: 'Provide your own company/context' },
+]
+
 
 
 
@@ -247,7 +257,8 @@ export default function InterviewPage() {
 
 
   const [numQuestions, setNumQuestions] = useState(6)
-
+  const [selectedCompany, setSelectedCompany] = useState('General')
+  const [companyContext, setCompanyContext] = useState('')
 
   const [questions, setQuestions] = useState([])
 
@@ -280,6 +291,7 @@ export default function InterviewPage() {
 
 
   const [voiceMetrics, setVoiceMetrics] = useState(null)
+  const [avgTremorScore, setAvgTremorScore] = useState(0)
 
 
   const [voiceError, setVoiceError] = useState('')
@@ -1225,23 +1237,13 @@ export default function InterviewPage() {
 
 
       const { data } = await generateQuestions({
-
-
         resume_data: resumeData || {},
-
-
         role: selectedRole,
-
-
         difficulty,
-
-
         num_questions: numQuestions,
-
-
         panel_mode: panelMode,
-
-
+        company: selectedCompany,
+        company_context: companyContext,
       })
 
 
@@ -1405,7 +1407,10 @@ export default function InterviewPage() {
         question_index: currentIndex,
 
 
-        voice_metrics: latestVoiceMetrics || voiceMetrics || null,
+        voice_metrics: latestVoiceMetrics || voiceMetrics ? {
+          ...(latestVoiceMetrics || voiceMetrics || {}),
+          tremor_score: avgTremorScore
+        } : null,
 
 
         emotion_metrics: interviewFormat === 'video' ? emotionSnapshot : null,
@@ -1538,6 +1543,7 @@ export default function InterviewPage() {
 
 
     setVoiceMetrics(null)
+    setAvgTremorScore(0)
 
 
     setVoiceError('')
@@ -1670,6 +1676,7 @@ export default function InterviewPage() {
 
 
     setVoiceMetrics(null)
+    setAvgTremorScore(0)
 
 
     setVoiceError('')
@@ -1914,7 +1921,11 @@ export default function InterviewPage() {
 
 
 
-          <div className="mb-6">`r`n            <FreeStackPanel compact />`r`n          </div>`r`n`r`n`r`n`r`n          <div className="mb-5">
+          <div className="mb-6">
+            <FreeStackPanel compact />
+          </div>
+
+          <div className="mb-5">
 
 
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Target Role</label>
@@ -2033,6 +2044,47 @@ export default function InterviewPage() {
 
           </div>
 
+          <div className="mb-5">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Target Company</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+              {COMPANY_OPTIONS.map(({ value, label, desc }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCompany(value)
+                    if (value === 'General') {
+                      setCompanyContext('')
+                    }
+                  }}
+                  className={clsx(
+                    'p-2.5 rounded-xl text-left border-2 transition-all flex flex-col justify-between',
+                    selectedCompany === value
+                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                  )}
+                >
+                  <div className="font-semibold text-xs text-gray-800 dark:text-gray-200">{label}</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5 leading-snug">{desc}</div>
+                </button>
+              ))}
+            </div>
+            {selectedCompany !== 'General' && (
+              <div className="mt-3">
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                  Company Focus / Interview Context (e.g. &quot;AWS S3 team&quot;, &quot;System reliability role&quot;, specific business scenarios)
+                </label>
+                <textarea
+                  value={companyContext}
+                  onChange={(e) => setCompanyContext(e.target.value)}
+                  placeholder="Enter specific team, domain, or business challenges to tailor your questions..."
+                  className="w-full p-3 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  rows={3}
+                />
+              </div>
+            )}
+          </div>
+
 
 
 
@@ -2082,7 +2134,7 @@ export default function InterviewPage() {
                   <div className="font-semibold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-2">
 
 
-                    {value === 'video' ? <Video className="w-4 h-4" /> : value === 'voice' ? <Radio className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                    {value === 'text' ? <Type className="w-4 h-4" /> : value === 'voice' ? <Mic className="w-4 h-4" /> : <Video className="w-4 h-4" />}
 
 
                     {label}
@@ -2171,7 +2223,7 @@ export default function InterviewPage() {
                   onClick={() => setAiInterviewerMode(!aiInterviewerMode)}
                   className={clsx('relative w-12 h-6 rounded-full transition-colors shrink-0', aiInterviewerMode ? 'bg-cyan-600' : 'bg-gray-700')}
                 >
-                  <span className={clsx('absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform', aiInterviewerMode ? 'translate-x-6' : 'translate-x-0.5')} />
+                  <span className={clsx('absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform', aiInterviewerMode ? 'translate-x-6' : 'translate-x-0')} />
                 </button>
               </div>
             </div>
@@ -2186,7 +2238,7 @@ export default function InterviewPage() {
                   onClick={() => setInterviewerVoice(!interviewerVoice)}
                   className={clsx('relative w-12 h-6 rounded-full transition-colors shrink-0', interviewerVoice ? 'bg-amber-500' : 'bg-gray-700')}
                 >
-                  <span className={clsx('absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform', interviewerVoice ? 'translate-x-6' : 'translate-x-0.5')} />
+                  <span className={clsx('absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform', interviewerVoice ? 'translate-x-6' : 'translate-x-0')} />
                 </button>
               </div>
             </div>
@@ -2224,7 +2276,7 @@ export default function InterviewPage() {
                 className={clsx(
 
 
-                  'relative w-12 h-6 rounded-full transition-colors',
+                  'relative w-12 h-6 rounded-full transition-colors shrink-0',
 
 
                   panelMode ? 'bg-violet-600' : 'bg-gray-700'
@@ -2239,10 +2291,10 @@ export default function InterviewPage() {
                 <span className={clsx(
 
 
-                  'absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform',
+                  'absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform',
 
 
-                  panelMode ? 'translate-x-6' : 'translate-x-0.5'
+                  panelMode ? 'translate-x-6' : 'translate-x-0'
 
 
                 )} />
@@ -2742,6 +2794,7 @@ export default function InterviewPage() {
                 elapsedSeconds={elapsedSeconds}
                 recordingUrl={recordingUrl}
                 interviewFormat={interviewFormat}
+                onVoiceTelemetryUpdate={(tel) => setAvgTremorScore(tel.avg_tremor)}
               />
 
 

@@ -16,7 +16,11 @@ class AnalyticsService:
     def get_all_sessions(self, limit: int = 20) -> list:
         """Get all sessions with results."""
         sessions = self._load_sessions()
-        completed = [s for s in sessions.values() if s.get("status") == "completed" and s.get("results")]
+        completed = [
+            s
+            for s in sessions.values()
+            if s.get("status") == "completed" and s.get("results")
+        ]
         completed.sort(key=lambda x: x.get("completed_at", ""), reverse=True)
         return [self._session_summary(s) for s in completed[:limit]]
 
@@ -27,7 +31,11 @@ class AnalyticsService:
     def get_summary(self) -> dict:
         """Get overall performance summary."""
         sessions = self._load_sessions()
-        completed = [s for s in sessions.values() if s.get("status") == "completed" and s.get("results")]
+        completed = [
+            s
+            for s in sessions.values()
+            if s.get("status") == "completed" and s.get("results")
+        ]
 
         if not completed:
             return {
@@ -41,9 +49,16 @@ class AnalyticsService:
                 "improvement_rate": 0,
             }
 
-        scores_overall = [s.get("results", {}).get("scores", {}).get("overall", 0) for s in completed]
-        scores_tech = [s.get("results", {}).get("scores", {}).get("technical", 0) for s in completed]
-        scores_clarity = [s.get("results", {}).get("scores", {}).get("clarity", 0) for s in completed]
+        scores_overall = [
+            s.get("results", {}).get("scores", {}).get("overall", 0) for s in completed
+        ]
+        scores_tech = [
+            s.get("results", {}).get("scores", {}).get("technical", 0)
+            for s in completed
+        ]
+        scores_clarity = [
+            s.get("results", {}).get("scores", {}).get("clarity", 0) for s in completed
+        ]
         roles = [s.get("role", "unknown") for s in completed]
 
         role_count = defaultdict(int)
@@ -72,7 +87,11 @@ class AnalyticsService:
     def get_performance_trend(self) -> list:
         """Get performance over time."""
         sessions = self._load_sessions()
-        completed = [s for s in sessions.values() if s.get("status") == "completed" and s.get("results")]
+        completed = [
+            s
+            for s in sessions.values()
+            if s.get("status") == "completed" and s.get("results")
+        ]
         completed.sort(key=lambda x: x.get("completed_at", ""))
         trend = []
         for i, s in enumerate(completed):
@@ -118,18 +137,28 @@ class AnalyticsService:
         breakdown = []
         for skill, scores in skill_scores.items():
             breakdown.append(
-                {"skill": skill, "avg_score": round(sum(scores) / len(scores), 1), "attempts": len(scores)}
+                {
+                    "skill": skill,
+                    "avg_score": round(sum(scores) / len(scores), 1),
+                    "attempts": len(scores),
+                }
             )
         return sorted(breakdown, key=lambda x: x["avg_score"], reverse=True)
 
     def get_study_plan(self) -> dict:
         """Generate a lightweight practice plan from analytics signals."""
         sessions = self._load_sessions()
-        completed = [s for s in sessions.values() if s.get("status") == "completed" and s.get("results")]
+        completed = [
+            s
+            for s in sessions.values()
+            if s.get("status") == "completed" and s.get("results")
+        ]
 
         if not completed:
             return {
-                "focus_areas": ["Start with one full interview to generate personalized practice areas."],
+                "focus_areas": [
+                    "Start with one full interview to generate personalized practice areas."
+                ],
                 "plan_title": "Launch your baseline",
                 "weekly_goal": "Complete one interview and review the results.",
                 "habits": [
@@ -138,13 +167,41 @@ class AnalyticsService:
                     "Rewrite one weak answer with stronger structure and detail.",
                 ],
                 "days": [
-                    {"day": "Day 1", "focus": "Set your baseline", "task": "Complete a mock interview."},
-                    {"day": "Day 2", "focus": "Review feedback", "task": "Rewrite one weak answer."},
-                    {"day": "Day 3", "focus": "Structure", "task": "Practice STAR answers for 20 minutes."},
-                    {"day": "Day 4", "focus": "Technical depth", "task": "Explain one system design concept aloud."},
-                    {"day": "Day 5", "focus": "Clarity", "task": "Record one answer and tighten it."},
-                    {"day": "Day 6", "focus": "Weak areas", "task": "Study one weak topic from the interview."},
-                    {"day": "Day 7", "focus": "Retest", "task": "Run another mock interview."},
+                    {
+                        "day": "Day 1",
+                        "focus": "Set your baseline",
+                        "task": "Complete a mock interview.",
+                    },
+                    {
+                        "day": "Day 2",
+                        "focus": "Review feedback",
+                        "task": "Rewrite one weak answer.",
+                    },
+                    {
+                        "day": "Day 3",
+                        "focus": "Structure",
+                        "task": "Practice STAR answers for 20 minutes.",
+                    },
+                    {
+                        "day": "Day 4",
+                        "focus": "Technical depth",
+                        "task": "Explain one system design concept aloud.",
+                    },
+                    {
+                        "day": "Day 5",
+                        "focus": "Clarity",
+                        "task": "Record one answer and tighten it.",
+                    },
+                    {
+                        "day": "Day 6",
+                        "focus": "Weak areas",
+                        "task": "Study one weak topic from the interview.",
+                    },
+                    {
+                        "day": "Day 7",
+                        "focus": "Retest",
+                        "task": "Run another mock interview.",
+                    },
                 ],
             }
 
@@ -166,7 +223,12 @@ class AnalyticsService:
                 for weak in evaluation.get("weak_areas", []) or []:
                     weak_area_count[weak] += 1
 
-        top_weak = [item[0] for item in sorted(weak_area_count.items(), key=lambda x: x[1], reverse=True)[:3]]
+        top_weak = [
+            item[0]
+            for item in sorted(
+                weak_area_count.items(), key=lambda x: x[1], reverse=True
+            )[:3]
+        ]
         weakest_topics = sorted(
             (
                 {"topic": topic, "avg": round(sum(scores) / len(scores), 1)}
@@ -176,9 +238,15 @@ class AnalyticsService:
             key=lambda x: x["avg"],
         )[:3]
 
-        avg_overall = round(sum(overall_scores) / len(overall_scores), 1) if overall_scores else 0
+        avg_overall = (
+            round(sum(overall_scores) / len(overall_scores), 1) if overall_scores else 0
+        )
         biggest_focus = top_weak[0] if top_weak else "answer structure"
-        plan_title = "Sharpen your weakest signals" if avg_overall < 70 else "Push from good to great"
+        plan_title = (
+            "Sharpen your weakest signals"
+            if avg_overall < 70
+            else "Push from good to great"
+        )
 
         days = [
             {
@@ -227,7 +295,8 @@ class AnalyticsService:
         return {
             "plan_title": plan_title,
             "weekly_goal": f"Improve overall score from {avg_overall}% by focusing on {biggest_focus}.",
-            "focus_areas": top_weak or ["Answer structure", "Clarity", "Technical depth"],
+            "focus_areas": top_weak
+            or ["Answer structure", "Clarity", "Technical depth"],
             "weakest_topics": weakest_topics,
             "habits": habits,
             "days": days,
@@ -237,7 +306,11 @@ class AnalyticsService:
     def get_communication_coach(self) -> dict:
         """Generate a communication-first coaching plan from interview history."""
         sessions = self._load_sessions()
-        completed = [s for s in sessions.values() if s.get("status") == "completed" and s.get("results")]
+        completed = [
+            s
+            for s in sessions.values()
+            if s.get("status") == "completed" and s.get("results")
+        ]
 
         if not completed:
             return {
@@ -256,9 +329,18 @@ class AnalyticsService:
                 ],
                 "weak_signals": ["No interview data yet"],
                 "practice_tracks": [
-                    {"title": "Self-introduction", "goal": "Sound clear and confident in 30 seconds."},
-                    {"title": "Project story", "goal": "Explain impact with one strong example."},
-                    {"title": "Difficult question", "goal": "Stay calm when you do not know everything."},
+                    {
+                        "title": "Self-introduction",
+                        "goal": "Sound clear and confident in 30 seconds.",
+                    },
+                    {
+                        "title": "Project story",
+                        "goal": "Explain impact with one strong example.",
+                    },
+                    {
+                        "title": "Difficult question",
+                        "goal": "Stay calm when you do not know everything.",
+                    },
                 ],
             }
 
@@ -285,15 +367,34 @@ class AnalyticsService:
                 for weak in ev.get("weak_areas", []) or []:
                     common_weak[weak] += 1
 
-        avg_voice = round(sum(voice_scores) / len(voice_scores), 1) if voice_scores else 0
-        avg_clarity = round(sum(clarity_scores) / len(clarity_scores), 1) if clarity_scores else 0
-        avg_confidence = round(sum(confidence_scores) / len(confidence_scores), 1) if confidence_scores else 0
-        avg_structure = round(sum(structure_scores) / len(structure_scores), 1) if structure_scores else 0
+        avg_voice = (
+            round(sum(voice_scores) / len(voice_scores), 1) if voice_scores else 0
+        )
+        avg_clarity = (
+            round(sum(clarity_scores) / len(clarity_scores), 1) if clarity_scores else 0
+        )
+        avg_confidence = (
+            round(sum(confidence_scores) / len(confidence_scores), 1)
+            if confidence_scores
+            else 0
+        )
+        avg_structure = (
+            round(sum(structure_scores) / len(structure_scores), 1)
+            if structure_scores
+            else 0
+        )
         total_fillers = sum(filler_counts) if filler_counts else 0
-        top_weak = [name for name, _count in sorted(common_weak.items(), key=lambda item: item[1], reverse=True)[:3]]
+        top_weak = [
+            name
+            for name, _count in sorted(
+                common_weak.items(), key=lambda item: item[1], reverse=True
+            )[:3]
+        ]
 
         headline = (
-            "Speak with clarity, confidence, and structure" if avg_clarity >= 60 else "Build stronger speaking habits"
+            "Speak with clarity, confidence, and structure"
+            if avg_clarity >= 60
+            else "Build stronger speaking habits"
         )
         summary = (
             f"Your average voice delivery is {avg_voice}%, clarity is {avg_clarity}%, "
@@ -321,10 +422,19 @@ class AnalyticsService:
             ],
             "weak_signals": top_weak or ["Clarity", "Conciseness", "Confidence"],
             "practice_tracks": [
-                {"title": "30-second introduction", "goal": "Sound confident and structured."},
-                {"title": "Project explanation", "goal": "Show impact without rambling."},
+                {
+                    "title": "30-second introduction",
+                    "goal": "Sound confident and structured.",
+                },
+                {
+                    "title": "Project explanation",
+                    "goal": "Show impact without rambling.",
+                },
                 {"title": "Behavioral answer", "goal": "Use STAR and speak naturally."},
-                {"title": "Pressure question", "goal": "Stay calm and answer in a logical order."},
+                {
+                    "title": "Pressure question",
+                    "goal": "Stay calm and answer in a logical order.",
+                },
             ],
         }
 

@@ -58,7 +58,7 @@ export default function InterviewStatsBar({
       <div className="flex-1 min-w-[80px] px-3">
         <div className="flex items-center justify-between mb-1">
           <p className="text-[9px] text-gray-500 uppercase tracking-wider">Progress</p>
-          <p className="text-[10px] font-bold text-white">{Math.round(progress)}%</p>
+          <p className="text-[10px] font-mono font-bold text-white">{Math.round(progress)}%</p>
         </div>
         <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
           <motion.div
@@ -79,7 +79,7 @@ function StatChip({ label, value, icon }) {
       {icon}
       <div>
         <p className="text-[9px] text-gray-500 uppercase tracking-wider leading-none">{label}</p>
-        <p className="text-xs font-bold text-white">{value}</p>
+        <p className="text-xs font-mono font-bold text-white">{value}</p>
       </div>
     </div>
   )

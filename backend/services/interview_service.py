@@ -78,8 +78,10 @@ class InterviewService:
         speaking_paces = []
         filler_word_counts = []
         filler_word_ratios = []
+        tremor_scores = []
         engagement_scores = []
         eye_contact_scores = []
+        posture_scores = []
         emotion_labels = []
         weak_areas = []
         strong_areas = []
@@ -110,6 +112,11 @@ class InterviewService:
                 engagement_scores.append(ev["engagement_score"])
             if ev.get("eye_contact_score") is not None:
                 eye_contact_scores.append(ev["eye_contact_score"])
+            if ev.get("posture_score") is not None:
+                posture_scores.append(ev["posture_score"])
+            voice_met = ans.get("voice_metrics", {}) or {}
+            if isinstance(voice_met, dict) and voice_met.get("tremor_score") is not None:
+                tremor_scores.append(voice_met["tremor_score"])
             if ev.get("emotion_label"):
                 emotion_labels.append(ev["emotion_label"])
             if ev.get("weak_areas"):
@@ -119,7 +126,9 @@ class InterviewService:
             if ev.get("difficulty_adjustment"):
                 difficulty_history.append(ev["difficulty_adjustment"])
 
-            topic = ev.get("topic") or ans.get("question", {}).get("category", "General")
+            topic = ev.get("topic") or ans.get("question", {}).get(
+                "category", "General"
+            )
             if topic not in topic_scores:
                 topic_scores[topic] = []
             if ev.get("overall_score") is not None:
@@ -139,9 +148,23 @@ class InterviewService:
         total_fillers = sum(filler_word_counts) if filler_word_counts else 0
         avg_engagement = safe_avg(engagement_scores)
         avg_eye_contact = safe_avg(eye_contact_scores)
-        primary_emotion = max(set(emotion_labels), key=emotion_labels.count) if emotion_labels else "uncertain"
+        avg_posture = safe_avg(posture_scores)
+        avg_tremor = safe_avg(tremor_scores)
+        primary_emotion = (
+            max(set(emotion_labels), key=emotion_labels.count)
+            if emotion_labels
+            else "uncertain"
+        )
 
-        overall = round((avg_tech * 0.4 + avg_clarity * 0.2 + avg_completeness * 0.2 + avg_relevance * 0.2), 1)
+        overall = round(
+            (
+                avg_tech * 0.4
+                + avg_clarity * 0.2
+                + avg_completeness * 0.2
+                + avg_relevance * 0.2
+            ),
+            1,
+        )
 
         grade_map = [(90, "A+"), (80, "A"), (70, "B+"), (60, "B"), (50, "C+"), (0, "C")]
         grade = next(g for threshold, g in grade_map if overall >= threshold)
@@ -149,8 +172,19 @@ class InterviewService:
         skill_gaps = []
         for topic, scores in topic_scores.items():
             avg = round(sum(scores) / len(scores), 1)
-            recommendation = "Strong" if avg >= 70 else "Review needed" if avg >= 50 else "Study required"
-            skill_gaps.append({"topic": topic, "score": avg, "count": len(scores), "recommendation": recommendation})
+            recommendation = (
+                "Strong"
+                if avg >= 70
+                else "Review needed" if avg >= 50 else "Study required"
+            )
+            skill_gaps.append(
+                {
+                    "topic": topic,
+                    "score": avg,
+                    "count": len(scores),
+                    "recommendation": recommendation,
+                }
+            )
         skill_gaps.sort(key=lambda x: x["score"])
 
         results = {
@@ -172,11 +206,13 @@ class InterviewService:
                 "speaking_pace_wpm": avg_pace,
                 "filler_word_ratio": avg_filler_ratio,
                 "filler_word_count": total_fillers,
+                "tremor_score": avg_tremor,
             },
             "video": {
                 "primary_emotion": primary_emotion,
                 "engagement_score": avg_engagement,
                 "eye_contact_score": avg_eye_contact,
+                "posture_score": avg_posture,
             },
             "grade": grade,
             "interview_format": session.get("interview_format", "voice"),
@@ -220,7 +256,9 @@ class InterviewService:
                     "started_at": s.get("started_at"),
                     "completed_at": s.get("completed_at"),
                     "overall_score": (
-                        s.get("results", {}).get("scores", {}).get("overall") if s.get("results") else None
+                        s.get("results", {}).get("scores", {}).get("overall")
+                        if s.get("results")
+                        else None
                     ),
                 }
             )

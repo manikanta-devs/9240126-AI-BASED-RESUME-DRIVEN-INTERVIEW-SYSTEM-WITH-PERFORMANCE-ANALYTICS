@@ -32,7 +32,9 @@ def start_quiz():
         difficulty = data.get("difficulty", "medium")
         num_questions = min(max(safe_int(data.get("num_questions", 5), 5), 3), 10)
         candidate_name = data.get("candidate_name", "Candidate")
-        session = quiz_service.start_quiz(topic, difficulty, num_questions, candidate_name)
+        session = quiz_service.start_quiz(
+            topic, difficulty, num_questions, candidate_name
+        )
         return jsonify({"success": True, **session}), 200
     except Exception as exc:
         logger.error(f"Start quiz error: {exc}")

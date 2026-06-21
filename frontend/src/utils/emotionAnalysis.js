@@ -15,7 +15,7 @@ function clampScore(value) {
   return Math.max(0, Math.min(100, Math.round(value)))
 }
 
-export function createEmotionSnapshot(history = []) {
+export function createEmotionSnapshot(history = [], xCenter = 47.5, yCenter = 26.5) {
   if (!history.length) {
     return {
       primary_emotion: 'uncertain',
@@ -25,6 +25,8 @@ export function createEmotionSnapshot(history = []) {
       eye_contact_score: 0,
       movement_level: 0,
       lighting_score: 0,
+      posture_score: 0,
+      posture_label: 'Good',
       sample_count: 0,
       summary: 'Camera emotion signals were not captured.',
     }
@@ -38,6 +40,24 @@ export function createEmotionSnapshot(history = []) {
   const eyeContactScore = clampScore(centerBias * 100)
   const movementLevel = clampScore(motion * 100)
   const engagementScore = clampScore(eyeContactScore * 0.46 + lightingScore * 0.24 + (100 - movementLevel) * 0.3)
+
+  const xCentroidAvg = recent.length ? average(recent.map(sample => sample.xCentroid ?? xCenter)) : xCenter
+  const yCentroidAvg = recent.length ? average(recent.map(sample => sample.yCentroid ?? yCenter)) : yCenter
+
+  const xDev = (xCentroidAvg - xCenter) / xCenter
+  const yDev = (yCentroidAvg - yCenter) / yCenter
+
+  let postureLabel = 'Good'
+  if (yDev > 0.08) {
+    postureLabel = 'Slouched'
+  } else if (xDev < -0.06) {
+    postureLabel = 'Leaning Left'
+  } else if (xDev > 0.06) {
+    postureLabel = 'Leaning Right'
+  }
+
+  const deviation = Math.sqrt(xDev * xDev + yDev * yDev)
+  const postureScore = clampScore(100 - deviation * 400)
 
   let primaryEmotion = 'focused'
   if (lightingScore < 35 || eyeContactScore < 35) primaryEmotion = 'disengaged'
@@ -53,9 +73,36 @@ export function createEmotionSnapshot(history = []) {
     eye_contact_score: eyeContactScore,
     movement_level: movementLevel,
     lighting_score: lightingScore,
+    posture_score: postureScore,
+    posture_label: postureLabel,
     sample_count: history.length,
-    summary: `${EMOTION_LABELS[primaryEmotion]} presence with ${engagementScore}/100 engagement.`,
+    summary: `${EMOTION_LABELS[primaryEmotion]} presence with ${engagementScore}/100 engagement. Posture is ${postureLabel.toLowerCase()}.`,
   }
+}
+
+let mediaPipePromise = null
+
+function loadMediaPipe() {
+  if (mediaPipePromise) return mediaPipePromise
+  mediaPipePromise = new Promise((resolve, reject) => {
+    if (window.FaceMesh) {
+      resolve(window.FaceMesh)
+      return
+    }
+    const script = document.createElement('script')
+    script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js'
+    script.async = true
+    script.onload = () => {
+      if (window.FaceMesh) {
+        resolve(window.FaceMesh)
+      } else {
+        reject(new Error('FaceMesh not found on window'))
+      }
+    }
+    script.onerror = () => reject(new Error('Failed to load FaceMesh script'))
+    document.head.appendChild(script)
+  })
+  return mediaPipePromise
 }
 
 export function startEmotionSampler({ video, onUpdate, intervalMs = 900 }) {
@@ -66,10 +113,98 @@ export function startEmotionSampler({ video, onUpdate, intervalMs = 900 }) {
   let previousFrame = null
   let stopped = false
   const history = []
+  const calibration = {
+    xCenter: 47.5,
+    yCenter: 26.5,
+    samples: []
+  }
 
-  const sample = () => {
-    if (stopped || !context || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return
+  let faceMeshInstance = null
+  let usingLandmarksActive = false
+  let previousFacePos = null
 
+  // Dynamically load MediaPipe FaceMesh
+  loadMediaPipe().then((FaceMesh) => {
+    if (stopped) return
+    faceMeshInstance = new FaceMesh({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+    })
+    faceMeshInstance.setOptions({
+      maxNumFaces: 1,
+      refineLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    })
+    faceMeshInstance.onResults((results) => {
+      if (stopped) return
+      if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+        const landmarks = results.multiFaceLandmarks[0]
+        processLandmarks(landmarks)
+      } else {
+        runCentroidFallback()
+      }
+    })
+    usingLandmarksActive = true
+  }).catch((err) => {
+    console.warn('FaceMesh failed to load, using centroid tracking mode:', err)
+  })
+
+  const getAverageBrightness = (frame) => {
+    let sum = 0
+    for (let i = 0; i < frame.length; i += 4) {
+      sum += (frame[i] + frame[i + 1] + frame[i + 2]) / 3
+    }
+    return sum / (frame.length / 4)
+  }
+
+  const processLandmarks = (landmarks) => {
+    const nose = landmarks[4]
+    const leftEye = landmarks[133]
+    const rightEye = landmarks[362]
+
+    const faceX = (leftEye.x + rightEye.x) / 2
+    const faceY = (leftEye.y + rightEye.y) / 2
+
+    const xCentroid = faceX * 96
+    const yCentroid = faceY * 54
+
+    const leftDist = Math.abs(nose.x - leftEye.x)
+    const rightDist = Math.abs(nose.x - rightEye.x)
+    const totalDist = leftDist + rightDist
+    const ratio = totalDist > 0 ? (leftDist / totalDist) : 0.5
+    const gazeDeviation = Math.abs(ratio - 0.5)
+    const eyeContact = Math.max(0, Math.min(1, 1 - gazeDeviation * 4))
+
+    let motion = 0
+    if (previousFacePos) {
+      const dx = faceX - previousFacePos.x
+      const dy = faceY - previousFacePos.y
+      motion = Math.min(1, Math.sqrt(dx * dx + dy * dy) * 15)
+    }
+    previousFacePos = { x: faceX, y: faceY }
+
+    canvas.width = 96
+    canvas.height = 54
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const frame = context.getImageData(0, 0, canvas.width, canvas.height).data
+    const brightness = getAverageBrightness(frame)
+    const centerBias = eyeContact
+
+    history.push({ brightness, centerBias, motion, xCentroid, yCentroid, captured_at: Date.now() })
+    if (history.length > 80) history.shift()
+
+    if (calibration.samples.length < 4) {
+      calibration.samples.push({ xCentroid, yCentroid })
+      if (calibration.samples.length === 4) {
+        calibration.xCenter = average(calibration.samples.map(s => s.xCentroid))
+        calibration.yCenter = average(calibration.samples.map(s => s.yCentroid))
+      }
+    }
+
+    onUpdate?.(createEmotionSnapshot(history, calibration.xCenter, calibration.yCenter))
+  }
+
+  const runCentroidFallback = () => {
     canvas.width = 96
     canvas.height = 54
     context.drawImage(video, 0, 0, canvas.width, canvas.height)
@@ -80,6 +215,8 @@ export function startEmotionSampler({ video, onUpdate, intervalMs = 900 }) {
     let centerPixels = 0
     let motionSum = 0
     let motionPixels = 0
+    let xWeightedBrightnessSum = 0
+    let yWeightedBrightnessSum = 0
 
     for (let index = 0; index < frame.length; index += 4) {
       const pixel = index / 4
@@ -87,6 +224,8 @@ export function startEmotionSampler({ video, onUpdate, intervalMs = 900 }) {
       const y = Math.floor(pixel / canvas.width)
       const brightness = (frame[index] + frame[index + 1] + frame[index + 2]) / 3
       brightnessSum += brightness
+      xWeightedBrightnessSum += x * brightness
+      yWeightedBrightnessSum += y * brightness
 
       const inCenter = x > canvas.width * 0.28 && x < canvas.width * 0.72 && y > canvas.height * 0.18 && y < canvas.height * 0.82
       if (inCenter) {
@@ -106,10 +245,36 @@ export function startEmotionSampler({ video, onUpdate, intervalMs = 900 }) {
     const centerBias = Math.max(0, Math.min(1, centerBrightness / Math.max(brightness, 1)))
     const motion = previousFrame ? Math.min(1, motionSum / Math.max(motionPixels, 1) / 28) : 0
 
+    const xCenterDefault = (canvas.width - 1) / 2
+    const yCenterDefault = (canvas.height - 1) / 2
+    const xCentroid = brightnessSum > 0 ? (xWeightedBrightnessSum / brightnessSum) : xCenterDefault
+    const yCentroid = brightnessSum > 0 ? (yWeightedBrightnessSum / brightnessSum) : yCenterDefault
+
     previousFrame = new Uint8ClampedArray(frame)
-    history.push({ brightness, centerBias, motion, captured_at: Date.now() })
+    history.push({ brightness, centerBias, motion, xCentroid, yCentroid, captured_at: Date.now() })
     if (history.length > 80) history.shift()
-    onUpdate?.(createEmotionSnapshot(history))
+
+    if (calibration.samples.length < 4) {
+      calibration.samples.push({ xCentroid, yCentroid })
+      if (calibration.samples.length === 4) {
+        calibration.xCenter = average(calibration.samples.map(s => s.xCentroid))
+        calibration.yCenter = average(calibration.samples.map(s => s.yCentroid))
+      }
+    }
+
+    onUpdate?.(createEmotionSnapshot(history, calibration.xCenter, calibration.yCenter))
+  }
+
+  const sample = () => {
+    if (stopped || !context || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return
+
+    if (usingLandmarksActive && faceMeshInstance) {
+      faceMeshInstance.send({ image: video }).catch(() => {
+        runCentroidFallback()
+      })
+    } else {
+      runCentroidFallback()
+    }
   }
 
   const timer = window.setInterval(sample, intervalMs)
@@ -118,5 +283,12 @@ export function startEmotionSampler({ video, onUpdate, intervalMs = 900 }) {
   return () => {
     stopped = true
     window.clearInterval(timer)
+    if (faceMeshInstance) {
+      try {
+        faceMeshInstance.close()
+      } catch (e) {
+        // Ignore close errors
+      }
+    }
   }
 }

@@ -13,6 +13,10 @@ const client = axios.create({
 client.interceptors.request.use(
   config => {
     config.metadata = { startTime: Date.now() }
+    const token = localStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
     console.debug(`[API] ${config.method?.toUpperCase()} ${config.url}`)
     return config
   },
@@ -136,5 +140,12 @@ export const completeQuiz = (sessionId) => client.post('/api/quiz/complete', { s
 export const getQuizSessions = () => client.get('/api/quiz/sessions')
 
 export const getQuizSession = (id) => client.get(`/api/quiz/session/${id}`)
+
+// ─── Auth ───────────────────────────────────────────────────
+export const loginUser = (username, password) =>
+  client.post('/api/auth/login', { username, password })
+
+export const registerUser = (username, password) =>
+  client.post('/api/auth/register', { username, password })
 
 export default client

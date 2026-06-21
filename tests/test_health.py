@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 
@@ -19,8 +18,8 @@ def test_health_endpoint():
 
     app = create_app()
     client = app.test_client()
-    resp = client.get('/health')
+    resp = client.get("/health")
     assert resp.status_code == 200
     data = resp.get_json()
-    assert data and data.get('status') == 'ok'
-    assert 'ai_available' in data
+    assert data and data.get("status") == "ok"
+    assert "ai_available" in data

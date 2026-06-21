@@ -19,6 +19,8 @@ export default function QuizPage() {
   const [topics, setTopics] = useState([])
   const [sessions, setSessions] = useState([])
   const [topic, setTopic] = useState('python')
+  const [isCustomTopic, setIsCustomTopic] = useState(false)
+  const [customTopic, setCustomTopic] = useState('')
   const [difficulty, setDifficulty] = useState('medium')
   const [numQuestions, setNumQuestions] = useState(5)
   const [sessionId, setSessionId] = useState(null)
@@ -42,9 +44,14 @@ export default function QuizPage() {
   useEffect(() => { loadData() }, [])
 
   const handleStart = async () => {
+    const activeTopic = isCustomTopic ? customTopic.trim() : topic
+    if (!activeTopic) {
+      toast.error('Please specify a topic')
+      return
+    }
     setStarting(true)
     try {
-      const { data } = await startQuiz({ topic, difficulty, num_questions: numQuestions })
+      const { data } = await startQuiz({ topic: activeTopic, difficulty, num_questions: numQuestions })
       setSessionId(data.session_id)
       setQuestions(data.questions || [])
       setCurrentIndex(0)
@@ -139,12 +146,32 @@ export default function QuizPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Topic</label>
-                <select value={topic} onChange={e => setTopic(e.target.value)} className="input-base w-full">
-                  {(topics.length > 0 ? topics : ['coding', 'python', 'sql', 'aptitude', 'hr']).map(item => (
-                    <option key={item} value={item}>{item.toUpperCase()}</option>
-                  ))}
-                </select>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Topic</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomTopic(!isCustomTopic)}
+                    className="text-xs font-semibold text-primary-600 hover:text-primary-500 transition-colors"
+                  >
+                    {isCustomTopic ? 'Select Standard Topic' : 'Type Custom Topic'}
+                  </button>
+                </div>
+                {isCustomTopic ? (
+                  <input
+                    type="text"
+                    value={customTopic}
+                    onChange={e => setCustomTopic(e.target.value)}
+                    placeholder="e.g. Kubernetes, React Suspense, Rust Concurrency..."
+                    className="input-base w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                    autoFocus
+                  />
+                ) : (
+                  <select value={topic} onChange={e => setTopic(e.target.value)} className="input-base w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
+                    {(topics.length > 0 ? topics : ['coding', 'python', 'sql', 'aptitude', 'hr']).map(item => (
+                      <option key={item} value={item}>{item.toUpperCase()}</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>

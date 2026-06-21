@@ -1,5 +1,5 @@
-import React from 'react'
-import { motion } from 'framer-motion'
+import React, { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Camera, Eye, Mic, Radio, Sparkles, UserRound } from 'lucide-react'
 
 function SignalMeter({ label, value = 0 }) {
@@ -30,8 +30,41 @@ export default function AIInterviewerRoom({
   emotionSnapshot,
 }) {
   const emotionLabel = emotionSnapshot?.emotion_label || 'Waiting'
+  const postureLabel = emotionSnapshot?.posture_label || 'Waiting'
   const engagement = emotionSnapshot?.engagement_score || 0
   const eyeContact = emotionSnapshot?.eye_contact_score || 0
+  const postureScore = emotionSnapshot?.posture_score || 0
+
+  const [nudge, setNudge] = useState('')
+
+  useEffect(() => {
+    if (!isListening) {
+      setNudge('')
+      return
+    }
+
+    let postureTimer
+    let eyeTimer
+
+    if (postureScore > 0 && postureScore < 65) {
+      postureTimer = setTimeout(() => {
+        setNudge(`Posture nudge: Sitting centered and straight conveys confidence. (${postureLabel})`)
+      }, 5000)
+    } else {
+      setNudge('')
+    }
+
+    if (eyeContact > 0 && eyeContact < 50) {
+      eyeTimer = setTimeout(() => {
+        setNudge('Eye line nudge: Try looking directly at the camera to show engagement.')
+      }, 5000)
+    }
+
+    return () => {
+      clearTimeout(postureTimer)
+      clearTimeout(eyeTimer)
+    }
+  }, [postureScore, eyeContact, isListening, postureLabel])
 
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-950 p-4 shadow-xl overflow-hidden">
@@ -94,23 +127,51 @@ export default function AIInterviewerRoom({
                 Camera activates when recording starts.
               </div>
             )}
+            {cameraReady && (
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <svg className="w-1/2 h-2/3 text-cyan-400/25 stroke-current stroke-2" fill="none" viewBox="0 0 100 100">
+                  <ellipse cx="50" cy="40" rx="18" ry="24" />
+                  <path d="M46 64 v8 h8 v-8" />
+                  <path d="M25 88 c10 -14, 40 -14, 50 0" />
+                </svg>
+                <span className="absolute bottom-2 inset-x-0 text-center text-[10px] text-cyan-300/60 font-semibold uppercase tracking-wider">
+                  Align face within guide
+                </span>
+              </div>
+            )}
             {isListening && (
               <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-500/80 text-[10px] font-bold text-white">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> RECORDING
               </div>
             )}
+            <AnimatePresence>
+              {nudge && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute top-12 inset-x-3 rounded-lg border border-amber-500/30 bg-amber-500/90 p-2 text-center text-[11px] font-semibold text-slate-950 shadow-lg backdrop-blur-md"
+                >
+                  {nudge}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-bold text-white flex items-center gap-2">
-                <Eye className="w-4 h-4 text-cyan-300" /> Emotion signals
+                <Eye className="w-4 h-4 text-cyan-300" /> Video & Emotion signals
               </p>
-              <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] font-semibold text-gray-300">{emotionLabel}</span>
+              <div className="flex gap-1.5">
+                <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] font-semibold text-gray-300">{emotionLabel}</span>
+                <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] font-semibold text-gray-300">{postureLabel}</span>
+              </div>
             </div>
             <div className="space-y-2.5">
               <SignalMeter label="Engagement" value={engagement} />
               <SignalMeter label="Eye contact" value={eyeContact} />
+              <SignalMeter label="Posture" value={postureScore} />
               <SignalMeter label="Lighting" value={emotionSnapshot?.lighting_score || 0} />
             </div>
             <p className="mt-3 text-[11px] leading-relaxed text-gray-500">

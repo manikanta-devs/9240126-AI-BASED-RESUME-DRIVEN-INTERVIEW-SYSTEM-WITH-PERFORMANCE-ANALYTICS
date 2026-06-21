@@ -6,6 +6,7 @@ import { AppProvider } from './context/AppContext'
 import { FullPageLoader } from './components/LoadingSpinner'
 
 const LandingPage = lazy(() => import('./pages/LandingPage'))
+const AuthPage = lazy(() => import('./pages/AuthPage'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const DashboardOverview = lazy(() => import('./pages/DashboardOverview'))
 const CommunicationCoachPage = lazy(() => import('./pages/CommunicationCoachPage'))
@@ -14,6 +15,7 @@ const InterviewPage = lazy(() => import('./pages/InterviewPage'))
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'))
 const ResultsPage = lazy(() => import('./pages/ResultsPage'))
 const QuizPage = lazy(() => import('./pages/QuizPage'))
+import ProtectedRoute from './components/ProtectedRoute'
 
 function AnimatedRoutes() {
   const location = useLocation()
@@ -22,14 +24,17 @@ function AnimatedRoutes() {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/dashboard" element={<Dashboard />}>
-          <Route index element={<DashboardOverview />} />
-          <Route path="coach" element={<CommunicationCoachPage />} />
-          <Route path="resume" element={<ResumePage />} />
-          <Route path="interview" element={<InterviewPage />} />
-          <Route path="quiz" element={<QuizPage />} />
-          <Route path="analytics" element={<AnalyticsPage />} />
-          <Route path="results/:sessionId" element={<ResultsPage />} />
+        <Route path="/auth" element={<AuthPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<Dashboard />}>
+            <Route index element={<DashboardOverview />} />
+            <Route path="coach" element={<CommunicationCoachPage />} />
+            <Route path="resume" element={<ResumePage />} />
+            <Route path="interview" element={<InterviewPage />} />
+            <Route path="quiz" element={<QuizPage />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
+            <Route path="results/:sessionId" element={<ResultsPage />} />
+          </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

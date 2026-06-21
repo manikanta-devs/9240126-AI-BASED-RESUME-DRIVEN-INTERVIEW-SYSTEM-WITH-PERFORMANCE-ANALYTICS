@@ -10,190 +10,402 @@ from ai.local_llm import LocalLLM
 logger = logging.getLogger(__name__)
 
 
-class HuggingFaceAPI:
-    """Hugging Face Inference API wrapper - preferred over Gemini"""
+class BaseAIProvider:
+    """Base class for all AI providers in the fallback chain"""
 
-    MODEL_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1"
-    MAX_RETRIES = 3
-    RETRY_DELAY = 2
-
-    def __init__(self, api_key: str):
+    def __init__(self, provider_id: str, api_key: str):
+        self.provider_id = provider_id
         self.api_key = api_key
-        self.headers = {"Authorization": f"Bearer {api_key}"}
 
     def is_available(self) -> bool:
-        """Quick connectivity check"""
+        return bool(self.api_key)
+
+    def generate_content(self, prompt: str, temperature: float = 0.7) -> Optional[str]:
+        raise NotImplementedError("Subclasses must implement generate_content")
+
+
+class LocalProvider(BaseAIProvider):
+    """Local LLM Provider (offline mode)"""
+
+    def __init__(self):
+        super().__init__("local", "")
+        self.local_llm = LocalLLM()
+
+    def is_available(self) -> bool:
+        return bool(self.local_llm and self.local_llm.is_available())
+
+    def generate_content(self, prompt: str, temperature: float = 0.7) -> Optional[str]:
         try:
-            response = requests.head(self.MODEL_URL, headers=self.headers, timeout=5)
-            return response.status_code in [200, 403, 429]  # 403/429 = rate limited but working
-        except Exception:
-            return False
+            return self.local_llm.generate_content(prompt)
+        except Exception as e:
+            logger.error(f"Local LLM provider failed: {e}")
+            return None
 
-    def generate_content(self, prompt: str) -> Optional[str]:
-        """Generate text using Hugging Face API"""
-        for attempt in range(self.MAX_RETRIES):
-            try:
-                response = requests.post(self.MODEL_URL, headers=self.headers, json={"inputs": prompt}, timeout=30)
 
-                if response.status_code == 200:
-                    result = response.json()
-                    if isinstance(result, list) and len(result) > 0:
-                        generated_text = result[0].get("generated_text", "")
-                        # Remove the prompt from the response (HF includes it)
-                        if generated_text.startswith(prompt):
-                            generated_text = generated_text[len(prompt) :].strip()
-                        logger.info(f"HF response in attempt {attempt + 1}")
-                        return generated_text
-                elif response.status_code == 429:  # Rate limited
-                    logger.warning(f"HF rate limited, retrying... (attempt {attempt + 1})")
-                    time.sleep(self.RETRY_DELAY * (attempt + 1))
-                else:
-                    logger.error(f"HF API error {response.status_code}: {response.text[:200]}")
-            except Exception as e:
-                logger.error(f"HF API attempt {attempt + 1}/{self.MAX_RETRIES} failed: {e}")
+class HFProvider(BaseAIProvider):
+    """Hugging Face Inference API Provider"""
 
-            if attempt < self.MAX_RETRIES - 1:
-                time.sleep(self.RETRY_DELAY * (attempt + 1))
+    MODEL_URL = (
+        "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1"
+    )
 
+    def generate_content(self, prompt: str, temperature: float = 0.7) -> Optional[str]:
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        try:
+            response = requests.post(
+                self.MODEL_URL,
+                headers=headers,
+                json={"inputs": prompt},
+                timeout=30,
+            )
+            if response.status_code == 200:
+                result = response.json()
+                if isinstance(result, list) and len(result) > 0:
+                    generated_text = result[0].get("generated_text", "")
+                    if generated_text.startswith(prompt):
+                        generated_text = generated_text[len(prompt) :].strip()
+                    return generated_text
+            elif response.status_code == 429:
+                logger.warning(f"HF provider {self.provider_id} rate limited (429)")
+            else:
+                logger.error(
+                    f"HF API error {response.status_code}: {response.text[:200]}"
+                )
+        except Exception as e:
+            logger.error(f"HF API call failed for {self.provider_id}: {e}")
         return None
 
 
-class GeminiService:
-    """Wrapper around Google Gemini AI API with retry logic and robust JSON parsing"""
+class GeminiProvider(BaseAIProvider):
+    """Google Gemini API Provider"""
 
     MODEL_NAME = "gemini-2.0-flash"
-    MAX_RETRIES = 3
-    RETRY_DELAY = 2
 
-    def __init__(self):
-        self.hf_api = None
-        self.api_key = os.getenv("GEMINI_API_KEY")
-        self.client = None
-        self.local_llm = LocalLLM()
-        self._initialize_hf()
-        self._initialize()
-
-    def _initialize_hf(self):
-        """Initialize Hugging Face API if key is available"""
-        hf_key = os.getenv("HUGGINGFACE_API_KEY")
-        if hf_key:
-            self.hf_api = HuggingFaceAPI(hf_key)
-            if self.hf_api.is_available():
-                logger.info("✓ Hugging Face API initialized (PRIMARY)")
-            else:
-                logger.warning("Hugging Face API key set but connectivity check failed")
-        else:
-            logger.info("HUGGINGFACE_API_KEY not set. Get free key at: https://huggingface.co/settings/tokens")
-
-    def _initialize(self):
-        """Initialize Gemini client as fallback"""
+    def is_available(self) -> bool:
         if not self.api_key:
-            if not self.hf_api:
-                logger.warning("No API keys set. AI features will use fallback mode.")
-                logger.info("Recommended: Get Hugging Face key at https://huggingface.co/settings/tokens")
-                logger.info("Fallback: Get Gemini key at https://aistudio.google.com/app/apikey")
-            return
+            return False
+        try:
+            import google.generativeai as genai  # noqa: F401
 
+            return True
+        except ImportError:
+            return False
+
+    def generate_content(self, prompt: str, temperature: float = 0.7) -> Optional[str]:
         try:
             import google.generativeai as genai
 
             genai.configure(api_key=self.api_key)
-            self.client = genai.GenerativeModel(self.MODEL_NAME)
-            logger.info(f"✓ Gemini AI initialized with model: {self.MODEL_NAME} (FALLBACK)")
-        except ImportError:
-            logger.error("google-generativeai package not installed. Run: pip install google-generativeai")
+            
+            # Try multiple model fallbacks in case of quota or model limitations
+            models_to_try = [self.MODEL_NAME, "gemini-flash-latest", "gemini-2.5-flash", "gemini-1.5-flash"]
+            last_err = None
+            for model_name in models_to_try:
+                try:
+                    logger.info(f"GeminiProvider ({self.provider_id}) trying model: {model_name}")
+                    model = genai.GenerativeModel(model_name)
+                    generation_config = genai.types.GenerationConfig(
+                        temperature=temperature,
+                        max_output_tokens=4096,
+                    )
+                    response = model.generate_content(
+                        prompt, generation_config=generation_config
+                    )
+                    return response.text.strip()
+                except Exception as ex:
+                    logger.warning(f"Model {model_name} failed on provider {self.provider_id}: {ex}")
+                    last_err = ex
+            
+            if last_err:
+                raise last_err
         except Exception as e:
-            logger.error(f"Failed to initialize Gemini: {e}")
+            logger.error(f"Gemini API call failed for all models on {self.provider_id}: {e}")
+        return None
+
+
+class GroqProvider(BaseAIProvider):
+    """Groq API Provider (OpenAI Compatible)"""
+
+    API_URL = "https://api.groq.com/openai/v1/chat/completions"
+    MODEL_NAME = "llama-3.1-8b-instant"
+
+    def generate_content(self, prompt: str, temperature: float = 0.7) -> Optional[str]:
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self.MODEL_NAME,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": temperature,
+            "max_tokens": 2048,
+        }
+        try:
+            response = requests.post(
+                self.API_URL,
+                headers=headers,
+                json=payload,
+                timeout=30,
+            )
+            if response.status_code == 200:
+                result = response.json()
+                return result["choices"][0]["message"]["content"].strip()
+            elif response.status_code == 429:
+                logger.warning(f"Groq provider {self.provider_id} rate limited (429)")
+            else:
+                logger.error(
+                    f"Groq API error {response.status_code}: {response.text[:200]}"
+                )
+        except Exception as e:
+            logger.error(f"Groq API call failed for {self.provider_id}: {e}")
+        return None
+
+
+class OpenRouterProvider(BaseAIProvider):
+    """OpenRouter API Provider (OpenAI Compatible)"""
+
+    API_URL = "https://openrouter.ai/api/v1/chat/completions"
+    MODEL_NAME = "google/gemma-4-31b-it:free"
+
+    def generate_content(self, prompt: str, temperature: float = 0.7) -> Optional[str]:
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://ai-interview-system.local",
+            "X-Title": "AI Interview System",
+        }
+        payload = {
+            "model": self.MODEL_NAME,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": temperature,
+            "max_tokens": 2048,
+        }
+        try:
+            response = requests.post(
+                self.API_URL,
+                headers=headers,
+                json=payload,
+                timeout=30,
+            )
+            if response.status_code == 200:
+                result = response.json()
+                return result["choices"][0]["message"]["content"].strip()
+            elif response.status_code == 429:
+                logger.warning(
+                    f"OpenRouter provider {self.provider_id} rate limited (429)"
+                )
+            else:
+                logger.error(
+                    f"OpenRouter API error {response.status_code}: {response.text[:200]}"
+                )
+        except Exception as e:
+            logger.error(f"OpenRouter API call failed for {self.provider_id}: {e}")
+        return None
+
+
+class MistralProvider(BaseAIProvider):
+    """Mistral API Provider (OpenAI Compatible)"""
+
+    API_URL = "https://api.mistral.ai/v1/chat/completions"
+    MODEL_NAME = "open-mistral-7b"
+
+    def generate_content(self, prompt: str, temperature: float = 0.7) -> Optional[str]:
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self.MODEL_NAME,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": temperature,
+            "max_tokens": 2048,
+        }
+        try:
+            response = requests.post(
+                self.API_URL,
+                headers=headers,
+                json=payload,
+                timeout=30,
+            )
+            if response.status_code == 200:
+                result = response.json()
+                return result["choices"][0]["message"]["content"].strip()
+            elif response.status_code == 429:
+                logger.warning(f"Mistral provider {self.provider_id} rate limited (429)")
+            else:
+                logger.error(
+                    f"Mistral API error {response.status_code}: {response.text[:200]}"
+                )
+        except Exception as e:
+            logger.error(f"Mistral API call failed for {self.provider_id}: {e}")
+        return None
+
+
+class GeminiService:
+    """Unified AI service wrapper implementing key rotation and multi-provider fallbacks"""
+
+    MODEL_NAME = "multi-provider-fallback"
+    MAX_RETRIES = 3
+    RETRY_DELAY = 2
+
+    def __init__(self):
+        self.providers = []
+        self.cooldowns = {}
+        self._initialize_providers()
+
+    def _initialize_providers(self):
+        # 1. Local LLM Provider if enabled in config
+        try:
+            try:
+                from backend.config import get_config
+            except ImportError:
+                from config import get_config
+
+            config = get_config()
+            if config.LOCAL_LLM_ENABLED:
+                self.providers.append(LocalProvider())
+                logger.info("✓ Local LLM Provider added to fallback chain")
+        except Exception as e:
+            logger.warning(f"Could not load LOCAL_LLM_ENABLED config: {e}")
+
+        # 2. Check and alternate keys (index 1 to 10)
+        provider_types = [
+            ("gemini", GeminiProvider, ["GEMINI_API_KEY", "GEMINI_API_KEY_1"]),
+            ("hf", HFProvider, ["HUGGINGFACE_API_KEY", "HUGGINGFACE_API_KEY_1"]),
+            ("groq", GroqProvider, ["GROQ_API_KEY", "GROQ_API_KEY_1"]),
+            ("openrouter", OpenRouterProvider, ["OPENROUTER_API_KEY", "OPENROUTER_API_KEY_1"]),
+            ("mistral", MistralProvider, ["MISTRAL_API_KEY", "MISTRAL_API_KEY_1"]),
+        ]
+
+        added_keys = set()
+
+        # Add index 1 keys (treating primary unnumbered variable names as index 1)
+        for prov_name, prov_class, env_vars in provider_types:
+            key_val = None
+            for var in env_vars:
+                val = os.getenv(var, "").strip()
+                if val:
+                    key_val = val
+                    break
+            if key_val and key_val not in added_keys:
+                self.providers.append(prov_class(f"{prov_name}_1", key_val))
+                added_keys.add(key_val)
+                logger.info(f"✓ Provider {prov_name}_1 added to fallback chain")
+
+        # Add index 2 to 10 keys
+        for i in range(2, 11):
+            for prov_name, prov_class, _ in provider_types:
+                var_name = f"{prov_name.upper()}_API_KEY_{i}"
+                if prov_name == "hf":
+                    var_name = f"HUGGINGFACE_API_KEY_{i}"
+                val = os.getenv(var_name, "").strip()
+                if val and val not in added_keys:
+                    self.providers.append(prov_class(f"{prov_name}_{i}", val))
+                    added_keys.add(val)
+                    logger.info(f"✓ Provider {prov_name}_{i} added to fallback chain")
 
     def is_available(self) -> bool:
-        """Check if any AI API is available"""
-        # Priority: LocalLLM -> Hugging Face -> Gemini
-        if self.local_llm and self.local_llm.is_available():
-            return True
-        if self.hf_api is not None:
-            return True
-        return self.client is not None and self.api_key is not None
+        """Check if any AI provider is configured and available"""
+        return any(p.is_available() for p in self.providers)
 
     def provider_status(self) -> dict:
         """Return a UI-friendly provider status without exposing keys."""
-        local_available = bool(self.local_llm and self.local_llm.is_available())
-        huggingface_configured = self.hf_api is not None
-        gemini_configured = self.client is not None and self.api_key is not None
+        available_providers = [p for p in self.providers if p.is_available()]
 
-        if local_available:
-            active_provider = "Local Transformers"
-            mode = "local"
-        elif huggingface_configured:
-            active_provider = "Hugging Face Inference API"
-            mode = "free-api"
-        elif gemini_configured:
-            active_provider = self.MODEL_NAME
-            mode = "cloud-api"
-        else:
-            active_provider = "Rule-based fallback"
-            mode = "offline-fallback"
+        # Filter out those on cooldown
+        now = time.time()
+        healthy_providers = [
+            p for p in available_providers if now >= self.cooldowns.get(p.provider_id, 0)
+        ]
+
+        active_provider = "No provider available"
+        mode = "offline-fallback"
+
+        if healthy_providers:
+            active_p = healthy_providers[0]
+            active_provider = f"{active_p.provider_id.upper()} (Active)"
+            if isinstance(active_p, LocalProvider):
+                mode = "local"
+            elif isinstance(active_p, HFProvider):
+                mode = "free-api"
+            else:
+                mode = "cloud-api"
+        elif available_providers:
+            # All available are on cooldown
+            active_p = available_providers[0]
+            active_provider = f"{active_p.provider_id.upper()} (All on Cooldown)"
+            mode = "cooling-down"
 
         return {
             "active_provider": active_provider,
             "mode": mode,
-            "local_available": local_available,
-            "huggingface_configured": huggingface_configured,
-            "gemini_configured": gemini_configured,
-            "fallback_available": True,
-            "cost_note": "Core demo works with browser APIs and rule-based fallback. Hugging Face/Gemini keys are optional.",
+            "local_available": any(
+                isinstance(p, LocalProvider) and p.is_available() for p in self.providers
+            ),
+            "huggingface_configured": any(
+                isinstance(p, HFProvider) and p.is_available() for p in self.providers
+            ),
+            "gemini_configured": any(
+                isinstance(p, GeminiProvider) and p.is_available() for p in self.providers
+            ),
+            "fallback_available": len(available_providers) > 1,
+            "cost_note": f"Fallback chain active with {len(available_providers)} configured providers.",
         }
 
     def generate_content(self, prompt: str, temperature: float = 0.7) -> Optional[str]:
-        """Generate content - tries HF first, then Gemini, then fails gracefully"""
-        if not self.is_available():
+        """Generate content - tries providers in order, skipping cooldowns"""
+        available_providers = [p for p in self.providers if p.is_available()]
+        if not available_providers:
             logger.warning("No AI provider available, returning None")
             return None
 
-        # Try LocalLLM first
-        if self.local_llm and self.local_llm.is_available():
+        # Filter out cooled down providers
+        now = time.time()
+        active_providers = [
+            p for p in available_providers if now >= self.cooldowns.get(p.provider_id, 0)
+        ]
+
+        # If all configured providers are on cooldown, ignore the cooldown
+        if not active_providers:
+            logger.warning("All configured AI providers are on cooldown. Bypassing cooldown safety.")
+            active_providers = available_providers
+
+        # Max attempts to make: try each active provider once
+        max_attempts = len(active_providers)
+
+        for attempt in range(max_attempts):
+            provider = active_providers[attempt]
             try:
-                result = self.local_llm.generate_content(prompt)
-                if result:
-                    logger.info("Generated content using LocalLLM")
-                    return result
-            except Exception:
-                logger.debug("LocalLLM generation failed, continuing to HF/Gemini")
-
-        # Try Hugging Face next
-        if self.hf_api is not None:
-            result = self.hf_api.generate_content(prompt)
-            if result:
-                return result
-            logger.warning("Hugging Face failed, trying Gemini...")
-
-        # Fallback to Gemini
-        if self.client is None:
-            return None
-
-        for attempt in range(self.MAX_RETRIES):
-            try:
+                logger.info(f"Attempting content generation using provider: {provider.provider_id}")
                 start_time = time.time()
-                import google.generativeai as genai
+                result = provider.generate_content(prompt, temperature=temperature)
 
-                generation_config = genai.types.GenerationConfig(
-                    temperature=temperature,
-                    max_output_tokens=4096,
+                if result:
+                    elapsed = round(time.time() - start_time, 2)
+                    logger.info(f"✓ Provider {provider.provider_id} succeeded in {elapsed}s")
+                    return result
+
+                # If result is empty, log it and trigger cooldown
+                logger.warning(
+                    f"Provider {provider.provider_id} returned empty result. Triggering cooldown."
                 )
-                response = self.client.generate_content(prompt, generation_config=generation_config)
-                elapsed = round(time.time() - start_time, 2)
-                logger.info(f"Gemini response in {elapsed}s (attempt {attempt + 1})")
-                return response.text.strip()
+                self.cooldowns[provider.provider_id] = time.time() + 120
 
             except Exception as e:
-                logger.error(f"Gemini API attempt {attempt + 1}/{self.MAX_RETRIES} failed: {e}")
-                if attempt < self.MAX_RETRIES - 1:
-                    time.sleep(self.RETRY_DELAY * (attempt + 1))
-                else:
-                    logger.error("All Gemini API attempts failed")
-                    return None
+                logger.error(
+                    f"Provider {provider.provider_id} failed with error: {e}. Triggering cooldown."
+                )
+                self.cooldowns[provider.provider_id] = time.time() + 120
+
+            # Brief pause before trying next provider (if not the last attempt)
+            if attempt < max_attempts - 1:
+                time.sleep(1)
+
+        logger.error("All available AI providers in the chain failed to generate content.")
+        return None
 
     def generate_json(self, prompt: str) -> Optional[dict]:
-        """Generate JSON response from Gemini with multi-strategy parsing"""
+        """Generate JSON response from fallback provider with multi-strategy parsing"""
         json_prompt = f"""{prompt}
 
 IMPORTANT: Respond ONLY with valid JSON. No markdown, no backticks, no explanation.
@@ -233,5 +445,7 @@ Just the raw JSON object or array."""
             except json.JSONDecodeError:
                 pass
 
-        logger.error(f"All JSON parse strategies failed. Response preview: {response[:300]}")
+        logger.error(
+            f"All JSON parse strategies failed. Response preview: {response[:300]}"
+        )
         return None

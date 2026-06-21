@@ -6,10 +6,11 @@ from dotenv import load_dotenv
 import os
 import time
 import logging
-import traceback
 
 load_dotenv()
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -25,23 +26,29 @@ def create_app():
 
     # ─── CORS Configuration ──────────────────────────────────
     allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
-    CORS(app, resources={
-        r"/api/*": {
-            "origins": allowed_origins,
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"],
-            "max_age": 3600
-        }
-    })
-    
+    CORS(
+        app,
+        resources={
+            r"/*": {
+                "origins": allowed_origins,
+                "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                "allow_headers": ["Content-Type", "Authorization"],
+                "max_age": 3600,
+            }
+        },
+    )
+
     # ─── Rate Limiting ──────────────────────────────────────
-    limiter = Limiter(
+    from config import get_config
+    config_obj = get_config()
+    limiter = Limiter(  # noqa: F841
         app=app,
         key_func=get_remote_address,
-        default_limits=["200 per day", "50 per hour"],
-        storage_uri="memory://"
+        default_limits=[config_obj.RATE_LIMIT_DEFAULT, config_obj.RATE_LIMIT_HOURLY],
+        storage_uri="memory://",
+        enabled=config_obj.RATE_LIMIT_ENABLED,
     )
-    
+
     # ─── Security Headers ───────────────────────────────────
     @app.after_request
     def add_security_headers(response):
@@ -49,8 +56,12 @@ def create_app():
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         if app.config["ENV"] == "production":
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+        )
         return response
 
     # ─── Request timing middleware ────────────────────────────
@@ -60,9 +71,13 @@ def create_app():
 
     @app.after_request
     def log_request(response):
-        elapsed = round((time.time() - getattr(flask_request, "_start_time", time.time())) * 1000, 1)
+        elapsed = round(
+            (time.time() - getattr(flask_request, "_start_time", time.time())) * 1000, 1
+        )
         if elapsed > 2000:
-            logger.info(f"[SLOW] {flask_request.method} {flask_request.path} — {elapsed}ms ({response.status_code})")
+            logger.info(
+                f"[SLOW] {flask_request.method} {flask_request.path} — {elapsed}ms ({response.status_code})"
+            )
         return response
 
     # ─── Register blueprints ─────────────────────────────────
@@ -76,6 +91,62 @@ def create_app():
     app.register_blueprint(analytics_bp, url_prefix="/api")
     app.register_blueprint(quiz_bp, url_prefix="/api")
 
+    # ─── Auth endpoints ─────────────────────────────────────
+    import hashlib
+    import uuid
+    from services.database import create_user, get_user
+
+    def hash_password(password: str, salt: str = None) -> str:
+        if not salt:
+            salt = uuid.uuid4().hex
+        pwd_hash = hashlib.sha256((password + salt).encode('utf-8')).hexdigest()
+        return f"{salt}:{pwd_hash}"
+
+    def verify_password(password: str, hashed_password: str) -> bool:
+        try:
+            salt, pwd_hash = hashed_password.split(':')
+            return hash_password(password, salt) == hashed_password
+        except ValueError:
+            return False
+
+    @app.route("/api/auth/register", methods=["POST"])
+    def register():
+        data = flask_request.get_json() or {}
+        username = data.get("username", "").strip()
+        password = data.get("password", "").strip()
+
+        if not username or not password:
+            return jsonify({"error": "Username and password are required"}), 400
+
+        if len(password) < 6:
+            return jsonify({"error": "Password must be at least 6 characters"}), 400
+
+        pwd_hash = hash_password(password)
+        success = create_user(username, pwd_hash)
+        if not success:
+            return jsonify({"error": "Username already exists"}), 409
+
+        return jsonify({"message": "User registered successfully"}), 201
+
+    @app.route("/api/auth/login", methods=["POST"])
+    def login():
+        data = flask_request.get_json() or {}
+        username = data.get("username", "").strip()
+        password = data.get("password", "").strip()
+
+        if not username or not password:
+            return jsonify({"error": "Username and password are required"}), 400
+
+        user = get_user(username)
+        if not user or not verify_password(password, user["password_hash"]):
+            return jsonify({"error": "Invalid username or password"}), 401
+
+        return jsonify({
+            "message": "Login successful",
+            "token": f"token_{username}",
+            "user": {"username": username}
+        }), 200
+
     # ─── Health endpoint ─────────────────────────────────────
     _health_gemini_service = None
 
@@ -84,6 +155,7 @@ def create_app():
         nonlocal _health_gemini_service
         if _health_gemini_service is None:
             from ai.gemini_service import GeminiService
+
             _health_gemini_service = GeminiService()
 
         gemini = _health_gemini_service
@@ -133,7 +205,10 @@ def create_app():
 
     @app.errorhandler(429)
     def rate_limit_exceeded(e):
-        return jsonify({"error": "Rate limit exceeded", "message": "Too many requests"}), 429
+        return (
+            jsonify({"error": "Rate limit exceeded", "message": "Too many requests"}),
+            429,
+        )
 
     @app.errorhandler(500)
     def server_error(e):
@@ -143,7 +218,19 @@ def create_app():
     @app.errorhandler(Exception)
     def handle_exception(e):
         logger.error(f"Unhandled exception: {e}", exc_info=True)
-        return jsonify({"error": "Internal server error", "message": str(e) if app.config["ENV"] == "development" else "An error occurred"}), 500
+        return (
+            jsonify(
+                {
+                    "error": "Internal server error",
+                    "message": (
+                        str(e)
+                        if app.config["ENV"] == "development"
+                        else "An error occurred"
+                    ),
+                }
+            ),
+            500,
+        )
 
     return app
 
@@ -153,5 +240,4 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     debug = os.getenv("DEBUG", "true").lower() == "true"
     logger.info(f"Starting AI Interview Coach v3.0 on port {port}")
-    app.run(debug=debug, port=port, host="0.0.0.0")
-
+    app.run(debug=debug, port=port, host="0.0.0.0", use_reloader=False)

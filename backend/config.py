@@ -1,38 +1,38 @@
 """Application configuration module."""
+
 import os
-from typing import Optional
 
 
 class Config:
     """Base configuration."""
-    
+
     # Flask
     FLASK_ENV = os.getenv("FLASK_ENV", "development")
     DEBUG = FLASK_ENV == "development"
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-prod")
-    
+
     # File handling
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
     UPLOAD_FOLDER = "uploads"
     ALLOWED_EXTENSIONS = {"pdf", "docx", "txt"}
-    
+
     # API
     ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
-    
+
     # Rate limiting
     RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
     RATE_LIMIT_DEFAULT = "200 per day"
     RATE_LIMIT_HOURLY = "50 per hour"
-    
+
     # AI Services
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
     LOCAL_LLM_ENABLED = os.getenv("LOCAL_LLM_ENABLED", "false").lower() == "true"
-    
+
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     SLOW_REQUEST_THRESHOLD_MS = 2000  # Log requests taking longer than 2s
-    
+
     # Data persistence
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     DATA_FOLDER = os.path.join(BASE_DIR, "data")
@@ -43,6 +43,7 @@ class Config:
 
 class DevelopmentConfig(Config):
     """Development configuration."""
+
     FLASK_ENV = "development"
     DEBUG = True
     TESTING = False
@@ -50,6 +51,7 @@ class DevelopmentConfig(Config):
 
 class ProductionConfig(Config):
     """Production configuration."""
+
     FLASK_ENV = "production"
     DEBUG = False
     TESTING = False
@@ -61,6 +63,7 @@ class ProductionConfig(Config):
 
 class TestingConfig(Config):
     """Testing configuration."""
+
     FLASK_ENV = "testing"
     DEBUG = True
     TESTING = True
@@ -71,7 +74,7 @@ class TestingConfig(Config):
 def get_config() -> Config:
     """Get configuration based on environment."""
     env = os.getenv("FLASK_ENV", "development")
-    
+
     if env == "production":
         return ProductionConfig()
     elif env == "testing":
