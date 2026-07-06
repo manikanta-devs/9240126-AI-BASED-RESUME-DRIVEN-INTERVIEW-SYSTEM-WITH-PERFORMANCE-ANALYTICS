@@ -7,8 +7,8 @@ import Header from '../components/Header'
 const PAGE_META = {
   '/dashboard':           { title: 'Dashboard Overview', subtitle: 'Live performance snapshot from real data' },
   '/dashboard/coach':     { title: 'Communication Coach', subtitle: 'Train clarity, confidence, and interview speaking skills' },
-  '/dashboard/resume':    { title: 'Resume Analysis',     subtitle: 'Upload and analyze your resume with AI' },
-  '/dashboard/interview': { title: 'AI Mock Interview',   subtitle: 'Practice with AI-generated questions' },
+  '/dashboard/resume':    { title: 'Resume Analysis',     subtitle: 'Upload and analyze your resume' },
+  '/dashboard/interview': { title: 'Mock Interview',   subtitle: 'Practice with generated questions' },
   '/dashboard/quiz':      { title: 'Quiz Practice',       subtitle: 'Strengthen weak areas with fast topic-based drills' },
   '/dashboard/analytics': { title: 'Performance Analytics', subtitle: 'Track your progress and improvement' },
 }
@@ -31,15 +31,22 @@ export default function Dashboard() {
     location.pathname.startsWith(path)
   )?.[1] || { title: 'Dashboard', subtitle: '' }
 
+  React.useEffect(() => {
+    const mainEl = document.querySelector('main')
+    if (mainEl) {
+      mainEl.scrollTop = 0
+    }
+  }, [location.pathname])
+
   return (
     <div className="flex h-screen bg-surface-50 dark:bg-surface-950 overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         <Header title={meta.title} subtitle={meta.subtitle} />
         <main className="flex-1 overflow-y-auto scrollbar-thin p-6">
           <motion.div
             key={location.pathname}
-            className="max-w-5xl mx-auto"
+            className="max-w-7xl mx-auto"
             initial="initial"
             animate="in"
             exit="out"

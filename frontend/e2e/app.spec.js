@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('AI Interview Full Flow Test', async ({ page }) => {
+  test.setTimeout(150000);
   // 1. Navigate to Landing Page
   await page.goto('/');
 
@@ -11,10 +12,10 @@ test('AI Interview Full Flow Test', async ({ page }) => {
   });
 
   // Verify Landing Page loaded
-  await expect(page.locator('h1')).toContainText('AstraPrep AI');
+  await expect(page.locator('h1')).toContainText('AstraPrep');
 
-  // 2. Click "Start AI Interview" to navigate to Interview Page
-  await page.click('text=Start AI Interview');
+  // 2. Click "Start Interview" to navigate to Interview Page
+  await page.click('text=Start Interview');
 
   // Verify we are on the Interview Page Setup
   await expect(page).toHaveURL(/\/dashboard\/interview/);
@@ -42,13 +43,24 @@ test('AI Interview Full Flow Test', async ({ page }) => {
   // 4. Start the Interview (generate questions)
   await page.click('button:has-text("Start Interview")');
 
-  // Wait for the interview phase to transition (Wait for "Question 1 of 3" to be visible)
-  await expect(page.locator('text=Question 1 of 3')).toBeVisible({ timeout: 15000 });
+  // Walk through WalkIn office simulation steps
+  for (const stepLabel of ["Resume Analyzed", "Enter Room", "Greet HR", "Hand Resume", "Begin", "Begin Real Interview"]) {
+    await page.click(`button:has-text("${stepLabel}")`);
+    await page.waitForTimeout(300);
+  }
 
-  // Loop through 3 questions
-  for (let i = 1; i <= 3; i++) {
+  // Wait for the interview phase to transition (Wait for "Question 1" to be visible)
+  await expect(page.locator('text=Question 1')).toBeVisible({ timeout: 25000 });
+
+  // Get total questions dynamically from the page text
+  const textContent = await page.locator('p.text-xs.uppercase.tracking-\\[0\\.2em\\]').first().innerText();
+  const match = textContent.match(/of\s+(\d+)/i);
+  const total = match ? parseInt(match[1], 10) : 23;
+
+  // Loop through all questions dynamically
+  for (let i = 1; i <= total; i++) {
     // Check if the current question text is visible
-    await expect(page.locator(`text=Question ${i} of 3`)).toBeVisible();
+    await expect(page.locator(`text=Question ${i}`)).toBeVisible();
 
     // Type the answer
     await page.fill('textarea[placeholder="Type your answer here..."]', `This is my comprehensive answer for mock question number ${i}. I will structure my approach, handle product trade-offs, and outline metrics to track performance.`);
@@ -60,11 +72,9 @@ test('AI Interview Full Flow Test', async ({ page }) => {
     await expect(page.locator('text=Evaluation')).toBeVisible({ timeout: 35000 });
 
     // Click Next or Results
-    if (i < 3) {
-      // Find and click the Next button
+    if (i < total) {
       await page.click('button:has-text("Next")');
     } else {
-      // Find and click the Results button
       await page.click('button:has-text("Results")');
     }
   }

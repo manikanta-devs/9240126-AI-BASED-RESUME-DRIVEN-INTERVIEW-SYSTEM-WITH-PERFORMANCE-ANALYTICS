@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AstraPrep AI - Test & Verification Report</title>
+<style>
+    :root {
+        --bg-color: #0b0f19;
+        --surface-color: #111827;
+        --border-color: #1f2937;
+        --text-primary: #f3f4f6;
+        --text-secondary: #9ca3af;
+        --primary: #6366f1;
+        --primary-glow: rgba(99, 102, 241, 0.15);
+        --success: #10b981;
+    }
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-primary);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        margin: 0;
+        padding: 40px 20px;
+        line-height: 1.6;
+    }
+    .container {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+    header {
+        text-align: center;
+        margin-bottom: 50px;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 30px;
+    }
+    h1 {
+        font-size: 2.5rem;
+        margin: 0 0 10px 0;
+        background: linear-gradient(135deg, #a5b4fc 0%, #6366f1 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+    }
+    h2 {
+        font-size: 1.8rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 10px;
+        margin-top: 50px;
+        color: #818cf8;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 25px 0;
+        background-color: var(--surface-color);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    th, td {
+        padding: 15px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+    th {
+        background-color: rgba(31, 41, 55, 0.5);
+        color: #818cf8;
+        font-weight: 600;
+    }
+    .badge {
+        background-color: rgba(16, 185, 129, 0.1);
+        color: var(--success);
+        padding: 4px 10px;
+        border-radius: 9999px;
+        font-size: 0.85rem;
+        font-weight: bold;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin: 20px 0;
+    }
+    .grid-1 {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 30px;
+        margin: 20px 0;
+    }
+    .card {
+        background-color: var(--surface-color);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .card h3 {
+        margin-top: 0;
+        font-size: 1.2rem;
+        color: var(--text-primary);
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        padding-bottom: 10px;
+    }
+    .card img {
+        width: 100%;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        margin-top: 10px;
+        transition: transform 0.2s;
+    }
+    .card img:hover {
+        transform: scale(1.02);
+    }
+    .terminal-img {
+        width: 100%;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    }
+    footer {
+        text-align: center;
+        margin-top: 80px;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        border-top: 1px solid var(--border-color);
+        padding-top: 20px;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>AstraPrep AI</h1>
+        <p class="subtitle">Automated Test Execution & UI Verification Report</p>
+    </header>
+
+    <h2>📊 Verification Summary</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Test Suite</th>
+                <th>Runner / Framework</th>
+                <th>Total Tests</th>
+                <th>Passed</th>
+                <th>Failed</th>
+                <th>Status</th>
+                <th>Duration</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Backend API & Core Logic</td>
+                <td>pytest</td>
+                <td>70</td>
+                <td>70</td>
+                <td>0</td>
+                <td><span class="badge">✅ PASSED</span></td>
+                <td>35.45s</td>
+            </tr>
+            <tr>
+                <td>Frontend Store & Utilities</td>
+                <td>vitest</td>
+                <td>15</td>
+                <td>15</td>
+                <td>0</td>
+                <td><span class="badge">✅ PASSED</span></td>
+                <td>6.11s</td>
+            </tr>
+            <tr>
+                <td>E2E Full Application Flows</td>
+                <td>Playwright</td>
+                <td>3</td>
+                <td>3</td>
+                <td>0</td>
+                <td><span class="badge">✅ PASSED</span></td>
+                <td>1.4m</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>🖥️ Terminal Runs</h2>
+    <div class="card" style="margin-bottom: 30px;">
+        <h3>Backend Pytest Terminal Logs</h3>
+        <img class="terminal-img" src="./screenshots/pytest_terminal.png" alt="Pytest Terminal">
+    </div>
+    <div class="card">
+        <h3>Frontend Vitest Terminal Logs</h3>
+        <img class="terminal-img" src="./screenshots/vitest_terminal.png" alt="Vitest Terminal">
+    </div>
+
+    <h2>🎨 UI Walkthrough & E2E Verification</h2>
+    
+    <h3>1. Authentication & Onboarding</h3>
+    <div class="grid-2">
+        <div class="card">
+            <h3>Landing Page</h3>
+            <img src="./screenshots/01_landing_page.png" alt="Landing Page">
+        </div>
+        <div class="card">
+            <h3>Login Screen</h3>
+            <img src="./screenshots/02_auth_page.png" alt="Auth Page">
+        </div>
+    </div>
+    <div class="grid-1">
+        <div class="card">
+            <h3>Create Account Screen</h3>
+            <img src="./screenshots/03_auth_register.png" alt="Register Screen">
+        </div>
+    </div>
+
+    <h3>2. Central Dashboard Overview</h3>
+    <div class="grid-1">
+        <div class="card">
+            <h3>Candidate Dashboard</h3>
+            <img src="./screenshots/04_dashboard_overview.png" alt="Dashboard Overview">
+        </div>
+    </div>
+
+    <h3>3. Resume Analysis & Job Match Analysis</h3>
+    <div class="grid-2">
+        <div class="card">
+            <h3>Resume Upload & Parse</h3>
+            <img src="./screenshots/05_resume_upload.png" alt="Resume Upload">
+        </div>
+        <div class="card">
+            <h3>Resume Grading & Keywords</h3>
+            <img src="./screenshots/06_resume_score.png" alt="Resume Score">
+        </div>
+    </div>
+    <div class="grid-2">
+        <div class="card">
+            <h3>Job Description Matcher</h3>
+            <img src="./screenshots/07_job_match_input.png" alt="Job Description Input">
+        </div>
+        <div class="card">
+            <h3>Fit Analysis & Gaps Report</h3>
+            <img src="./screenshots/08_job_match_result.png" alt="Job Match Result">
+        </div>
+    </div>
+
+    <h3>4. Practice Quizzes & Speaking Coach</h3>
+    <div class="grid-2">
+        <div class="card">
+            <h3>Practice Quiz Configuration</h3>
+            <img src="./screenshots/09_quiz_setup.png" alt="Quiz Setup">
+        </div>
+        <div class="card">
+            <h3>Active Practice Quiz</h3>
+            <img src="./screenshots/10_quiz_active.png" alt="Active Quiz">
+        </div>
+    </div>
+    <div class="grid-2">
+        <div class="card">
+            <h3>Quiz Scoring Overview</h3>
+            <img src="./screenshots/11_quiz_result.png" alt="Quiz Result">
+        </div>
+        <div class="card">
+            <h3>speaking Drills Hub</h3>
+            <img src="./screenshots/12_speaking_drills.png" alt="Speaking Coach">
+        </div>
+    </div>
+
+    <h2>🎨 UI Walkthrough & E2E Verification</h2>
+    
+    <h3>5. Analytics & Theme Toggle</h3>
+    <div class="grid-2">
+        <div class="card">
+            <h3>Skill Progress Analytics</h3>
+            <img src="./screenshots/13_analytics_dashboard.png" alt="Analytics Dashboard">
+        </div>
+        <div class="card">
+            <h3>Dark Mode Theme Overview</h3>
+            <img src="./screenshots/14_dark_mode_dashboard.png" alt="Dark Mode Overview">
+        </div>
+    </div>
+
+    <h3>6. Gemini AI Resume-Driven Interview Flow</h3>
+    <div class="grid-2">
+        <div class="card">
+            <h3>Configure Mock Interview</h3>
+            <img src="./screenshots/15_interview_setup.png" alt="Interview Configuration">
+        </div>
+        <div class="card">
+            <h3>AI Question Gen</h3>
+            <img src="./screenshots/16_interview_active.png" alt="Active Interview Question">
+        </div>
+    </div>
+    <div class="grid-2">
+        <div class="card">
+            <h3>Candidate Answer Submission</h3>
+            <img src="./screenshots/17_interview_active_typed.png" alt="Typed Answer">
+        </div>
+        <div class="card">
+            <h3>AI Evaluation & Score</h3>
+            <img src="./screenshots/18_interview_evaluation.png" alt="AI Evaluation feedback">
+        </div>
+    </div>
+    <div class="grid-1">
+        <div class="card">
+            <h3>Final Interview Summary & Results</h3>
+            <img src="./screenshots/19_interview_results.png" alt="Interview Results">
+        </div>
+    </div>
+
+    <footer>
+        <p>AstraPrep AI - Created by Manikanta Devs / MCA Project | Verification Report</p>
+    </footer>
+</div>
+</body>
+</html>

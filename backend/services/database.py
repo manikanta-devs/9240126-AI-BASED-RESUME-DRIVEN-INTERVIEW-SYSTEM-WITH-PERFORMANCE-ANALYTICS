@@ -20,6 +20,7 @@ def _get_conn() -> sqlite3.Connection:
         os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
         _local.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
         _local.conn.execute("PRAGMA journal_mode=WAL")
+        _local.conn.execute("PRAGMA busy_timeout=5000")
         _local.conn.execute("PRAGMA foreign_keys=ON")
         _local.conn.row_factory = sqlite3.Row
     return _local.conn
@@ -55,6 +56,7 @@ def init_db():
     conn.execute("""
         CREATE TABLE IF NOT EXISTS sessions (
             id TEXT PRIMARY KEY,
+            username TEXT DEFAULT 'Candidate',
             candidate_name TEXT NOT NULL DEFAULT 'Candidate',
             role TEXT NOT NULL DEFAULT 'software_engineer',
             interview_format TEXT NOT NULL DEFAULT 'voice',
@@ -67,6 +69,17 @@ def init_db():
             results TEXT
         )
     """)
+
+    # Migration: Add username column to sessions if not present
+    try:
+        cursor = conn.execute("PRAGMA table_info(sessions)")
+        columns = [c[1] for c in cursor.fetchall()]
+        if columns and "username" not in columns:
+            logger.info("Migrating sessions table: adding 'username' column...")
+            conn.execute("ALTER TABLE sessions ADD COLUMN username TEXT DEFAULT 'Candidate'")
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"Failed to add username column during migration: {e}")
 
     # 2. Normalized questions table
     conn.execute("""
@@ -163,12 +176,13 @@ def save_session(session: dict):
         # 1. Save main session metadata
         conn.execute(
             """INSERT OR REPLACE INTO sessions
-               (id, candidate_name, role, interview_format, difficulty,
+               (id, username, candidate_name, role, interview_format, difficulty,
                 panel_mode, status, started_at, completed_at,
                 resume_data, results)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 session["id"],
+                session.get("username", "Candidate"),
                 session.get("candidate_name", "Candidate"),
                 session.get("role", "software_engineer"),
                 session.get("interview_format", "voice"),
@@ -240,10 +254,13 @@ def get_session(session_id: str) -> dict | None:
     return _row_to_session(row) if row else None
 
 
-def get_all_sessions() -> list[dict]:
-    """Return all sessions as dicts."""
+def get_all_sessions(username: str = None) -> list[dict]:
+    """Return all sessions as dicts, optionally filtered by username."""
     conn = _get_conn()
-    rows = conn.execute("SELECT * FROM sessions ORDER BY started_at DESC").fetchall()
+    if username:
+        rows = conn.execute("SELECT * FROM sessions WHERE username = ? ORDER BY started_at DESC", (username,)).fetchall()
+    else:
+        rows = conn.execute("SELECT * FROM sessions ORDER BY started_at DESC").fetchall()
     return [_row_to_session(r) for r in rows]
 
 

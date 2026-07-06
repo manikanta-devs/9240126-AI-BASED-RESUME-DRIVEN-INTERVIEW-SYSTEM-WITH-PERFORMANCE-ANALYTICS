@@ -90,7 +90,7 @@ function loadMediaPipe() {
       return
     }
     const script = document.createElement('script')
-    script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js'
+    script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js'
     script.async = true
     script.onload = () => {
       if (window.FaceMesh) {
@@ -105,7 +105,7 @@ function loadMediaPipe() {
   return mediaPipePromise
 }
 
-export function startEmotionSampler({ video, onUpdate, intervalMs = 900 }) {
+export function startEmotionSampler({ video, onUpdate, intervalMs = 2000 }) {
   if (!video) return () => {}
 
   const canvas = document.createElement('canvas')
@@ -123,31 +123,34 @@ export function startEmotionSampler({ video, onUpdate, intervalMs = 900 }) {
   let usingLandmarksActive = false
   let previousFacePos = null
 
-  // Dynamically load MediaPipe FaceMesh
-  loadMediaPipe().then((FaceMesh) => {
-    if (stopped) return
-    faceMeshInstance = new FaceMesh({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-    })
-    faceMeshInstance.setOptions({
-      maxNumFaces: 1,
-      refineLandmarks: true,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5
-    })
-    faceMeshInstance.onResults((results) => {
+  // Dynamically load MediaPipe FaceMesh if enabled
+  const enableFaceMesh = localStorage.getItem('enable_facemesh') === 'true'
+  if (enableFaceMesh) {
+    loadMediaPipe().then((FaceMesh) => {
       if (stopped) return
-      if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-        const landmarks = results.multiFaceLandmarks[0]
-        processLandmarks(landmarks)
-      } else {
-        runCentroidFallback()
-      }
+      faceMeshInstance = new FaceMesh({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${file}`
+      })
+      faceMeshInstance.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      })
+      faceMeshInstance.onResults((results) => {
+        if (stopped) return
+        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+          const landmarks = results.multiFaceLandmarks[0]
+          processLandmarks(landmarks)
+        } else {
+          runCentroidFallback()
+        }
+      })
+      usingLandmarksActive = true
+    }).catch((err) => {
+      console.warn('FaceMesh failed to load, using centroid tracking mode:', err)
     })
-    usingLandmarksActive = true
-  }).catch((err) => {
-    console.warn('FaceMesh failed to load, using centroid tracking mode:', err)
-  })
+  }
 
   const getAverageBrightness = (frame) => {
     let sum = 0
@@ -201,7 +204,20 @@ export function startEmotionSampler({ video, onUpdate, intervalMs = 900 }) {
       }
     }
 
-    onUpdate?.(createEmotionSnapshot(history, calibration.xCenter, calibration.yCenter))
+    const snapshot = createEmotionSnapshot(history, calibration.xCenter, calibration.yCenter)
+    snapshot.raw_landmarks = landmarks
+    snapshot.raw_stats = {
+      brightness,
+      motion,
+      centerBias,
+      xCentroid,
+      yCentroid,
+      leftDist,
+      rightDist,
+      ratio,
+      usingLandmarks: true
+    }
+    onUpdate?.(snapshot)
   }
 
   const runCentroidFallback = () => {
@@ -262,7 +278,20 @@ export function startEmotionSampler({ video, onUpdate, intervalMs = 900 }) {
       }
     }
 
-    onUpdate?.(createEmotionSnapshot(history, calibration.xCenter, calibration.yCenter))
+    const snapshot = createEmotionSnapshot(history, calibration.xCenter, calibration.yCenter)
+    snapshot.raw_landmarks = null
+    snapshot.raw_stats = {
+      brightness,
+      motion,
+      centerBias,
+      xCentroid,
+      yCentroid,
+      leftDist: 0,
+      rightDist: 0,
+      ratio: 0.5,
+      usingLandmarks: false
+    }
+    onUpdate?.(snapshot)
   }
 
   const sample = () => {

@@ -1,13 +1,30 @@
 import axios from 'axios'
 import { parseApiError } from '../utils/apiError'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 const client = axios.create({
   baseURL: BASE_URL,
   timeout: 90000, // 90s for AI calls (Gemini can be slow on first call)
   headers: { 'Content-Type': 'application/json' },
 })
+
+const apiCache = new Map()
+
+const cachedGet = async (url, ttlMs = 15000) => {
+  const cached = apiCache.get(url)
+  if (cached && Date.now() - cached.timestamp < ttlMs) {
+    return cached.promise
+  }
+  const promise = client.get(url)
+  apiCache.set(url, { promise, timestamp: Date.now() })
+  promise.catch(() => apiCache.delete(url))
+  return promise
+}
+
+export const clearApiCache = () => {
+  apiCache.clear()
+}
 
 // ─── Request interceptor with timing ────────────────────────
 client.interceptors.request.use(
@@ -26,6 +43,10 @@ client.interceptors.request.use(
 // ─── Response interceptor with timing + retry + error handling ──
 client.interceptors.response.use(
   response => {
+    const method = response.config?.method?.toUpperCase()
+    if (method && ['POST', 'PUT', 'DELETE'].includes(method)) {
+      apiCache.clear()
+    }
     const elapsed = Date.now() - (response.config.metadata?.startTime || Date.now())
     if (elapsed > 5000) {
       console.info(`[API] ${response.config.method?.toUpperCase()} ${response.config.url} — ${elapsed}ms (slow)`)
@@ -36,6 +57,17 @@ client.interceptors.response.use(
     const config = error.config
     const apiError = parseApiError(error)
     const msg = apiError.getReadableMessage()
+
+    // Catch 401 Unauthorized errors and force user logout/redirect
+    if (error.response?.status === 401) {
+      console.warn('[API] Unauthorized (401) response received. Clearing credentials.')
+      const hasToken = !!localStorage.getItem('token')
+      localStorage.removeItem('token')
+      localStorage.removeItem('username')
+      if (hasToken && window.location.pathname !== '/') {
+        window.location.href = '/'
+      }
+    }
 
     // Retry logic: retry on network errors and 5xx (not on cancellation or 4xx)
     if (
@@ -98,6 +130,9 @@ export const startInterview = (data) =>
 export const submitAnswer = (data) =>
   client.post('/api/interview/answer', data)
 
+export const submitOnboardingResponse = (data) =>
+  client.post('/api/interview/onboarding-response', data)
+
 export const completeInterview = (sessionId) =>
   client.post('/api/interview/complete', { session_id: sessionId })
 
@@ -110,21 +145,27 @@ export const deleteSession = (id) => client.delete(`/api/interview/session/${id}
 export const submitFollowUp = (data) =>
   client.post('/api/interview/follow-up', data)
 
+export const injectMockSession = (type) =>
+  client.post('/api/developer/mock-session', { type })
+
 // ─── Analytics ──────────────────────────────────────────────
-export const getAnalyticsSummary = () => client.get('/api/analytics/summary')
+export const getAnalyticsSummary = () => cachedGet('/api/analytics/summary')
 
 export const getAnalyticsSessions = (limit = 20) =>
   client.get(`/api/analytics/sessions?limit=${limit}`)
 
-export const getPerformanceTrend = () => client.get('/api/analytics/performance-trend')
+export const getPerformanceTrend = () => cachedGet('/api/analytics/performance-trend')
 
-export const getWeakAreas = () => client.get('/api/analytics/weak-areas')
+export const getWeakAreas = () => cachedGet('/api/analytics/weak-areas')
 
-export const getSkillBreakdown = () => client.get('/api/analytics/skill-breakdown')
+export const getSkillBreakdown = () => cachedGet('/api/analytics/skill-breakdown')
 
-export const getStudyPlan = () => client.get('/api/analytics/study-plan')
+export const getStudyPlan = () => cachedGet('/api/analytics/study-plan')
 
-export const getCommunicationCoach = () => client.get('/api/analytics/communication-coach')
+export const getCommunicationCoach = () => cachedGet('/api/analytics/communication-coach')
+export const askCareerMentor = (question) => client.post('/api/coach/ask', { question })
+export const generateStudyRoadmap = (customTopic) => client.post('/api/coach/generate-roadmap', { custom_topic: customTopic })
+export const critiqueSpeech = (data) => client.post('/api/coach/critique-speech', data)
 
 export const clearAnalytics = () => client.delete('/api/analytics/clear')
 

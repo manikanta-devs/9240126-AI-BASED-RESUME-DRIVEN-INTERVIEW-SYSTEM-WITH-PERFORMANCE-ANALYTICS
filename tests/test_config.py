@@ -23,7 +23,7 @@ def test_config_development():
     assert config.DEBUG is True
     assert config.TESTING is False
     assert config.FLASK_ENV == "development"
-    assert config.RATE_LIMIT_ENABLED is True
+    assert config.RATE_LIMIT_ENABLED is False
 
 
 def test_config_production():

@@ -8,14 +8,14 @@ logger = logging.getLogger(__name__)
 class AnalyticsService:
     """Computes analytics from stored interview sessions."""
 
-    def _load_sessions(self) -> dict:
+    def _load_sessions(self, username=None) -> dict:
         """Load all sessions from SQLite, keyed by ID."""
-        sessions = db.get_all_sessions()
+        sessions = db.get_all_sessions(username)
         return {s["id"]: s for s in sessions}
 
-    def get_all_sessions(self, limit: int = 20) -> list:
+    def get_all_sessions(self, limit: int = 20, username: str = None) -> list:
         """Get all sessions with results."""
-        sessions = self._load_sessions()
+        sessions = self._load_sessions(username)
         completed = [
             s
             for s in sessions.values()
@@ -28,9 +28,9 @@ class AnalyticsService:
         """Get full details for a session."""
         return db.get_session(session_id)
 
-    def get_summary(self) -> dict:
+    def get_summary(self, username: str = None) -> dict:
         """Get overall performance summary."""
-        sessions = self._load_sessions()
+        sessions = self._load_sessions(username)
         completed = [
             s
             for s in sessions.values()
@@ -84,9 +84,9 @@ class AnalyticsService:
             "improvement_rate": improvement,
         }
 
-    def get_performance_trend(self) -> list:
+    def get_performance_trend(self, username: str = None) -> list:
         """Get performance over time."""
-        sessions = self._load_sessions()
+        sessions = self._load_sessions(username)
         completed = [
             s
             for s in sessions.values()
@@ -109,9 +109,9 @@ class AnalyticsService:
             )
         return trend
 
-    def get_weak_areas(self) -> list:
+    def get_weak_areas(self, username: str = None) -> list:
         """Aggregate weak areas across sessions."""
-        sessions = self._load_sessions()
+        sessions = self._load_sessions(username)
         area_count = defaultdict(int)
         for s in sessions.values():
             if s.get("results") and s["results"].get("weak_areas"):
@@ -120,9 +120,9 @@ class AnalyticsService:
         sorted_areas = sorted(area_count.items(), key=lambda x: x[1], reverse=True)
         return [{"area": k, "count": v} for k, v in sorted_areas[:10]]
 
-    def get_skill_breakdown(self) -> list:
+    def get_skill_breakdown(self, username: str = None) -> list:
         """Get skill-wise performance analysis."""
-        sessions = self._load_sessions()
+        sessions = self._load_sessions(username)
         skill_scores = defaultdict(list)
 
         for s in sessions.values():
@@ -145,9 +145,9 @@ class AnalyticsService:
             )
         return sorted(breakdown, key=lambda x: x["avg_score"], reverse=True)
 
-    def get_study_plan(self) -> dict:
+    def get_study_plan(self, username: str = None) -> dict:
         """Generate a lightweight practice plan from analytics signals."""
-        sessions = self._load_sessions()
+        sessions = self._load_sessions(username)
         completed = [
             s
             for s in sessions.values()
@@ -303,9 +303,9 @@ class AnalyticsService:
             "avg_overall": avg_overall,
         }
 
-    def get_communication_coach(self) -> dict:
+    def get_communication_coach(self, username: str = None) -> dict:
         """Generate a communication-first coaching plan from interview history."""
-        sessions = self._load_sessions()
+        sessions = self._load_sessions(username)
         completed = [
             s
             for s in sessions.values()

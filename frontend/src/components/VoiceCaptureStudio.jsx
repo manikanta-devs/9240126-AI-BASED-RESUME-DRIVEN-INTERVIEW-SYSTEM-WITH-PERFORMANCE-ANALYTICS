@@ -72,6 +72,9 @@ function useLiveAudioLevel(stream, isActive, onTelemetry) {
     if (!AudioContextClass) return undefined
 
     const context = new AudioContextClass()
+    if (context.state === 'suspended') {
+      context.resume().catch(err => console.warn('[AudioContext] Auto-resume failed:', err))
+    }
     const analyser = context.createAnalyser()
     analyser.fftSize = 2048
     analyser.smoothingTimeConstant = 0.82
@@ -185,6 +188,12 @@ export default function VoiceCaptureStudio({
   recordingUrl = '',
   interviewFormat = 'voice',
   onVoiceTelemetryUpdate,
+  audioDevices = [],
+  videoDevices = [],
+  selectedMicId = '',
+  selectedCameraId = '',
+  onMicChange,
+  onCameraChange,
 }) {
   const tremorScoresRef = useRef([])
 
@@ -219,6 +228,44 @@ export default function VoiceCaptureStudio({
           {isListening ? 'Recording' : 'Standby'}
         </span>
       </div>
+
+      {/* Device selectors */}
+      {(audioDevices?.length > 0 || (interviewFormat === 'video' && videoDevices?.length > 0)) && (
+        <div className="flex flex-wrap gap-4 mb-4 p-3 rounded-xl bg-white/[0.02] border border-white/5 text-xs text-white">
+          {audioDevices?.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400 font-semibold">🎙️ Microphone:</span>
+              <select
+                value={selectedMicId}
+                onChange={e => onMicChange?.(e.target.value)}
+                className="rounded bg-slate-900 border border-white/10 text-white px-2 py-1 outline-none max-w-[200px] cursor-pointer hover:border-cyan-500/50 transition-colors"
+              >
+                {audioDevices.map(d => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {d.label || `Microphone ${d.deviceId.slice(0, 5)}...`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {interviewFormat === 'video' && videoDevices?.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400 font-semibold">📹 Camera:</span>
+              <select
+                value={selectedCameraId}
+                onChange={e => onCameraChange?.(e.target.value)}
+                className="rounded bg-slate-900 border border-white/10 text-white px-2 py-1 outline-none max-w-[200px] cursor-pointer hover:border-cyan-500/50 transition-colors"
+              >
+                {videoDevices.map(d => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {d.label || `Camera ${d.deviceId.slice(0, 5)}...`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
         <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">

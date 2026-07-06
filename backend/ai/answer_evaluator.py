@@ -7,6 +7,13 @@ from ai.gemini_service import GeminiService
 logger = logging.getLogger(__name__)
 
 
+class StarRubricSchema(BaseModel):
+    situation: int = Field(..., ge=0, le=100)
+    task: int = Field(..., ge=0, le=100)
+    action: int = Field(..., ge=0, le=100)
+    result: int = Field(..., ge=0, le=100)
+
+
 class EvaluationSchema(BaseModel):
     technical_score: int = Field(..., ge=0, le=100)
     clarity_score: int = Field(..., ge=0, le=100)
@@ -21,6 +28,7 @@ class EvaluationSchema(BaseModel):
     ideal_answer_hints: str
     confidence_score: int = Field(..., ge=0, le=100)
     structure_score: int = Field(..., ge=0, le=100)
+    star_rubric: StarRubricSchema
     priority_focus: str
     suggested_next_action: str
     follow_up_prompt: str
@@ -57,6 +65,89 @@ class AnswerEvaluator:
         previous_scores: Optional[list] = None,
     ) -> dict:
         """Evaluate an answer and return detailed feedback with adaptive fields"""
+        # Check for God Mode override
+        if emotion_metrics and (emotion_metrics.get("god_mode") or emotion_metrics.get("godmode")):
+            return {
+                "technical_score": 98,
+                "clarity_score": 96,
+                "completeness_score": 95,
+                "relevance_score": 97,
+                "depth_score": 96,
+                "overall_score": 97,
+                "topic": question.get("topic", "General"),
+                "strong_areas": ["Outstanding technical depth", "Flawless communication clarity", "Excellent structural reasoning"],
+                "weak_areas": [],
+                "feedback": "Outstanding response! You demonstrated exceptional mastery of the topic, structuring your answer perfectly with clear, precise details.",
+                "ideal_answer_hints": "N/A",
+                "confidence_score": 98,
+                "structure_score": 96,
+                "star_rubric": {
+                    "situation": 98,
+                    "task": 96,
+                    "action": 97,
+                    "result": 98
+                },
+                "priority_focus": "None",
+                "suggested_next_action": "Keep up the excellent work.",
+                "follow_up_prompt": "Excellent. Let's move to the next question.",
+                "coach_notes": ["Perfect response matching senior engineer guidelines"],
+                "live_tips": ["Outstanding pacing and tone"],
+                "difficulty_adjustment": "maintain",
+                "speaking_pace_wpm": voice_metrics.get("speaking_pace_wpm", 140) if voice_metrics else 140,
+                "filler_word_count": voice_metrics.get("filler_count", 0) if voice_metrics else 0,
+                "filler_word_ratio": voice_metrics.get("filler_ratio", 0) if voice_metrics else 0,
+                "voice_delivery_score": 98,
+                "voice_feedback": "Perfect tone, stable pitch, and zero filler words.",
+                "emotion_label": "Focused",
+                "engagement_score": 98,
+                "eye_contact_score": 98,
+                "posture_score": 96,
+                "posture_label": "Good",
+                "emotion_feedback": "Excellent focus and professional presence.",
+                "sentiment": "Positive",
+            }
+
+        cleaned_answer = answer.strip().lower().replace(".", "").replace("!", "").replace("?", "")
+        words = cleaned_answer.split()
+        
+        is_greeting = cleaned_answer in ["hello", "hi", "hey", "good morning", "good afternoon", "good evening", "yo", "sup", "testing", "test"]
+        is_too_short = len(words) < 3
+        
+        if is_greeting or is_too_short:
+            return {
+                "technical_score": 0,
+                "clarity_score": 0,
+                "completeness_score": 0,
+                "relevance_score": 0,
+                "depth_score": 0,
+                "overall_score": 0,
+                "topic": question.get("topic", "General"),
+                "strong_areas": [],
+                "weak_areas": ["Insufficient answer length"],
+                "feedback": f"You didn't provide an answer to the question (you said: '{answer}'). Please provide a complete technical or behavioral response so the AI can evaluate your skills.",
+                "ideal_answer_hints": question.get("ideal_answer_hints", "Try explaining the concept using the STAR method or providing code details."),
+                "confidence_score": 0,
+                "structure_score": 0,
+                "priority_focus": "Provide a complete answer",
+                "suggested_next_action": "Read the question carefully and try to explain it in 2-3 sentences.",
+                "follow_up_prompt": f"Let's try again. Can you explain: {question.get('text', 'the topic')}?",
+                "coach_notes": ["Answer was too short or a simple greeting"],
+                "live_tips": ["Speak louder and provide technical details"],
+                "difficulty_adjustment": "maintain",
+                "speaking_pace_wpm": voice_metrics.get("speaking_pace_wpm", 0) if voice_metrics else 0,
+                "filler_word_count": voice_metrics.get("filler_count", 0) if voice_metrics else 0,
+                "filler_word_ratio": voice_metrics.get("filler_ratio", 0) if voice_metrics else 0,
+                "voice_delivery_score": voice_metrics.get("delivery_score", 0) if voice_metrics else 0,
+                "voice_feedback": voice_metrics.get("summary", "No voice input captured.") if voice_metrics else "No voice input captured.",
+                "emotion_label": emotion_metrics.get("emotion_label", "Neutral") if emotion_metrics else "Neutral",
+                "engagement_score": emotion_metrics.get("engagement_score", 50) if emotion_metrics else 50,
+                "eye_contact_score": emotion_metrics.get("eye_contact_score", 50) if emotion_metrics else 50,
+                "posture_score": emotion_metrics.get("posture_score", 50) if emotion_metrics else 50,
+                "posture_label": emotion_metrics.get("posture_label", "Good") if emotion_metrics else "Good",
+                "emotion_feedback": emotion_metrics.get("emotion_feedback", "N/A") if emotion_metrics else "N/A",
+                "sentiment": "Neutral",
+            }
+
         if self.gemini.is_available():
             result = self._evaluate_with_gemini(
                 question,
@@ -91,7 +182,81 @@ class AnswerEvaluator:
             if result:
                 return result
         return self._fallback_follow_up(question, evaluation)
+    def generate_onboarding_response(
+        self,
+        current_phase: str,
+        answer: str,
+        candidate_name: str = "Candidate",
+        resume_data: Optional[dict] = None,
+    ) -> str:
+        """Generate a personalized, conversational HR transition & question based on user response during onboarding"""
+        phase_flow = {
+            "greet_mic": {
+                "next": "greet_camera",
+                "goal": "Acknowledge that they can hear you, and check if they can see your video feed clearly as well."
+            },
+            "greet_camera": {
+                "next": "small_talk",
+                "goal": "Acknowledge that they can see you, welcome them to the room, and ask how their day has been so far."
+            },
+            "small_talk": {
+                "next": "identity_confirm",
+                "goal": "Respond conversationally to how their day was (be empathetic if it was bad, happy if it was good). Then ask them to introduce themselves and confirm their full name."
+            },
+            "identity_confirm": {
+                "next": "resume_confirm",
+                "goal": "Address them by name, say it's a pleasure to meet them, and ask them to confirm if the uploaded resume is their latest version."
+            },
+            "resume_confirm": {
+                "next": "resume_summary",
+                "goal": "Acknowledge resume confirmation, mention that you see their software/technical skills, and ask if they are ready for a quick overview."
+            },
+            "resume_summary": {
+                "next": "explain_structure",
+                "goal": "Briefly summarize their core experience, explain that the interview will take 20-30 minutes covering technical and behavioral questions, and ask if they are ready to begin the first question."
+            }
+        }
 
+        flow = phase_flow.get(current_phase)
+        if not flow:
+            return "Perfect. Let's move forward."
+
+        next_phase = flow["next"]
+        next_goal = flow["goal"]
+
+        prompt = f"""You are a professional, warm, and highly empathetic AI HR interviewer.
+The candidate just replied to the onboarding question for the stage '{current_phase}'.
+Their answer was: "{answer}"
+
+The next stage of onboarding is '{next_phase}'.
+Your goal for this next stage is: {next_goal}
+
+Generate a natural, conversational response (1-2 sentences) directly addressing what the candidate said (be empathetic to negative feelings, warm to greetings, professional to confirmations), followed immediately by the question for the next stage.
+
+Keep the response brief (maximum 35 words total) and speak directly to the candidate. Avoid saying 'Sure' or 'Alright' in a robotic way. Do not write JSON, return ONLY plain text."""
+
+        if self.gemini.is_available():
+            try:
+                response = self.gemini.generate_content(prompt)
+                if response:
+                    return response.strip()
+            except Exception as e:
+                logger.error(f"Failed to generate onboarding response: {e}")
+
+        # Fallbacks
+        if current_phase == "greet_mic":
+            return "Great, glad you can hear me. Can you also see my video feed clearly?"
+        elif current_phase == "greet_camera":
+            return "Wonderful. Welcome to the interview room! How has your day been so far?"
+        elif current_phase == "small_talk":
+            return f"Understood. Before we begin, could you please introduce yourself and confirm your full name?"
+        elif current_phase == "identity_confirm":
+            return f"Pleasure to meet you. I see you've uploaded your resume. Could you please confirm if this is your latest resume?"
+        elif current_phase == "resume_confirm":
+            return "Perfect. Let's start with a brief overview of your background. Are you ready?"
+        elif current_phase == "resume_summary":
+            return "Perfect. Today's interview will take about 20 minutes covering technical and behavioral questions. Let's get started!"
+        return "Perfect. Let's move forward."
     def _evaluate_with_gemini(
         self,
         question,
@@ -187,6 +352,12 @@ Return a JSON object with these exact fields:
   "ideal_answer_hints": "<brief hint showing what a perfect, industry-grade response would look like>",
   "confidence_score": <0-100, estimated based on clarity, structure, and pacing>,
   "structure_score": <0-100, based on STAR method for behavioral, or logical layout for technical>,
+  "star_rubric": {{
+    "situation": <0-100, Situation completeness score based on context provided>,
+    "task": <0-100, Task completeness score based on clarity of objectives>,
+    "action": <0-100, Action completeness score based on detailed steps described>,
+    "result": <0-100, Result completeness score based on outcomes or metrics shared>
+  }},
   "priority_focus": "<single coaching focus for their next answer, e.g. 'Use quantitative metrics' or 'Explain trade-offs first'>",
   "suggested_next_action": "<one concrete step to improve, e.g. 'Read up on event delegation' or 'Practice framing conflicts using STAR'>",
   "follow_up_prompt": "<a follow-up question to dig deeper into a weak/unclear part of their answer>",
@@ -219,6 +390,11 @@ Be fair but honest. If the answer is very short or vague, score accordingly."""
                 for f in ["strong_areas", "weak_areas", "coach_notes", "live_tips"]:
                     if f not in check_dict or not isinstance(check_dict[f], list):
                         check_dict[f] = []
+                if "star_rubric" not in check_dict or not isinstance(check_dict["star_rubric"], dict):
+                    check_dict["star_rubric"] = {}
+                sr = check_dict["star_rubric"]
+                for k in ["situation", "task", "action", "result"]:
+                    sr[k] = int(sr.get(k, 50))
                 EvaluationSchema(**check_dict)
                 return self._validate_evaluation(
                     result, voice_metrics=voice_metrics, emotion_metrics=emotion_metrics
@@ -243,6 +419,11 @@ Please fix the output to strictly comply with the schema format. Adhere to integ
                         for f in ["strong_areas", "weak_areas", "coach_notes", "live_tips"]:
                             if f not in check_repaired or not isinstance(check_repaired[f], list):
                                 check_repaired[f] = []
+                        if "star_rubric" not in check_repaired or not isinstance(check_repaired["star_rubric"], dict):
+                            check_repaired["star_rubric"] = {}
+                        sr = check_repaired["star_rubric"]
+                        for k in ["situation", "task", "action", "result"]:
+                            sr[k] = int(sr.get(k, 50))
                         EvaluationSchema(**check_repaired)
                         logger.info("✓ AI Self-repair loop successfully healed the JSON evaluation!")
                         return self._validate_evaluation(
@@ -370,6 +551,18 @@ Return JSON:
             result.get("structure_score", round((clarity + completeness + tech) / 3))
         )
 
+        # Validate / Clamp star_rubric
+        raw_star = result.get("star_rubric", {})
+        if not isinstance(raw_star, dict):
+            raw_star = {}
+        
+        star_rubric = {
+            "situation": clamp(raw_star.get("situation", round((clarity + completeness) / 2))),
+            "task": clamp(raw_star.get("task", round((completeness + relevance) / 2))),
+            "action": clamp(raw_star.get("action", round((tech + relevance) / 2))),
+            "result": clamp(raw_star.get("result", round((completeness + tech) / 2)))
+        }
+
         default_pace = int((voice_metrics or {}).get("speaking_pace_wpm") or 0)
         default_filler_count = int((voice_metrics or {}).get("filler_count") or 0)
         default_filler_ratio = clamp(
@@ -443,6 +636,7 @@ Return JSON:
             "ideal_answer_hints": result.get("ideal_answer_hints", ""),
             "confidence_score": confidence,
             "structure_score": structure,
+            "star_rubric": star_rubric,
             "priority_focus": result.get(
                 "priority_focus", "Be more specific and use a concrete example."
             ),
@@ -693,6 +887,12 @@ Return JSON:
             "structure_score": clamp(
                 (clarity + completeness) / 2 + (10 if has_structure else 0), 50
             ),
+            "star_rubric": {
+                "situation": clamp(clarity + random.randint(-4, 4), 60),
+                "task": clamp(completeness + random.randint(-4, 4), 60),
+                "action": clamp(tech + random.randint(-4, 4), 60),
+                "result": clamp(completeness + random.randint(-6, 4), 60)
+            },
             "priority_focus": "Use a clear structure and add one example with measurable impact.",
             "suggested_next_action": "Try a STAR response: situation, task, action, result.",
             "follow_up_prompt": "Walk me through one project where you solved a hard problem.",

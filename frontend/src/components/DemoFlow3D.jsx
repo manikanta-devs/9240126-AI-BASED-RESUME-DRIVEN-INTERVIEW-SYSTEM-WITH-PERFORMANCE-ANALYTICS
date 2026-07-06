@@ -58,52 +58,58 @@ export default function DemoFlow3D() {
         <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(20,184,166,0.14),transparent_36%),linear-gradient(320deg,rgba(251,191,36,0.12),transparent_38%)]" />
         <div className="relative mx-auto max-w-6xl" style={{ perspective: '1300px' }}>
           <motion.div
-            className="grid gap-4 lg:grid-cols-5"
+            className="grid gap-6 lg:grid-cols-5"
             style={{
               transformStyle: 'preserve-3d',
-              transform: 'rotateX(58deg) rotateZ(-9deg)',
+              transform: 'rotateX(22deg) rotateY(-8deg) rotateZ(0deg)',
             }}
-            initial={{ opacity: 0, y: 60, rotateX: 64 }}
-            whileInView={{ opacity: 1, y: 0, rotateX: 58 }}
-            viewport={{ once: true, amount: 0.35 }}
+            initial={{ opacity: 0, y: 60, rotateX: 30 }}
+            whileInView={{ opacity: 1, y: 0, rotateX: 22 }}
+            viewport={{ once: true, amount: 0.25 }}
             transition={{ duration: 0.8, ease: 'easeOut' }}
           >
             {STEPS.map(({ icon: Icon, title, detail, accent, metric }, index) => (
               <motion.div
                 key={title}
-                className="relative min-h-[245px] rounded-2xl border border-white/10 bg-[#07111f]/95 p-4 shadow-2xl shadow-black/40"
+                className="relative flex flex-col justify-between min-h-[340px] rounded-2xl border border-white/10 bg-[#07111f]/95 p-5 shadow-2xl shadow-black/40"
                 style={{
                   transformStyle: 'preserve-3d',
-                  transform: `translateZ(${index % 2 === 0 ? 44 : 18}px)`,
+                  transform: `translateZ(${index % 2 === 0 ? 30 : 12}px)`,
                 }}
                 whileHover={{ y: -12, scale: 1.02 }}
                 transition={{ type: 'spring', stiffness: 260, damping: 22 }}
               >
                 {index < STEPS.length - 1 && (
-                  <div className="absolute left-[calc(100%-8px)] top-1/2 z-0 hidden h-1 w-8 -translate-y-1/2 bg-gradient-to-r from-cyan-300/80 to-amber-300/70 lg:block" />
+                  <div className="absolute left-[calc(100%-12px)] top-1/3 z-0 hidden h-1 w-8 bg-gradient-to-r from-cyan-300/80 to-amber-300/70 lg:block" />
                 )}
-                <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${accent} text-slate-950 shadow-lg`}>
-                  <Icon className="h-6 w-6" />
+                
+                <div>
+                  <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${accent} text-slate-950 shadow-lg`}>
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <div className="mb-3 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Stage {index + 1}</p>
+                    <h3 className="mt-1 text-base font-black text-white">{title}</h3>
+                  </div>
+                  <p className="text-sm leading-relaxed text-white/60">{detail}</p>
                 </div>
-                <div className="mb-3 rounded-xl border border-white/[0.08] bg-white/[0.04] p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Stage {index + 1}</p>
-                  <h3 className="mt-1 text-base font-black text-white">{title}</h3>
-                </div>
-                <p className="min-h-[58px] text-sm leading-relaxed text-white/52">{detail}</p>
-                <div className="mt-5 flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.045] px-3 py-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-white/35">Signal</span>
-                  <span className="text-sm font-black text-cyan-100">{metric}</span>
-                </div>
-                <div className="mt-3 grid grid-cols-4 gap-1">
-                  {[45, 72, 58, 88].map((height, barIndex) => (
-                    <motion.span
-                      key={barIndex}
-                      className="block rounded-full bg-gradient-to-t from-teal-300 to-amber-200"
-                      style={{ height }}
-                      animate={{ opacity: [0.45, 1, 0.45] }}
-                      transition={{ duration: 1.8, repeat: Infinity, delay: (index + barIndex) * 0.12 }}
-                    />
-                  ))}
+
+                <div className="mt-4">
+                  <div className="flex items-center justify-between rounded-xl border border-white/[0.08] bg-white/[0.045] px-3 py-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-white/35">Signal</span>
+                    <span className="text-sm font-black text-cyan-100">{metric}</span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-4 gap-1 items-end h-10">
+                    {[20, 36, 26, 44].map((height, barIndex) => (
+                      <motion.span
+                        key={barIndex}
+                        className="block rounded-full bg-gradient-to-t from-teal-400 to-amber-200"
+                        style={{ height: `${height}px` }}
+                        animate={{ opacity: [0.45, 1, 0.45] }}
+                        transition={{ duration: 1.8, repeat: Infinity, delay: (index + barIndex) * 0.12 }}
+                      />
+                    ))}
+                  </div>
                 </div>
               </motion.div>
             ))}

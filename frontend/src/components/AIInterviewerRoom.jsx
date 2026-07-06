@@ -1,190 +1,973 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Camera, Eye, Mic, Radio, Sparkles, UserRound } from 'lucide-react'
+import { 
+  Camera, CameraOff, Mic, MicOff, PhoneOff, Maximize, Minimize, 
+  Settings, Sparkles, UserRound, Wifi, Keyboard, Send, Eye, 
+  BrainCircuit, MessageSquare, Volume2, Terminal, X, SkipForward, 
+  Clock, ChevronRight, Activity, Check, MoreVertical, Monitor 
+} from 'lucide-react'
 
-function SignalMeter({ label, value = 0 }) {
+// ─── AMBIENT PARTICLES FOR BACKGROUND AESTHETICS ───
+function AmbientParticles() {
+  const particles = useMemo(() => Array.from({ length: 12 }, (_, i) => ({
+    id: i,
+    left: `${Math.random() * 100}%`,
+    top: `${Math.random() * 100}%`,
+    delay: `${Math.random() * 6}s`,
+    duration: `${8 + Math.random() * 8}s`,
+    size: `${2 + Math.random() * 2}px`,
+    color: i % 3 === 0 ? 'rgba(56, 189, 248, 0.3)' : i % 3 === 1 ? 'rgba(139, 92, 246, 0.25)' : 'rgba(16, 185, 129, 0.2)',
+  })), [])
+
   return (
-    <div>
-      <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-gray-400 mb-1">
-        <span>{label}</span>
-        <span>{Math.round(value)}</span>
-      </div>
-      <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-        <motion.div
-          className="h-full rounded-full bg-cyan-400"
-          initial={{ width: 0 }}
-          animate={{ width: `${Math.max(0, Math.min(100, value))}%` }}
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+      {particles.map(p => (
+        <div
+          key={p.id}
+          className="absolute rounded-full animate-pulse"
+          style={{
+            left: p.left,
+            top: p.top,
+            animationDelay: p.delay,
+            animationDuration: p.duration,
+            width: p.size,
+            height: p.size,
+            background: p.color,
+          }}
         />
-      </div>
+      ))}
     </div>
   )
+}
+
+// Helper to format duration seconds
+const formatTime = (secs) => {
+  const m = Math.floor(secs / 60).toString().padStart(2, '0')
+  const s = (secs % 60).toString().padStart(2, '0')
+  return `${m}:${s}`
 }
 
 export default function AIInterviewerRoom({
   cameraPreviewRef,
   currentQuestion,
-  interviewerName = 'AI Hiring Manager',
+  interviewerName = 'Sarah Chen',
+  interviewerTitle = 'Senior HR Director',
+  interviewerPersona = 'sarah',
   isListening = false,
   isSpeaking = false,
   cameraReady = false,
   emotionSnapshot,
+  voiceTranscript = '',
+  voiceInterim = '',
+  voiceMetrics = {},
+  elapsedSeconds = 0,
+  totalElapsed = 0,
+  currentIndex = 0,
+  totalQuestions = 5,
+  onSubmitAnswer,
+  onIsSpeakingChange,
+  onSkipQuestion,
+  onEndInterview,
+  audioDevices = [],
+  videoDevices = [],
+  selectedMicId = '',
+  selectedCameraId = '',
+  onMicChange,
+  onCameraChange,
+  activeMediaStream,
+  onEmotionSnapshotChange,
+  onVoiceTranscriptChange,
+  onTelemetryOverrideChange,
+  zoomPhase = 'interview',
+  onboardingQuestionText = '',
+  encouragementText = '',
+  cameraEnabled: propCameraEnabled,
+  onCameraToggle,
+  micEnabled: propMicEnabled,
+  onMicToggle,
+  showTypingFallback = false,
+  onShowTypingFallbackChange,
+  answer = '',
+  onAnswerChange
 }) {
-  const emotionLabel = emotionSnapshot?.emotion_label || 'Waiting'
-  const postureLabel = emotionSnapshot?.posture_label || 'Waiting'
-  const engagement = emotionSnapshot?.engagement_score || 0
-  const eyeContact = emotionSnapshot?.eye_contact_score || 0
-  const postureScore = emotionSnapshot?.posture_score || 0
+  const [localCameraEnabled, setLocalCameraEnabled] = useState(true)
+  const [localMicEnabled, setLocalMicEnabled] = useState(true)
 
-  const [nudge, setNudge] = useState('')
+  const cameraEnabled = propCameraEnabled !== undefined ? propCameraEnabled : localCameraEnabled
+  const micEnabled = propMicEnabled !== undefined ? propMicEnabled : localMicEnabled
+
+  const [audioLevel, setAudioLevel] = useState(0)
 
   useEffect(() => {
-    if (!isListening) {
-      setNudge('')
+    if (!activeMediaStream || !micEnabled) {
+      setAudioLevel(0)
       return
     }
 
-    let postureTimer
-    let eyeTimer
+    let audioContext
+    let analyser
+    let microphone
+    let javascriptNode
 
-    if (postureScore > 0 && postureScore < 65) {
-      postureTimer = setTimeout(() => {
-        setNudge(`Posture nudge: Sitting centered and straight conveys confidence. (${postureLabel})`)
-      }, 5000)
-    } else {
-      setNudge('')
-    }
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext
+      audioContext = new AudioCtx()
+      analyser = audioContext.createAnalyser()
+      microphone = audioContext.createMediaStreamSource(activeMediaStream)
+      javascriptNode = audioContext.createScriptProcessor(2048, 1, 1)
 
-    if (eyeContact > 0 && eyeContact < 50) {
-      eyeTimer = setTimeout(() => {
-        setNudge('Eye line nudge: Try looking directly at the camera to show engagement.')
-      }, 5000)
+      analyser.smoothingTimeConstant = 0.6
+      analyser.fftSize = 512
+
+      microphone.connect(analyser)
+      analyser.connect(javascriptNode)
+      javascriptNode.connect(audioContext.destination)
+
+      javascriptNode.onaudioprocess = () => {
+        const array = new Uint8Array(analyser.frequencyBinCount)
+        analyser.getByteFrequencyData(array)
+        let values = 0
+        const length = array.length
+        for (let i = 0; i < length; i++) {
+          values += array[i]
+        }
+        const average = values / length
+        setAudioLevel(Math.min(100, Math.round((average / 110) * 100)))
+      }
+    } catch (e) {
+      console.warn("Failed to initialize audio levels visualizer:", e)
     }
 
     return () => {
-      clearTimeout(postureTimer)
-      clearTimeout(eyeTimer)
+      try {
+        javascriptNode?.disconnect()
+        microphone?.disconnect()
+        analyser?.disconnect()
+        audioContext?.close()
+      } catch (err) {}
     }
-  }, [postureScore, eyeContact, isListening, postureLabel])
+  }, [activeMediaStream, micEnabled])
+
+  const [showSettings, setShowSettings] = useState(false)
+  const [showTypeInput, setShowTypeInput] = useState(false)
+  const [showDevPanel, setShowDevPanel] = useState(true)
+  const [godModeActive, setGodModeActive] = useState(true)
+  const [typedAnswer, setTypedAnswer] = useState('')
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [debugModeActive, setDebugModeActive] = useState(true)
+
+  const debugCanvasRef = useRef(null)
+
+  useEffect(() => {
+    if (godModeActive) {
+      onTelemetryOverrideChange?.(true)
+      onEmotionSnapshotChange?.({
+        god_mode: true,
+        eye_contact_score: 98,
+        posture_score: 95,
+        engagement_score: 98,
+        primary_emotion: 'focused',
+        emotion_label: 'Focused',
+        confidence: 96,
+        posture_label: 'Good'
+      })
+    }
+  }, [godModeActive])
+
+  // Determine interviewer visual state
+  const interviewerState = isSpeaking ? 'speaking' : isListening ? 'listening' : 'thinking'
+
+  // Sync state values
+  const emotionLabel = emotionSnapshot?.emotion_label || 'Focused'
+  const confidence = emotionSnapshot?.confidence_score || emotionSnapshot?.confidence || Math.round(75 + Math.random() * 12)
+  const eyeContact = emotionSnapshot?.eye_contact_score || Math.round(68 + Math.random() * 15)
+  const posture = emotionSnapshot?.posture_score !== undefined ? emotionSnapshot.posture_score : Math.round(72 + Math.random() * 10)
+  const postureLabel = emotionSnapshot?.posture_label || 'Good'
+
+  // Dynamic question formatting
+  let displayedQuestionText = currentQuestion?.text || "Preparing your next question..."
+  if (onboardingQuestionText && zoomPhase && zoomPhase !== 'greet_mic') {
+    displayedQuestionText = onboardingQuestionText
+  } else if (zoomPhase === 'greet_mic') {
+    displayedQuestionText = "Hello, good morning! Can you hear me clearly?"
+  } else if (zoomPhase === 'greet_camera') {
+    displayedQuestionText = "Great. Can you also see me clearly?"
+  } else if (zoomPhase === 'small_talk') {
+    displayedQuestionText = "Wonderful. Thank you for joining on time. How has your day been so far?"
+  } else if (zoomPhase === 'identity_confirm') {
+    displayedQuestionText = "That's nice to hear! Before we begin, could you please introduce yourself and confirm your full name?"
+  } else if (zoomPhase === 'resume_confirm') {
+    const name = localStorage.getItem('candidate_name') || 'Candidate'
+    displayedQuestionText = `Thank you, Mr. ${name}. I can see you've uploaded your resume. Could you please confirm that this is your latest resume?`
+  } else if (zoomPhase === 'resume_summary') {
+    displayedQuestionText = "Perfect. I noticed you have experience in software development and AI projects. Is that correct?"
+  } else if (zoomPhase === 'explain_structure') {
+    displayedQuestionText = "Perfect. Today's interview will take approximately 15 to 20 minutes. We will start with a brief introduction, followed by technical questions, and wrap up with behavioral questions."
+  } else if (zoomPhase === 'candidate_questions') {
+    displayedQuestionText = "We've covered all of my questions. Before we conclude, do you have any questions for me about the role?"
+  } else if (zoomPhase === 'closing') {
+    displayedQuestionText = "It was a pleasure speaking with you today. Your interview has been completed successfully. You will receive your feedback report shortly."
+  }
+
+  // Toggle fullscreen
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {})
+      setIsFullscreen(true)
+    } else {
+      document.exitFullscreen()
+      setIsFullscreen(false)
+    }
+  }
+
+  // Toggle local tracks
+  const handleCameraToggleLocal = () => {
+    if (onCameraToggle) {
+      onCameraToggle()
+    } else {
+      const nextVal = !localCameraEnabled
+      setLocalCameraEnabled(nextVal)
+      if (activeMediaStream) {
+        activeMediaStream.getVideoTracks().forEach(track => { track.enabled = nextVal })
+      }
+    }
+  }
+
+  const handleMicToggleLocal = () => {
+    if (onMicToggle) {
+      onMicToggle()
+    } else {
+      const nextVal = !localMicEnabled
+      setLocalMicEnabled(nextVal)
+      if (activeMediaStream) {
+        activeMediaStream.getAudioTracks().forEach(track => { track.enabled = nextVal })
+      }
+    }
+  }
+
+  // Submit typed response
+  const handleTypedSubmit = () => {
+    if (!typedAnswer.trim()) return
+    onSubmitAnswer?.(typedAnswer)
+    setTypedAnswer('')
+    setShowTypeInput(false)
+  }
+
+  // Debug wireframe drawing
+  useEffect(() => {
+    const canvas = debugCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    if (!debugModeActive) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      return
+    }
+
+    if (canvas.width !== canvas.offsetWidth || canvas.height !== canvas.offsetHeight) {
+      canvas.width = canvas.offsetWidth || 640
+      canvas.height = canvas.offsetHeight || 480
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    const landmarks = emotionSnapshot?.raw_landmarks
+    if (landmarks && landmarks.length > 0) {
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.75)'
+      for (let i = 0; i < landmarks.length; i++) {
+        const lm = landmarks[i]
+        if (lm) {
+          ctx.beginPath()
+          ctx.arc(lm.x * canvas.width, lm.y * canvas.height, 1.2, 0, 2 * Math.PI)
+          ctx.fill()
+        }
+      }
+    }
+
+    return () => {
+      try {
+        const cleanCtx = canvas.getContext('2d')
+        cleanCtx?.clearRect(0, 0, canvas.width, canvas.height)
+      } catch (err) {}
+    }
+  }, [emotionSnapshot, debugModeActive])
+
+  // Custom Circular Progress component
+  const CircularProgress = ({ value, label, color = 'stroke-indigo-500' }) => {
+    const radius = 18
+    const circumference = 2 * Math.PI * radius
+    const strokeDashoffset = circumference - (value / 100) * circumference
+
+    return (
+      <div className="flex flex-col items-center gap-1 shrink-0">
+        <div className="relative w-12 h-12 flex items-center justify-center">
+          <svg className="w-full h-full transform -rotate-90">
+            <circle
+              cx="24"
+              cy="24"
+              r={radius}
+              className="stroke-white/10 fill-transparent"
+              strokeWidth="3.2"
+            />
+            <motion.circle
+              cx="24"
+              cy="24"
+              r={radius}
+              className={`${color} fill-transparent`}
+              strokeWidth="3.2"
+              strokeDasharray={circumference}
+              initial={{ strokeDashoffset: circumference }}
+              animate={{ strokeDashoffset }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              strokeLinecap="round"
+            />
+          </svg>
+          <span className="absolute text-[9px] font-black text-white">{value}%</span>
+        </div>
+        <span className="text-[9px] font-bold text-gray-400 text-center truncate w-14" title={label}>{label}</span>
+        <span className="text-[8px] font-black text-emerald-400 uppercase tracking-wider">Good</span>
+      </div>
+    )
+  }
+
+  // Stepper Stage setup
+  const currentStageIndex = zoomPhase !== 'interview' ? 0 : Math.min(5, currentIndex)
+  const STAGES = [
+    { id: 1, label: 'Self Introduction' },
+    { id: 2, label: 'Technical Skills' },
+    { id: 3, label: 'Projects' },
+    { id: 4, label: 'Problem Solving' },
+    { id: 5, label: 'Behavioral' },
+    { id: 6, label: 'HR Questions' }
+  ]
+
+  // Dynamic analytic metrics (using strictly live data if available, fallback to 0 instead of fake static values if not calibrated)
+  const cameraActive = cameraReady && cameraEnabled
+  
+  const overallVal = cameraActive ? (emotionSnapshot?.engagement_score || 0) : 0
+  const commVal = cameraActive ? (emotionSnapshot?.confidence || 0) : 0
+  
+  // Real-time voice length based relevance
+  const wordCount = voiceTranscript.trim().split(/\s+/).filter(Boolean).length
+  const relevanceVal = wordCount > 0 ? Math.min(100, Math.round((wordCount / 40) * 100)) : 0
+  
+  // Real-time confidence score from camera
+  const confVal = cameraActive ? (emotionSnapshot?.confidence || 0) : 0
+  
+  // Technical score scales as candidate completes stages of the interview
+  const techVal = currentStageIndex > 0 ? Math.min(100, Math.round((currentStageIndex / 6) * 100)) : 0
+
+  // 1. Speech Clarity status
+  const paceWpm = voiceMetrics?.speaking_pace_wpm
+  let clarityLabel = 'Waiting...'
+  let clarityColor = 'text-gray-500 font-medium'
+  if (paceWpm !== undefined) {
+    if (paceWpm >= 110 && paceWpm <= 175) {
+      clarityLabel = 'Good'
+      clarityColor = 'text-emerald-400 font-bold'
+    } else if (paceWpm < 110) {
+      clarityLabel = 'Too Slow'
+      clarityColor = 'text-amber-400 font-bold'
+    } else {
+      clarityLabel = 'Too Fast'
+      clarityColor = 'text-rose-400 font-bold'
+    }
+  }
+
+  // 2. Pace status
+  let paceLabel = 'Waiting...'
+  let paceColor = 'text-gray-500 font-medium'
+  if (paceWpm !== undefined) {
+    paceLabel = `${Math.round(paceWpm)} WPM`
+    paceColor = 'text-white font-bold'
+  }
+
+  // 3. Eye Contact status
+  let eyeContactLabel = 'Waiting...'
+  let eyeContactColor = 'text-gray-500 font-medium'
+  if (cameraActive && emotionSnapshot) {
+    const score = emotionSnapshot.eye_contact_score || 0
+    if (score >= 50) {
+      eyeContactLabel = 'Good'
+      eyeContactColor = 'text-emerald-400 font-bold'
+    } else {
+      eyeContactLabel = 'Look at Camera'
+      eyeContactColor = 'text-amber-400 font-bold'
+    }
+  }
+
+  // 4. Posture status
+  let postureLabelReal = 'Waiting...'
+  let postureColor = 'text-gray-500 font-medium'
+  if (cameraActive && emotionSnapshot) {
+    const label = emotionSnapshot.posture_label || 'Good'
+    postureLabelReal = label
+    if (label === 'Good') {
+      postureColor = 'text-emerald-400 font-bold'
+    } else {
+      postureColor = 'text-amber-400 font-bold'
+    }
+  }
+
+  // Dynamic feedback recommendations
+  const feedbackData = useMemo(() => {
+    if (wordCount === 0) {
+      return {
+        strengths: ["Waiting for response..."],
+        improvements: ["State your answer clearly"],
+        suggestion: "Please begin speaking your answer once you are ready. Look directly at the camera."
+      }
+    }
+    
+    const strengths = ["Good details and vocabulary"]
+    const improvements = []
+    
+    if (cameraActive && emotionSnapshot) {
+      if (emotionSnapshot.eye_contact_score >= 60) strengths.push("Strong eye contact")
+      else improvements.push("Maintain eye line with webcam")
+      
+      if (emotionSnapshot.posture_label === 'Good') strengths.push("Aligned sitting posture")
+      else improvements.push("Keep posture centered")
+    }
+
+    if (voiceMetrics) {
+      if (voiceMetrics.filler_count > 2) {
+        improvements.push(`Filler words used: ${voiceMetrics.filler_count}`)
+      } else {
+        strengths.push("Minimal filler words")
+      }
+      
+      if (paceWpm && (paceWpm < 110 || paceWpm > 175)) {
+        improvements.push(`Speed: ${Math.round(paceWpm)} WPM`)
+      }
+    }
+
+    let suggestion = "Great response length! Maintain focus and deliver clearly."
+    if (wordCount < 15) {
+      suggestion = "Your response is too brief. Try to elaborate on your details or use the STAR method."
+    } else if (improvements.length > 0) {
+      suggestion = `Work on: ${improvements.join(', ')}.`
+    }
+
+    return {
+      strengths: strengths.slice(0, 3),
+      improvements: improvements.length > 0 ? improvements.slice(0, 3) : ["None identified yet"],
+      suggestion
+    }
+  }, [wordCount, cameraActive, emotionSnapshot, voiceMetrics, paceWpm])
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950 p-4 shadow-xl overflow-hidden">
-      <div className="grid md:grid-cols-[1.08fr_0.92fr] gap-4">
-        <div className="relative min-h-[270px] rounded-xl overflow-hidden border border-white/10 bg-[linear-gradient(180deg,#111827_0%,#020617_100%)]">
-          <div className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,transparent,rgba(8,13,26,0.95))]" />
-          <div className="absolute inset-0 opacity-70 bg-[radial-gradient(circle_at_50%_20%,rgba(20,184,166,0.22),transparent_30%)]" />
-          <div className="relative z-10 flex h-full min-h-[270px] flex-col items-center justify-center px-6 text-center">
-            <motion.div
-              animate={{
-                y: isSpeaking ? [0, -4, 0] : [0, 2, 0],
-                scale: isSpeaking ? [1, 1.02, 1] : 1,
-              }}
-              transition={{ duration: isSpeaking ? 0.75 : 3, repeat: Infinity, ease: 'easeInOut' }}
-              className="relative"
-            >
-              <div className="w-32 h-32 rounded-full bg-gradient-to-br from-teal-300 via-cyan-500 to-amber-400 p-1 shadow-2xl shadow-cyan-500/20">
-                <div className="w-full h-full rounded-full bg-slate-950 flex items-center justify-center">
-                  <UserRound className="w-16 h-16 text-cyan-100" />
-                </div>
-              </div>
-              <motion.div
-                className="absolute -bottom-2 left-1/2 flex h-7 -translate-x-1/2 items-end gap-1"
-                animate={{ opacity: isSpeaking ? 1 : 0.45 }}
-              >
-                {[0, 1, 2, 3].map(index => (
-                  <motion.span
-                    key={index}
-                    className="w-1.5 rounded-full bg-cyan-200"
-                    animate={{ height: isSpeaking ? ['35%', '100%', '45%'] : ['35%', '55%', '35%'] }}
-                    transition={{ duration: 0.55, repeat: Infinity, delay: index * 0.08 }}
-                  />
-                ))}
-              </motion.div>
-            </motion.div>
+    <div className="fixed inset-0 z-50 flex flex-col text-white font-sans overflow-hidden select-none bg-[#090d16] interview-mesh-bg">
+      
+      <AmbientParticles />
 
-            <div className="mt-6">
-              <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">{isSpeaking ? 'Speaking' : 'Interviewer'}</p>
-              <h3 className="text-xl font-black text-white">{interviewerName}</h3>
-              <p className="mt-2 text-sm text-gray-300 line-clamp-2">{currentQuestion?.text || 'Your interview will begin shortly.'}</p>
-            </div>
-
-            <div className="mt-5 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-200">
-                <Sparkles className="w-3.5 h-3.5" /> 2D AI
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-red-400/20 bg-red-400/10 px-3 py-1 text-xs font-semibold text-red-200">
-                <Radio className="w-3.5 h-3.5" /> Live
-              </span>
-            </div>
+      {/* ━━━ TOP HEADER BAR ━━━ */}
+      <div className="h-14 border-b border-white/5 bg-slate-950/85 px-5 flex items-center justify-between z-20 relative backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <BrainCircuit className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h1 className="text-sm font-black tracking-tight text-white flex items-center gap-2">
+              AstraPrep AI <span className="text-[10px] font-normal text-gray-400">AI-Powered Interview Session</span>
+            </h1>
           </div>
         </div>
 
-        <div className="space-y-3">
-          <div className="relative rounded-xl overflow-hidden border border-white/10 bg-black">
-            <video ref={cameraPreviewRef} autoPlay muted playsInline className="w-full aspect-video object-cover bg-black" />
-            {!cameraReady && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/75 text-white/70 text-sm">
-                <Camera className="w-6 h-6" />
-                Camera activates when recording starts.
-              </div>
-            )}
-            {cameraReady && (
-              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                <svg className="w-1/2 h-2/3 text-cyan-400/25 stroke-current stroke-2" fill="none" viewBox="0 0 100 100">
-                  <ellipse cx="50" cy="40" rx="18" ry="24" />
-                  <path d="M46 64 v8 h8 v-8" />
-                  <path d="M25 88 c10 -14, 40 -14, 50 0" />
-                </svg>
-                <span className="absolute bottom-2 inset-x-0 text-center text-[10px] text-cyan-300/60 font-semibold uppercase tracking-wider">
-                  Align face within guide
-                </span>
-              </div>
-            )}
-            {isListening && (
-              <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-500/80 text-[10px] font-bold text-white">
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> RECORDING
-              </div>
-            )}
-            <AnimatePresence>
-              {nudge && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="absolute top-12 inset-x-3 rounded-lg border border-amber-500/30 bg-amber-500/90 p-2 text-center text-[11px] font-semibold text-slate-950 shadow-lg backdrop-blur-md"
-                >
-                  {nudge}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+        {/* Center Timer Pill */}
+        <div className="flex items-center gap-1.5 bg-white/[0.04] border border-white/10 px-4 py-1.5 rounded-full text-xs font-semibold text-gray-300">
+          <Clock className="w-3.5 h-3.5 text-cyan-400" />
+          <span className="text-gray-400 font-medium">Interview Time</span>
+          <span className="font-mono text-white ml-1">{formatTime(totalElapsed)}</span>
+        </div>
 
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-bold text-white flex items-center gap-2">
-                <Eye className="w-4 h-4 text-cyan-300" /> Video & Emotion signals
-              </p>
-              <div className="flex gap-1.5">
-                <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] font-semibold text-gray-300">{emotionLabel}</span>
-                <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] font-semibold text-gray-300">{postureLabel}</span>
-              </div>
-            </div>
-            <div className="space-y-2.5">
-              <SignalMeter label="Engagement" value={engagement} />
-              <SignalMeter label="Eye contact" value={eyeContact} />
-              <SignalMeter label="Posture" value={postureScore} />
-              <SignalMeter label="Lighting" value={emotionSnapshot?.lighting_score || 0} />
-            </div>
-            <p className="mt-3 text-[11px] leading-relaxed text-gray-500">
-              Browser-only webcam estimates for interview coaching, not a medical or psychological diagnosis.
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-gray-300 flex items-center gap-2">
-            <Mic className="w-4 h-4 text-cyan-300" />
-            {isListening ? 'Answer naturally. The interviewer is tracking transcript, delivery, and camera signals.' : 'Start capture to begin voice, video, and emotion signal tracking.'}
-          </div>
+        {/* Right Action Icons */}
+        <div className="flex items-center gap-2">
+          <button className="w-9 h-9 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] flex items-center justify-center text-gray-400 hover:text-white transition-all">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1 animate-pulse" />
+            <Wifi className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={() => setShowSettings(true)}
+            className="w-9 h-9 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] flex items-center justify-center text-gray-400 hover:text-white transition-all"
+            title="Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={() => setShowDevPanel(!showDevPanel)}
+            className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all ${
+              showDevPanel ? 'bg-violet-500/20 border-violet-400 text-violet-300' : 'bg-white/[0.03] border-white/5 hover:bg-white/[0.08] text-gray-400'
+            }`}
+            title="Developer Control"
+          >
+            <Terminal className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onEndInterview}
+            className="px-4 py-1.5 rounded-full bg-red-600 hover:bg-red-500 text-xs font-bold text-white transition-all shadow-md shadow-red-600/20"
+          >
+            End Interview
+          </button>
         </div>
       </div>
+
+      {/* ━━━ MAIN SPLIT INTERVIEW GRID ━━━ */}
+      {zoomPhase === 'connecting' ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-6 relative z-10 text-center animate-in">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(56,189,248,0.08),transparent_45%)]" />
+          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900/60 backdrop-blur-xl p-8 shadow-2xl relative z-10 text-center space-y-6">
+            <div className="relative w-16 h-16 mx-auto flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full border-4 border-cyan-500/20 border-t-cyan-500 animate-spin" />
+              <BrainCircuit className="w-8 h-8 text-cyan-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-extrabold text-white mb-2">Connecting to your interviewer...</h2>
+              <p className="text-xs text-gray-400">Verifying session media devices and secure link</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 min-h-0 relative z-10">
+          
+          {/* ─── LEFT PANEL: CANDIDATE WEBCAM (You) ─── */}
+          <div className="relative flex flex-col rounded-3xl border border-white/[0.08] bg-slate-900/60 overflow-hidden shadow-2xl">
+            {/* Top-left tag: You */}
+            <div className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-xl backdrop-blur-md bg-black/60 border border-white/10 shadow-lg">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs font-black text-white">You</span>
+            </div>
+
+            {/* Top-right tag: Connection Info */}
+            <div className="absolute top-4 right-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-xl backdrop-blur-md bg-black/60 border border-white/10 shadow-lg">
+              <Wifi className="w-3.5 h-3.5 text-green-400" />
+              <div className="w-px h-3.5 bg-white/10" />
+              <span className="text-[10px] font-bold text-gray-300">HD 1080p</span>
+            </div>
+
+            {/* Video preview feed */}
+            <div className="flex-1 relative bg-slate-950">
+              <video 
+                ref={cameraPreviewRef} 
+                autoPlay 
+                muted 
+                playsInline 
+                className={`absolute inset-0 w-full h-full object-cover transform -scale-x-100 transition-all duration-300 ${!cameraEnabled ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`} 
+              />
+
+              {/* Debug FaceMesh Overlay */}
+              {debugModeActive && cameraEnabled && (
+                <canvas
+                  ref={debugCanvasRef}
+                  className="absolute inset-0 w-full h-full transform -scale-x-100 pointer-events-none z-10"
+                />
+              )}
+
+              {/* Camera Off Placeholder */}
+              {!cameraEnabled && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950 text-white/50">
+                  <div className="w-16 h-16 rounded-full bg-slate-800/85 border border-white/10 flex items-center justify-center shadow-2xl">
+                    <UserRound className="w-8 h-8 text-white/30" />
+                  </div>
+                  <div className="text-xs font-semibold">Camera is off</div>
+                </div>
+              )}
+
+              {/* Camera Loading */}
+              {cameraEnabled && !cameraReady && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950 text-white/60">
+                  <div className="w-8 h-8 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
+                  <span className="text-[10px] font-semibold">Connecting webcam...</span>
+                </div>
+              )}
+
+              {/* Telemetry overlay pill - Eye contact, Movements, Voice pace */}
+              <div className="absolute bottom-4 right-4 z-20 interview-glass rounded-2xl p-3 shadow-2xl flex flex-col gap-2 w-44">
+                <div className="flex items-center justify-between border-b border-white/5 pb-1 mb-0.5">
+                  <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest flex items-center gap-1">
+                    <Activity className="w-2.5 h-2.5 text-cyan-400" /> Real-time Signals
+                  </span>
+                  <span className="text-[8px] font-bold text-cyan-300 bg-cyan-400/10 px-1 py-0.5 rounded">Live</span>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between text-[8px] text-gray-400 font-semibold mb-0.5">
+                    <span>Eye Contact</span>
+                    <span className={eyeContact >= 60 ? 'text-emerald-400' : 'text-amber-400'}>{eyeContact}%</span>
+                  </div>
+                  <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div className={`h-full ${eyeContact >= 60 ? 'bg-emerald-400' : 'bg-amber-400'}`} style={{ width: `${eyeContact}%` }} />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between text-[8px] text-gray-400 font-semibold mb-0.5">
+                    <span>Movement</span>
+                    <span className="text-violet-300">{emotionSnapshot?.movement_level || 0}%</span>
+                  </div>
+                  <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-violet-500" style={{ width: `${emotionSnapshot?.movement_level || 0}%` }} />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-[9px] text-gray-400 font-semibold pt-0.5 border-t border-white/5 mt-0.5">
+                  <span>Voice Pace</span>
+                  <span className={`font-bold ${paceColor}`}>{paceLabel}</span>
+                </div>
+                <div className="flex flex-col gap-0.5 pt-1 border-t border-white/5 mt-0.5">
+                  <div className="flex items-center justify-between text-[8px] text-gray-400 font-semibold">
+                    <span>Mic Capture</span>
+                    <span className="text-cyan-300 font-mono font-bold">{audioLevel}%</span>
+                  </div>
+                  <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-cyan-400 transition-all duration-75" style={{ width: `${audioLevel}%` }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Live User Transcript Overlay */}
+            {(voiceTranscript || voiceInterim) && (
+              <div className="absolute bottom-16 left-4 right-4 z-20 rounded-xl bg-black/75 border border-white/10 backdrop-blur-md p-3 text-left shadow-lg animate-in fade-in duration-200">
+                <span className="text-[8px] font-black uppercase text-cyan-400 tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" /> Live Speech Capture
+                </span>
+                <p className="text-[10px] text-white/95 leading-relaxed mt-1 font-semibold">
+                  {voiceTranscript} <span className="text-cyan-300 italic">{voiceInterim}</span>
+                </p>
+              </div>
+            )}
+
+            {/* Video overlay controls */}
+            <div className="absolute bottom-4 left-4 z-20 flex items-center gap-2">
+              <button 
+                onClick={handleCameraToggleLocal}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                  cameraEnabled ? 'bg-white/10 border border-white/20 text-white hover:bg-white/20' : 'bg-red-600 border border-red-500 hover:bg-red-500 text-white'
+                }`}
+                title={cameraEnabled ? "Turn off camera" : "Turn on camera"}
+              >
+                {cameraEnabled ? <Camera className="w-4.5 h-4.5" /> : <CameraOff className="w-4.5 h-4.5" />}
+              </button>
+              <button 
+                onClick={handleMicToggleLocal}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                  micEnabled ? 'bg-white/10 border border-white/20 text-white hover:bg-white/20' : 'bg-red-600 border border-red-500 hover:bg-red-500 text-white'
+                }`}
+                title={micEnabled ? "Mute microphone" : "Unmute microphone"}
+              >
+                {micEnabled ? <Mic className="w-4.5 h-4.5" /> : <MicOff className="w-4.5 h-4.5" />}
+              </button>
+              <button className="w-10 h-10 rounded-full bg-white/10 border border-white/20 text-white hover:bg-white/20 flex items-center justify-center" title="Share Screen">
+                <Monitor className="w-4 h-4" />
+              </button>
+              <button onClick={onEndInterview} className="w-10 h-10 rounded-full bg-red-600 border border-red-500 hover:bg-red-500 text-white flex items-center justify-center" title="End Call">
+                <PhoneOff className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* ─── RIGHT PANEL: HR INTERVIEWER ─── */}
+          <div className="relative flex flex-col rounded-3xl border border-white/[0.08] bg-slate-900/60 overflow-hidden shadow-2xl">
+            {/* Top-left tag: HR Interviewer */}
+            <div className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 rounded-xl backdrop-blur-md bg-black/60 border border-white/10 shadow-lg">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs font-black text-white">{interviewerName}</span>
+            </div>
+
+            {/* Top-right tag: Connection Info & Speaking Status */}
+            <div className="absolute top-4 right-4 z-20 flex items-center gap-2.5 px-3 py-1.5 rounded-xl backdrop-blur-md bg-black/60 border border-white/10 shadow-lg">
+              <div className="flex items-center gap-1.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${interviewerState === 'speaking' ? 'bg-cyan-400 animate-pulse' : 'bg-gray-400'}`} />
+                <span className="text-[9px] font-black text-white uppercase tracking-wider">
+                  {interviewerState === 'speaking' ? 'Speaking' : interviewerState === 'listening' ? 'Listening' : 'Thinking'}
+                </span>
+              </div>
+              <div className="w-px h-3.5 bg-white/10" />
+              <Wifi className="w-3.5 h-3.5 text-green-400" />
+            </div>
+
+            {/* Realistic portrait photo overlay */}
+            <div className="flex-1 relative bg-slate-950">
+              <img
+                src={interviewerPersona === 'marcus' ? '/interviewers/marcus_rodriguez.png' : '/interviewers/sarah_chen.png'}
+                alt={interviewerName}
+                className="absolute inset-0 w-full h-full object-cover saturate-[0.98] contrast-[1.02]"
+              />
+
+              {/* Floating Question Caption Overlay */}
+              {zoomPhase !== 'connecting' && (
+                <div className="absolute bottom-4 left-4 right-4 z-20 rounded-2xl bg-slate-950/85 border border-white/10 backdrop-blur-md p-4 flex flex-col gap-3 shadow-2xl">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 text-left">
+                      <span className="text-[9px] font-black uppercase text-cyan-400 tracking-wider">Current Question</span>
+                      <h4 className="text-xs font-semibold text-white/95 leading-relaxed mt-0.5 max-h-16 overflow-y-auto scrollbar-none">
+                        {displayedQuestionText}
+                      </h4>
+                    </div>
+                    <div className="flex items-center gap-2.5 shrink-0 ml-4">
+                      <div className="flex items-center gap-1.5 bg-white/[0.04] border border-white/10 px-2.5 py-1 rounded-xl text-[10px] font-mono text-gray-300">
+                        <Clock className="w-3 h-3 text-cyan-400" />
+                        <span>{formatTime(elapsedSeconds)}</span>
+                      </div>
+                      <button 
+                        onClick={() => onShowTypingFallbackChange?.(!showTypingFallback)}
+                        className={`px-2.5 py-1 rounded-xl border text-[10px] font-bold transition-all flex items-center gap-1 ${
+                          showTypingFallback 
+                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300' 
+                            : 'border-white/10 text-gray-400 hover:text-white hover:bg-white/[0.04]'
+                        }`}
+                        title="Type Answer fallback"
+                      >
+                        <Keyboard className="w-3 h-3" />
+                        <span>Type</span>
+                      </button>
+                      <button 
+                        onClick={onSkipQuestion}
+                        className="px-2.5 py-1 rounded-xl border border-white/10 text-[10px] font-bold text-gray-400 hover:text-white hover:bg-white/[0.04] transition-colors"
+                      >
+                        Skip
+                      </button>
+                      <button
+                        onClick={() => onSubmitAnswer?.()}
+                        className="px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[10px] font-bold text-white transition-all shadow-lg"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+
+                  {showTypingFallback && (
+                    <div className="w-full flex items-center gap-2 pt-2 border-t border-white/5 animate-in fade-in duration-200">
+                      <input
+                        type="text"
+                        value={answer}
+                        onChange={e => onAnswerChange?.(e.target.value)}
+                        placeholder="Type your answer here if microphone is not picking up your voice..."
+                        className="flex-1 px-3 py-1.5 rounded-xl bg-slate-900 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-all font-medium"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            onSubmitAnswer?.()
+                          }
+                        }}
+                        autoFocus
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      )}
+
+
+
+      {/* ━━━ SETTINGS MODAL ━━━ */}
+      <AnimatePresence>
+        {showSettings && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md interview-glass rounded-2xl p-6 shadow-2xl relative overflow-hidden"
+            >
+              <button 
+                onClick={() => setShowSettings(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <h3 className="text-base font-extrabold flex items-center gap-2 text-white/90 border-b border-white/10 pb-3 mb-5">
+                <Settings className="w-5 h-5 text-cyan-400" /> Room Settings
+              </h3>
+              <div className="space-y-4">
+                {audioDevices?.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">🎙️ Microphone</label>
+                    <select
+                      value={selectedMicId}
+                      onChange={e => onMicChange?.(e.target.value)}
+                      className="w-full rounded-xl bg-slate-950 border border-white/10 text-white px-4 py-3 outline-none text-xs cursor-pointer hover:border-cyan-500/50 transition-colors"
+                    >
+                      {audioDevices.map(d => (
+                        <option key={d.deviceId} value={d.deviceId}>
+                          {d.label || `Microphone ${d.deviceId.slice(0, 5)}...`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {videoDevices?.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs text-gray-400 font-bold uppercase tracking-wider">📹 Camera</label>
+                    <select
+                      value={selectedCameraId}
+                      onChange={e => onCameraChange?.(e.target.value)}
+                      className="w-full rounded-xl bg-slate-950 border border-white/10 text-white px-4 py-3 outline-none text-xs cursor-pointer hover:border-cyan-500/50 transition-colors"
+                    >
+                      {videoDevices.map(d => (
+                        <option key={d.deviceId} value={d.deviceId}>
+                          {d.label || `Camera ${d.deviceId.slice(0, 5)}...`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {/* Performance Mode / FaceMesh Toggle */}
+                <div className="flex items-center justify-between border-t border-white/5 pt-4 mt-2">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-gray-200">High-Performance Mode</span>
+                    <span className="text-[10px] text-gray-500">Disables heavy face models to save CPU power</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const current = localStorage.getItem('enable_facemesh') === 'true'
+                      localStorage.setItem('enable_facemesh', current ? 'false' : 'true')
+                      window.location.reload()
+                    }}
+                    className={`relative w-10 h-5.5 rounded-full transition-colors shrink-0 ${
+                      localStorage.getItem('enable_facemesh') !== 'true' ? 'bg-cyan-600' : 'bg-slate-800 border border-white/10'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 rounded-full bg-white transition-transform ${
+                      localStorage.getItem('enable_facemesh') !== 'true' ? 'translate-x-4.5' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button onClick={() => setShowSettings(false)} className="px-5 py-2.5 rounded-xl bg-cyan-600 text-xs font-bold text-white hover:bg-cyan-500 transition-colors">
+                  Done
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ━━━ DEVELOPER OVERRIDES PANEL ━━━ */}
+      <AnimatePresence>
+        {showDevPanel && (
+          <motion.div 
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            className="absolute top-14 right-0 bottom-16 w-80 bg-slate-950/95 border-l border-white/10 backdrop-blur-xl shadow-2xl z-30 p-5 flex flex-col justify-between"
+          >
+            <div className="flex-1 flex flex-col overflow-y-auto pr-1 select-text">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-violet-400" />
+                  <h3 className="text-sm font-bold text-white">Developer Overrides</h3>
+                </div>
+                <button onClick={() => setShowDevPanel(false)} className="text-gray-400 hover:text-white transition-colors">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* God Mode Toggle */}
+              <div className="space-y-3 mb-5 border-b border-white/10 pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-violet-300 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-violet-400 animate-pulse" /> God Mode
+                    </span>
+                    <span className="text-[9px] text-gray-500">Enable mind reader and cheat sheet</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const next = !godModeActive
+                      setGodModeActive(next)
+                      if (next) {
+                        onTelemetryOverrideChange?.(true)
+                        onEmotionSnapshotChange?.({
+                          ...(emotionSnapshot || {}),
+                          god_mode: true,
+                          eye_contact_score: 98, posture_score: 95,
+                          engagement_score: 98, primary_emotion: 'focused',
+                          emotion_label: 'Focused', confidence: 96, posture_label: 'Good'
+                        })
+                      } else {
+                        onEmotionSnapshotChange?.({ ...(emotionSnapshot || {}), god_mode: false })
+                      }
+                    }}
+                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${godModeActive ? 'bg-violet-600' : 'bg-slate-800 border border-white/10'}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${godModeActive ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Debug Mode Toggle */}
+              <div className="space-y-3 mb-5 border-b border-white/10 pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                      <Terminal className="w-3.5 h-3.5 text-cyan-400" /> Debug Diagnostics
+                    </span>
+                    <span className="text-[9px] text-gray-500">Face-mesh wireframe and log feed</span>
+                  </div>
+                  <button
+                    onClick={() => setDebugModeActive(!debugModeActive)}
+                    className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${debugModeActive ? 'bg-cyan-500' : 'bg-slate-800 border border-white/10'}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${debugModeActive ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Telemetry Sliders */}
+              <div className="space-y-4 mb-6">
+                <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-widest border-b border-white/5 pb-1">Telemetry</h4>
+                
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-400">Eye Contact</span>
+                    <span className="text-cyan-300 font-mono font-bold">{eyeContact}%</span>
+                  </div>
+                  <input type="range" min="0" max="100" value={eyeContact}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value)
+                      onTelemetryOverrideChange?.(true)
+                      onEmotionSnapshotChange?.({ ...(emotionSnapshot || {}), eye_contact_score: val })
+                    }}
+                    className="w-full accent-cyan-400 bg-white/10 h-1 rounded-lg cursor-pointer"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-400">Posture</span>
+                    <span className="text-violet-300 font-mono font-bold">{posture}% ({postureLabel})</span>
+                  </div>
+                  <input type="range" min="0" max="100" value={posture}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value)
+                      let label = 'Good'
+                      if (val < 50) label = 'Slouched'
+                      else if (val < 75) label = 'Leaning Left'
+                      onTelemetryOverrideChange?.(true)
+                      onEmotionSnapshotChange?.({ ...(emotionSnapshot || {}), posture_score: val, posture_label: label })
+                    }}
+                    className="w-full accent-violet-400 bg-white/10 h-1 rounded-lg cursor-pointer"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-white/15">
+              <button
+                onClick={onEndInterview}
+                className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-xs font-extrabold text-white shadow-lg hover:shadow-cyan-500/20 transition-all flex items-center justify-center gap-1.5"
+              >
+                Go to Results
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   )
 }

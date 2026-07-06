@@ -4,6 +4,10 @@ import os
 import zipfile
 import fnmatch
 
+# Force script to run relative to the workspace root (one level up from this script)
+script_dir = os.path.dirname(os.path.abspath(__file__))
+workspace_root = os.path.dirname(script_dir)
+os.chdir(workspace_root)
 
 def should_exclude(path):
     """Determine if a file or directory path should be excluded from the release zip."""
@@ -48,7 +52,7 @@ def should_exclude(path):
 
 def build_zip(zip_filename):
     """Walk through the project and build the zip archive with proper exclusions."""
-    print(f"Creating archive: {zip_filename}")
+    print(f"Creating archive in workspace root: {zip_filename}")
     file_count = 0
 
     # If the zip already exists, delete it first

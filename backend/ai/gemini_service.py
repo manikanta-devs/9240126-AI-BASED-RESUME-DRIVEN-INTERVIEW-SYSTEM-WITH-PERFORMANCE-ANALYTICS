@@ -56,7 +56,7 @@ class HFProvider(BaseAIProvider):
                 self.MODEL_URL,
                 headers=headers,
                 json={"inputs": prompt},
-                timeout=30,
+                timeout=5,
             )
             if response.status_code == 200:
                 result = response.json()
@@ -145,7 +145,7 @@ class GroqProvider(BaseAIProvider):
                 self.API_URL,
                 headers=headers,
                 json=payload,
-                timeout=30,
+                timeout=5,
             )
             if response.status_code == 200:
                 result = response.json()
@@ -185,7 +185,7 @@ class OpenRouterProvider(BaseAIProvider):
                 self.API_URL,
                 headers=headers,
                 json=payload,
-                timeout=30,
+                timeout=5,
             )
             if response.status_code == 200:
                 result = response.json()
@@ -225,7 +225,7 @@ class MistralProvider(BaseAIProvider):
                 self.API_URL,
                 headers=headers,
                 json=payload,
-                timeout=30,
+                timeout=5,
             )
             if response.status_code == 200:
                 result = response.json()
@@ -389,13 +389,13 @@ class GeminiService:
                 logger.warning(
                     f"Provider {provider.provider_id} returned empty result. Triggering cooldown."
                 )
-                self.cooldowns[provider.provider_id] = time.time() + 120
+                self.cooldowns[provider.provider_id] = time.time() + 15
 
             except Exception as e:
                 logger.error(
                     f"Provider {provider.provider_id} failed with error: {e}. Triggering cooldown."
                 )
-                self.cooldowns[provider.provider_id] = time.time() + 120
+                self.cooldowns[provider.provider_id] = time.time() + 15
 
             # Brief pause before trying next provider (if not the last attempt)
             if attempt < max_attempts - 1:

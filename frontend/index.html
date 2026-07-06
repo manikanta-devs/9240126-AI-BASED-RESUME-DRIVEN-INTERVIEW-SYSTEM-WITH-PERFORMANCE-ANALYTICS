@@ -9,6 +9,70 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <script>
+      window.onerror = function(message, source, lineno, colno, error) {
+        // Ignore non-fatal third-party script/asset errors (e.g., MediaPipe FaceMesh loading issues)
+        // so that the app's built-in fallbacks (like centroid tracking) can take over instead of crashing the UI.
+        var msgStr = String(message || '');
+        var srcStr = String(source || '');
+        var stackStr = String(error && error.stack || '');
+        var isNonFatal = msgStr.indexOf('mediapipe') !== -1 || msgStr.indexOf('face_mesh') !== -1 ||
+                         srcStr.indexOf('mediapipe') !== -1 || srcStr.indexOf('face_mesh') !== -1 ||
+                         stackStr.indexOf('mediapipe') !== -1 || stackStr.indexOf('face_mesh') !== -1;
+        if (isNonFatal) {
+          console.warn("Ignored non-fatal runtime error to prevent app crash:", message, "Source:", source);
+          return true; // prevent default handling and propagation
+        }
+
+        const errorDiv = document.createElement('div');
+        errorDiv.style.position = 'fixed';
+        errorDiv.style.inset = '0';
+        errorDiv.style.background = '#090d16';
+        errorDiv.style.color = '#fecaca';
+        errorDiv.style.padding = '30px';
+        errorDiv.style.zIndex = '999999';
+        errorDiv.style.overflow = 'auto';
+        errorDiv.style.fontFamily = 'monospace';
+        errorDiv.style.fontSize = '14px';
+        errorDiv.style.lineHeight = '1.6';
+        errorDiv.style.border = '2px solid #ef4444';
+        errorDiv.innerHTML = `<h1 style="color:#ef4444;margin-top:0;font-size:24px;font-weight:900;">🔴 AstraPrep Runtime Crash</h1>
+        <p style="margin: 10px 0;"><strong>Message:</strong> ${message}</p>
+        <p style="margin: 10px 0;"><strong>Location:</strong> ${source}:${lineno}:${colno}</p>
+        <pre style="background:#1e293b;color:#f1f5f9;padding:15px;border-radius:10px;overflow-x:auto;margin-top:15px;font-size:12px;border:1px solid rgba(255,255,255,0.06);">${error ? error.stack : 'No stack trace available'}</pre>
+        <button onclick="window.location.reload()" style="margin-top:20px;padding:10px 20px;background:#ef4444;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">Reload Page</button>
+        <button onclick="localStorage.clear();window.location.href='/'" style="margin-top:20px;margin-left:10px;padding:10px 20px;background:#374151;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">Clear Storage & Logout</button>`;
+        document.body.appendChild(errorDiv);
+        return false;
+      };
+      window.onunhandledrejection = function(event) {
+        // Ignore non-fatal third-party promise rejections
+        var reasonStr = String(event && event.reason || '');
+        var isNonFatal = reasonStr.indexOf('mediapipe') !== -1 || reasonStr.indexOf('face_mesh') !== -1 || reasonStr.indexOf('FaceMesh') !== -1;
+        if (isNonFatal) {
+          console.warn("Ignored non-fatal promise rejection to prevent app crash:", event.reason);
+          return;
+        }
+
+        const errorDiv = document.createElement('div');
+        errorDiv.style.position = 'fixed';
+        errorDiv.style.inset = '0';
+        errorDiv.style.background = '#090d16';
+        errorDiv.style.color = '#fecaca';
+        errorDiv.style.padding = '30px';
+        errorDiv.style.zIndex = '999999';
+        errorDiv.style.overflow = 'auto';
+        errorDiv.style.fontFamily = 'monospace';
+        errorDiv.style.fontSize = '14px';
+        errorDiv.style.lineHeight = '1.6';
+        errorDiv.style.border = '2px solid #ef4444';
+        errorDiv.innerHTML = `<h1 style="color:#ef4444;margin-top:0;font-size:24px;font-weight:900;">🔴 AstraPrep Promise Rejection</h1>
+        <p style="margin: 10px 0;"><strong>Reason:</strong> ${event.reason}</p>
+        <button onclick="window.location.reload()" style="margin-top:20px;padding:10px 20px;background:#ef4444;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">Reload Page</button>
+        <button onclick="localStorage.clear();window.location.href='/'" style="margin-top:20px;margin-left:10px;padding:10px 20px;background:#374151;color:white;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">Clear Storage & Logout</button>`;
+        document.body.appendChild(errorDiv);
+      };
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -7,10 +7,36 @@ import os
 import time
 import logging
 
+import json
+
 load_dotenv()
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+
+class JSONFormatter(logging.Formatter):
+    def format(self, record):
+        log_entry = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        if record.exc_info:
+            log_entry["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_entry)
+
+env = os.getenv("FLASK_ENV", "development")
+if env == "production":
+    handler = logging.StreamHandler()
+    handler.setFormatter(JSONFormatter())
+    root_logger = logging.getLogger()
+    for h in root_logger.handlers[:]:
+        root_logger.removeHandler(h)
+    root_logger.addHandler(handler)
+    root_logger.setLevel(logging.INFO)
+else:
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,11 +47,24 @@ def create_app():
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key-change-in-prod")
     app.config["ENV"] = os.getenv("FLASK_ENV", "development")
 
+    # Strict key check for 2027 Production deployment
+    if app.config["ENV"] == "production":
+        secret_key = os.getenv("SECRET_KEY")
+        if not secret_key or secret_key in {
+            "dev-secret-key-change-in-prod",
+            "dev-secret-key-change-in-prod-secure-128bits-key",
+            ""
+        }:
+            raise RuntimeError(
+                "CRITICAL SECURITY EXCEPTION: A secure SECRET_KEY environment variable "
+                "MUST be configured when running in production mode. Fallback keys are disabled."
+            )
+
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
     os.makedirs("data", exist_ok=True)
 
     # ─── CORS Configuration ──────────────────────────────────
-    allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+    allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
     CORS(
         app,
         resources={
@@ -60,7 +99,13 @@ def create_app():
                 "max-age=31536000; includeSubDomains"
             )
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data: https:; "
+            "media-src 'self' data: blob:; "
+            "connect-src 'self' http://localhost:5000 http://127.0.0.1:5000 https:;"
         )
         return response
 
@@ -93,21 +138,22 @@ def create_app():
 
     # ─── Auth endpoints ─────────────────────────────────────
     import hashlib
-    import uuid
     from services.database import create_user, get_user
+    from werkzeug.security import generate_password_hash, check_password_hash
 
-    def hash_password(password: str, salt: str = None) -> str:
-        if not salt:
-            salt = uuid.uuid4().hex
-        pwd_hash = hashlib.sha256((password + salt).encode('utf-8')).hexdigest()
-        return f"{salt}:{pwd_hash}"
+    def hash_password(password: str) -> str:
+        return generate_password_hash(password)
 
     def verify_password(password: str, hashed_password: str) -> bool:
-        try:
-            salt, pwd_hash = hashed_password.split(':')
-            return hash_password(password, salt) == hashed_password
-        except ValueError:
-            return False
+        if ":" in hashed_password and not hashed_password.startswith("scrypt:") and not hashed_password.startswith("pbkdf2:"):
+            # Legacy SHA-256 fallback for backward compatibility
+            try:
+                salt, pwd_hash = hashed_password.split(':')
+                legacy_hash = hashlib.sha256((password + salt).encode('utf-8')).hexdigest()
+                return f"{salt}:{legacy_hash}" == hashed_password
+            except ValueError:
+                return False
+        return check_password_hash(hashed_password, password)
 
     @app.route("/api/auth/register", methods=["POST"])
     def register():
@@ -141,9 +187,12 @@ def create_app():
         if not user or not verify_password(password, user["password_hash"]):
             return jsonify({"error": "Invalid username or password"}), 401
 
+        from utils.auth_utils import sign_token
+        secret = app.config.get("SECRET_KEY", "dev-secret-key-change-in-prod-secure-128bits-key")
+        token = sign_token({"username": username}, secret=secret)
         return jsonify({
             "message": "Login successful",
-            "token": f"token_{username}",
+            "token": token,
             "user": {"username": username}
         }), 200
 
@@ -238,6 +287,9 @@ def create_app():
 if __name__ == "__main__":
     app = create_app()
     port = int(os.getenv("PORT", 5000))
-    debug = os.getenv("DEBUG", "true").lower() == "true"
-    logger.info(f"Starting AI Interview Coach v3.0 on port {port}")
+    env_mode = os.getenv("FLASK_ENV", "development")
+    debug = False
+    if env_mode == "development":
+        debug = os.getenv("DEBUG", "true").lower() == "true"
+    logger.info(f"Starting AstraPrep AI Backend on port {port} (debug={debug})")
     app.run(debug=debug, port=port, host="0.0.0.0", use_reloader=False)

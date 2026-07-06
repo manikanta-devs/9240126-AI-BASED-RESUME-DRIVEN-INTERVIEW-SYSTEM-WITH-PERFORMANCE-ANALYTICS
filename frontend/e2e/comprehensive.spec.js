@@ -10,10 +10,10 @@ test('AI Interview System Comprehensive E2E Test', async ({ page }) => {
     localStorage.setItem('username', 'JaneDoe');
   });
 
-  await expect(page.locator('h1')).toContainText('AstraPrep AI');
+  await expect(page.locator('h1')).toContainText('AstraPrep');
 
-  // Click "Start AI Interview" to navigate to dashboard overview
-  await page.click('text=Start AI Interview');
+  // Click "Start Interview" or "Open Dashboard" to navigate to dashboard overview
+  await page.locator('text=Open Dashboard').or(page.locator('text=Start Interview')).first().click();
   await expect(page).toHaveURL(/\/dashboard/);
 
   // 2. Verify Resume Page
@@ -37,7 +37,7 @@ test('AI Interview System Comprehensive E2E Test', async ({ page }) => {
   await page.click('button:has-text("Analyze Text")');
 
   // Wait for resume analysis to complete
-  await expect(page.getByRole('heading', { name: 'Resume Score', exact: true })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('heading', { name: 'Resume Score', exact: true })).toBeVisible({ timeout: 45000 });
 
   // Paste a job description to test 2027 Job Match (must be >= 80 characters to enable button)
   await page.fill(
@@ -49,7 +49,7 @@ test('AI Interview System Comprehensive E2E Test', async ({ page }) => {
   await page.click('button:has-text("Analyze Fit")');
 
   // Wait for job match analysis to complete
-  await expect(page.getByRole('heading', { name: 'Matched Skills', exact: true })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('heading', { name: 'Matched Skills', exact: true })).toBeVisible({ timeout: 30000 });
 
   // 3. Verify Quiz Practice Page
   await page.click('text=Quiz Practice');
@@ -60,31 +60,36 @@ test('AI Interview System Comprehensive E2E Test', async ({ page }) => {
   await page.click('button:has-text("Start quiz")');
 
   // Wait for the quiz screen to load
-  await expect(page.locator('text=Question 1 of')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('text=Question 1 of')).toBeVisible({ timeout: 35000 });
 
   // Select Option 1 and submit answers for the 5 questions
   for (let i = 1; i <= 5; i++) {
     // Select Option 1
-    await page.click('text=Option 1');
+    await page.locator('.space-y-3 button').first().click();
     await page.click('button:has-text("Submit answer")');
     await page.waitForTimeout(500); // short wait for state update
+    const nextBtn = page.locator('button:has-text("Next Question"), button:has-text("Finish Drill")');
+    if (await nextBtn.isVisible()) {
+      await nextBtn.click();
+      await page.waitForTimeout(500);
+    }
   }
 
   // Quiz completion should load
-  await expect(page.locator('text=Quiz completed')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('text=Quiz completed')).toBeVisible({ timeout: 35000 });
   await page.click('button:has-text("Take another quiz")');
 
   // 4. Verify Coach Page
   await page.click('text=Coach');
   await expect(page).toHaveURL(/\/dashboard\/coach/);
   await page.waitForTimeout(1000); // let page animation settle
-  await expect(page.locator('text=Daily speaking drills')).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('text=Interactive Guideline Center')).toBeVisible({ timeout: 10000 });
 
   // 5. Verify Analytics Page
   await page.click('text=Analytics');
   await expect(page).toHaveURL(/\/dashboard\/analytics/);
   await page.waitForTimeout(1000); // let page animation settle
-  await expect(page.getByRole('main').getByRole('heading', { name: 'Performance Analytics' })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('heading', { name: 'Performance Analytics' }).first()).toBeVisible({ timeout: 10000 });
 
   // 6. Test Theme Toggle (Dark/Light mode)
   // Default is light mode

@@ -824,24 +824,83 @@ class QuizService:
         return sorted(QUIZ_BANK.keys())
 
     def build_questions(
-        self, topic: str, difficulty: str, num_questions: int
+        self,
+        topic: str,
+        difficulty: str,
+        num_questions: int,
+        quiz_type: str = "technical",
+        company: str = "General"
     ) -> List[dict]:
         if self.gemini.is_available():
-            prompt = f"""You are a professional quiz maker and technical interviewer. Generate a JSON list of exactly {num_questions} multiple choice questions.
+            prompt = ""
+            if quiz_type == "aptitude":
+                prompt = f"""You are a professional quiz maker and technical interviewer. Generate a JSON list of exactly {num_questions} multiple choice questions for an Aptitude & Reasoning test.
+                
+                Topic: {topic.title()}
+                Difficulty Level: {difficulty}
+                Company Pattern: {company}
+                
+                Aptitude domains should cover Quantitative Aptitude, Logical Reasoning, or Verbal Ability.
+                
+                The output must be a JSON array. Each object in the array must contain:
+                1. "question": "<the question text>"
+                2. "options": ["<option 1>", "<option 2>", "<option 3>", "<option 4>"]
+                3. "correct_index": <0, 1, 2, or 3 - the index of the correct option>
+                4. "explanation": "<a detailed explanation of the steps to solve the question>"
+                5. "option_feedback": ["<feedback for option 1>", "<feedback for option 2>", "<feedback for option 3>", "<feedback for option 4>"]
+                6. "short_trick": "<A very short, elegant math trick or reasoning shortcut to solve this question in under 30 seconds>"
+                
+                Return ONLY the raw JSON array."""
+            elif quiz_type == "debugging":
+                prompt = f"""You are a professional software engineer and interviewer. Generate a JSON list of exactly {num_questions} debugging and code-fixing questions.
+                
+                Topic: {topic.title()} (e.g. Python, SQL, React, APIs, Runtime Errors, logical errors)
+                Difficulty Level: {difficulty}
+                
+                The questions should present a broken code block, syntax error, logical bug, or failing API response (500 status code, etc.) and ask how to fix it.
+                
+                The output must be a JSON array. Each object in the array must contain:
+                1. "question": "<a description of the bug, including a formatted markdown code snippet showing the broken code>"
+                2. "options": ["<fix option 1>", "<fix option 2>", "<fix option 3>", "<fix option 4>"]
+                3. "correct_index": <0, 1, 2, or 3 - the index of the correct fix option>
+                4. "explanation": "<a detailed explanation of the bug, why it occurred, and how the correct fix resolves it>"
+                5. "option_feedback": ["<feedback for option 1>", "<feedback for option 2>", "<feedback for option 3>", "<feedback for option 4>"]
+                
+                Return ONLY the raw JSON array."""
+            elif quiz_type == "company":
+                prompt = f"""You are a senior hiring manager and tech interviewer at {company}. Generate a JSON list of exactly {num_questions} multiple choice questions simulating the actual hiring assessment of {company}.
+                
+                Company: {company}
+                Difficulty Level: {difficulty}
+                
+                The questions should be a realistic blend of coding (Python/SQL), CS fundamentals (OOP/DBMS), debugging, and behavioral/leadership scenarios that matches {company}'s actual interview pattern (e.g. leadership principles for Amazon, algorithms for Google, quantitative/verbal aptitude for TCS/Infosys).
+                
+                The output must be a JSON array. Each object in the array must contain:
+                1. "question": "<the question text, including code snippets or scenarios where appropriate>"
+                2. "options": ["<option 1>", "<option 2>", "<option 3>", "<option 4>"]
+                3. "correct_index": <0, 1, 2, or 3 - the index of the correct option>
+                4. "explanation": "<a detailed explanation of the solution or expected behavioral alignment>"
+                5. "option_feedback": ["<feedback for option 1>", "<feedback for option 2>", "<feedback for option 3>", "<feedback for option 4>"]
+                
+                Return ONLY the raw JSON array."""
+            else:
+                prompt = f"""You are a professional quiz maker and technical interviewer. Generate a JSON list of exactly {num_questions} multiple choice questions for a Technical Mastery test.
+                
+                Topic: {topic.title()} (e.g. Python, SQL, DBMS, OS, Networks, OOP, System Design, REST APIs, Git, Cloud Basics)
+                Difficulty Level: {difficulty}
+                Company context (optional): {company}
+                
+                Questions should test core concepts, output prediction, code snippets, or system design trade-offs.
+                
+                The output must be a JSON array. Each object in the array must contain:
+                1. "question": "<the question text, incorporating code snippets or technical diagrams where appropriate>"
+                2. "options": ["<option 1>", "<option 2>", "<option 3>", "<option 4>"]
+                3. "correct_index": <0, 1, 2, or 3 - the index of the correct option>
+                4. "explanation": "<a detailed technical explanation of why the correct option is right>"
+                5. "option_feedback": ["<feedback for option 1>", "<feedback for option 2>", "<feedback for option 3>", "<feedback for option 4>"]
+                
+                Return ONLY the raw JSON array."""
 
-Topic: {topic.title()}
-Difficulty Level: {difficulty}
-
-Generate fresh, realistic, and highly educational questions. For technical topics, include coding scenarios or code snippets where appropriate. For behavioral/HR, include typical scenarios.
-
-The output must be a JSON array. Each object in the array must contain:
-1. "question": "<the question text>"
-2. "options": ["<option 1>", "<option 2>", "<option 3>", "<option 4>"]
-3. "correct_index": <0, 1, 2, or 3 - the index of the correct option>
-4. "explanation": "<a detailed explanation of why the correct option is right>"
-5. "option_feedback": ["<feedback for option 1>", "<feedback for option 2>", "<feedback for option 3>", "<feedback for option 4>"]
-
-Return ONLY the raw JSON array."""
             try:
                 res = self.gemini.generate_json(prompt)
                 if isinstance(res, list) and len(res) > 0:
@@ -873,6 +932,7 @@ Return ONLY the raw JSON array."""
                             "option_feedback": option_feedback,
                             "topic": topic,
                             "difficulty": difficulty,
+                            "short_trick": item.get("short_trick", None)
                         })
                     return questions
             except Exception as e:
@@ -895,6 +955,7 @@ Return ONLY the raw JSON array."""
                     "option_feedback": template.get("option_feedback", []),
                     "topic": topic,
                     "difficulty": difficulty,
+                    "short_trick": None
                 }
             )
         return questions
@@ -905,15 +966,21 @@ Return ONLY the raw JSON array."""
         difficulty: str,
         num_questions: int,
         candidate_name: str = "Candidate",
+        quiz_type: str = "technical",
+        company: str = "General",
+        username: str = "Candidate",
     ) -> dict:
         self._load_from_disk()
         session_id = str(uuid.uuid4())
-        questions = self.build_questions(topic, difficulty, num_questions)
+        questions = self.build_questions(topic, difficulty, num_questions, quiz_type, company)
         session = {
             "id": session_id,
+            "username": username or "Candidate",
             "candidate_name": candidate_name,
+            "quiz_type": quiz_type,
             "topic": topic,
             "difficulty": difficulty,
+            "company": company,
             "questions": questions,
             "responses": [],
             "status": "active",
@@ -929,6 +996,8 @@ Return ONLY the raw JSON array."""
             "total_questions": len(questions),
             "topic": topic,
             "difficulty": difficulty,
+            "quiz_type": quiz_type,
+            "company": company
         }
 
     def get_session(self, session_id: str) -> dict:
@@ -1042,9 +1111,11 @@ Return ONLY the raw JSON array."""
         self._save_to_disk()
         return results
 
-    def get_sessions(self) -> List[dict]:
+    def get_sessions(self, username: str = None) -> List[dict]:
         self._load_from_disk()
         sessions = list(self._sessions.values())
+        if username:
+            sessions = [s for s in sessions if s.get("username") == username]
         sessions.sort(key=lambda item: item.get("started_at", ""), reverse=True)
         return [
             {

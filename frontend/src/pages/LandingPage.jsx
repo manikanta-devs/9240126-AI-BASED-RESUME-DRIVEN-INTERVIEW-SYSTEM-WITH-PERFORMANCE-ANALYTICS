@@ -108,7 +108,7 @@ export default function LandingPage() {
             </motion.div>
 
             <motion.h1 variants={fadeUp} className="text-4xl sm:text-5xl md:text-7xl font-black leading-[1.03] tracking-normal mb-6">
-              AstraPrep AI
+              AstraPrep
               <span className="block brand-text">turns practice into proof.</span>
             </motion.h1>
 
@@ -119,7 +119,7 @@ export default function LandingPage() {
 
             <motion.div variants={fadeUp} className="flex flex-wrap gap-4 mb-12">
               <button onClick={() => navigate('/dashboard/interview')} className="btn-primary px-8 py-3.5 text-base">
-                <Sparkles className="w-5 h-5" /> Start AI Interview
+                <Sparkles className="w-5 h-5" /> Start Interview
               </button>
               <button onClick={() => navigate('/dashboard/resume')} className="inline-flex items-center gap-2 px-8 py-3.5 font-semibold rounded-xl border transition-all duration-300 shadow-sm focus:outline-none bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/20 text-base">
                 <FileText className="w-5 h-5" /> Analyze Resume
@@ -246,7 +246,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-white/35">
           <div className="flex items-center gap-2">
             <AppLogo size={20} showText={false} />
-            <span>AstraPrep AI - Built with Gemini AI</span>
+            <span>AstraPrep - AI Interview Preparation System</span>
           </div>
           <span>{version && `v${version}`}</span>
         </div>

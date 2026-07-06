@@ -1,0 +1,1874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AstraPrep AI - Project Documentation Hub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    /* Global Variables & Colors */
+    :root {
+      --bg-dark: #070e17;
+      --bg-card: rgba(13, 27, 42, 0.65);
+      --bg-card-hover: rgba(22, 42, 64, 0.85);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-hover: rgba(20, 184, 166, 0.4);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dark: #64748b;
+      --primary: #14b8a6; /* Teal */
+      --secondary: #06b6d4; /* Cyan */
+      --accent: #f59e0b; /* Amber */
+      --danger: #f43f5e; /* Rose */
+      --gradient-primary: linear-gradient(135deg, #14b8a6, #06b6d4);
+      --gradient-accent: linear-gradient(135deg, #f59e0b, #d97706);
+      --glow-teal: rgba(20, 184, 166, 0.15);
+      --glow-cyan: rgba(6, 118, 212, 0.15);
+      --font-display: 'Outfit', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* CSS Reset */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      line-height: 1.6;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Background Gradients */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: -2;
+      background: 
+        radial-gradient(circle at 10% 20%, rgba(20, 184, 166, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 45%),
+        #050b11;
+      pointer-events: none;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      opacity: 0.02;
+      background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.9) 1px, transparent 1px), 
+        linear-gradient(90deg, rgba(255, 255, 255, 0.9) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    /* Utility Layouts */
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* Header Nav */
+    header {
+      background: rgba(7, 14, 23, 0.7);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .nav-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem 2rem;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .logo-icon {
+      width: 2.25rem;
+      height: 2.25rem;
+      background: var(--gradient-primary);
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #070e17;
+      font-weight: 800;
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      box-shadow: 0 0 15px var(--glow-teal);
+    }
+
+    .logo-text {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.35rem;
+      letter-spacing: -0.025em;
+    }
+
+    .logo-tag {
+      font-size: 0.75rem;
+      background: rgba(20, 184, 166, 0.12);
+      color: var(--primary);
+      border: 1px solid rgba(20, 184, 166, 0.2);
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      margin-left: 0.5rem;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+
+    .nav-btn {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .nav-btn:hover {
+      color: var(--text-main);
+    }
+
+    .nav-btn-primary {
+      background: rgba(20, 184, 166, 0.08);
+      color: var(--primary);
+      border: 1px solid rgba(20, 184, 166, 0.2);
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+    }
+
+    .nav-btn-primary:hover {
+      background: var(--primary);
+      color: #070e17;
+      box-shadow: 0 0 15px var(--glow-teal);
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      padding: 4.5rem 0 3rem 0;
+      position: relative;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--accent);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      padding: 0.4rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.2); }
+      70% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: 3.5rem;
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 1rem;
+    }
+
+    .hero-title span {
+      background: linear-gradient(135deg, #14b8a6 20%, #06b6d4 50%, #f59e0b 80%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-desc {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      max-width: 720px;
+      margin: 0 auto 2.5rem auto;
+      line-height: 1.6;
+    }
+
+    /* Stats bar */
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 4rem;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      text-align: center;
+      transition: var(--transition);
+      backdrop-filter: blur(10px);
+    }
+
+    .stat-card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .stat-tech {
+      font-size: 0.8rem;
+      color: var(--primary);
+      margin-top: 0.25rem;
+      font-weight: 500;
+    }
+
+    /* Filter & Search Bar */
+    .controls-panel {
+      background: rgba(13, 27, 42, 0.4);
+      border: 1px solid var(--border-color);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .search-box-container {
+      position: relative;
+      flex: 1;
+      min-width: 280px;
+    }
+
+    .search-box {
+      width: 100%;
+      background: rgba(7, 14, 23, 0.8);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.75rem 1rem 0.75rem 2.5rem;
+      border-radius: 0.5rem;
+      font-size: 0.9rem;
+      font-family: var(--font-body);
+      transition: var(--transition);
+    }
+
+    .search-box:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 15px rgba(20, 184, 166, 0.1);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 0.9rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 1rem;
+      height: 1rem;
+      color: var(--text-dark);
+      pointer-events: none;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-tab {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .filter-tab:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+    }
+
+    .filter-tab.active {
+      background: rgba(20, 184, 166, 0.1);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* Grid of Documents */
+    .docs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 4rem;
+    }
+
+    .doc-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      transition: var(--transition);
+      backdrop-filter: blur(10px);
+    }
+
+    .doc-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: var(--gradient-primary);
+      opacity: 0;
+      transition: var(--transition);
+    }
+
+    .doc-card.accent-card::before {
+      background: var(--gradient-accent);
+    }
+
+    .doc-card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-4px);
+      box-shadow: 
+        0 15px 30px rgba(0, 0, 0, 0.3),
+        0 0 20px rgba(20, 184, 166, 0.05);
+      background: var(--bg-card-hover);
+    }
+
+    .doc-card.accent-card:hover {
+      border-color: var(--accent);
+      box-shadow: 
+        0 15px 30px rgba(0, 0, 0, 0.3),
+        0 0 20px rgba(245, 158, 11, 0.05);
+    }
+
+    .doc-card:hover::before {
+      opacity: 1;
+    }
+
+    .doc-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .doc-icon-wrapper {
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 0.5rem;
+      background: rgba(20, 184, 166, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+    }
+
+    .doc-card.accent-card .doc-icon-wrapper {
+      background: rgba(245, 158, 11, 0.08);
+      color: var(--accent);
+    }
+
+    .doc-badge {
+      font-size: 0.7rem;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.25rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .doc-card.accent-card .doc-badge {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--accent);
+      border-color: rgba(245, 158, 11, 0.2);
+    }
+
+    .doc-title {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .doc-desc {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      flex-grow: 1;
+      line-height: 1.5;
+    }
+
+    .doc-metadata {
+      border-top: 1px solid var(--border-color);
+      padding-top: 1rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.78rem;
+      color: var(--text-dark);
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .meta-item {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .meta-item span:first-child {
+      font-weight: 500;
+    }
+
+    .meta-item span:last-child {
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    .doc-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      text-decoration: none;
+      padding: 0.6rem 0.85rem;
+      border-radius: 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      border: 1px solid transparent;
+      outline: none;
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: var(--border-color);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--text-muted);
+    }
+
+    .btn-fill {
+      background: var(--primary);
+      color: #070e17;
+      box-shadow: 0 4px 10px rgba(20, 184, 166, 0.15);
+    }
+
+    .btn-fill:hover {
+      background: #11a393;
+      box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);
+    }
+
+    .btn-accent {
+      background: var(--accent);
+      color: #070e17;
+      box-shadow: 0 4px 10px rgba(245, 158, 11, 0.15);
+    }
+
+    .btn-accent:hover {
+      background: #d97706;
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+    }
+
+    .btn-full-width {
+      grid-column: span 2;
+    }
+
+    /* Section Panels */
+    .section-title-wrapper {
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-indicator {
+      width: 4px;
+      height: 24px;
+      background: var(--gradient-primary);
+      border-radius: 2px;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 1.75rem;
+      font-weight: 800;
+    }
+
+    .layout-split {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
+      margin-bottom: 4rem;
+    }
+
+    @media (min-width: 1024px) {
+      .layout-split {
+        grid-template-columns: 1.25fr 1fr;
+      }
+    }
+
+    /* Viva prep simulator style */
+    .viva-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 1rem;
+      padding: 1.75rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .viva-desc {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .viva-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .viva-item {
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      overflow: hidden;
+      background: rgba(7, 14, 23, 0.4);
+      transition: var(--transition);
+    }
+
+    .viva-item:hover {
+      border-color: rgba(20, 184, 166, 0.25);
+    }
+
+    .viva-question {
+      padding: 1rem;
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      background: rgba(255, 255, 255, 0.01);
+      transition: var(--transition);
+    }
+
+    .viva-question:hover {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--primary);
+    }
+
+    .viva-question-text {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+
+    .viva-q-tag {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--accent);
+      border: 1px solid rgba(245, 158, 11, 0.15);
+      padding: 0.1rem 0.35rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .viva-arrow {
+      transition: var(--transition);
+      color: var(--text-dark);
+      flex-shrink: 0;
+    }
+
+    .viva-item.active .viva-arrow {
+      transform: rotate(180deg);
+      color: var(--primary);
+    }
+
+    .viva-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+      background: rgba(5, 10, 17, 0.5);
+    }
+
+    .viva-answer-content {
+      padding: 1rem;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-color);
+      line-height: 1.5;
+    }
+
+    .viva-answer-content p {
+      margin-bottom: 0.75rem;
+    }
+
+    .viva-answer-content p:last-child {
+      margin-bottom: 0;
+    }
+
+    .viva-answer-content strong {
+      color: var(--text-main);
+    }
+
+    .viva-answer-content ul {
+      margin-left: 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .viva-answer-content li {
+      margin-bottom: 0.25rem;
+    }
+
+    .viva-badge-score {
+      display: inline-block;
+      margin-top: 0.5rem;
+      font-size: 0.78rem;
+      padding: 0.2rem 0.5rem;
+      background: rgba(20, 184, 166, 0.08);
+      color: var(--primary);
+      border: 1px solid rgba(20, 184, 166, 0.15);
+      border-radius: 0.25rem;
+      font-weight: 600;
+    }
+
+    /* Interactive Code Tree Style */
+    .tree-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 1rem;
+      padding: 1.75rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .tree-desc {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .tree-root {
+      font-family: monospace;
+      font-size: 0.85rem;
+      user-select: none;
+    }
+
+    .tree-node {
+      margin-left: 1.25rem;
+      margin-top: 0.25rem;
+    }
+
+    .tree-node-title {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      padding: 0.2rem 0.4rem;
+      border-radius: 0.25rem;
+      transition: var(--transition);
+      color: var(--text-main);
+    }
+
+    .tree-node-title:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--primary);
+    }
+
+    .tree-node-icon {
+      color: var(--text-dark);
+      flex-shrink: 0;
+    }
+
+    .tree-folder.expanded > .tree-node-title > .tree-node-icon {
+      color: var(--accent);
+    }
+
+    .tree-file > .tree-node-title > .tree-node-icon {
+      color: var(--primary);
+    }
+
+    .tree-node-children {
+      display: none;
+      border-left: 1px dotted rgba(255, 255, 255, 0.15);
+      margin-left: 0.6rem;
+      padding-left: 0.6rem;
+    }
+
+    .tree-folder.expanded > .tree-node-children {
+      display: block;
+    }
+
+    .tree-node-desc {
+      font-size: 0.75rem;
+      color: var(--text-dark);
+      margin-left: auto;
+      font-style: italic;
+    }
+
+    .tree-node:hover > .tree-node-title > .tree-node-desc {
+      color: var(--text-muted);
+    }
+
+    /* Modal / Document Reader Style */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(3, 7, 18, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: var(--transition);
+      padding: 2rem;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-container {
+      background: #0b1522;
+      border: 1px solid var(--border-color);
+      border-radius: 1rem;
+      width: 100%;
+      max-width: 900px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+      transform: translateY(20px);
+      transition: var(--transition);
+    }
+
+    .modal-overlay.active .modal-container {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    .modal-close {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+    }
+
+    .modal-body {
+      padding: 2rem;
+      overflow-y: auto;
+      flex: 1;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .modal-body h1, .modal-body h2, .modal-body h3 {
+      font-family: var(--font-display);
+      color: var(--text-main);
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .modal-body h1 { font-size: 1.75rem; margin-top: 0; }
+    .modal-body h2 { font-size: 1.4rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
+    .modal-body h3 { font-size: 1.15rem; }
+
+    .modal-body p {
+      margin-bottom: 1rem;
+    }
+
+    .modal-body ul, .modal-body ol {
+      margin-bottom: 1rem;
+      margin-left: 1.5rem;
+    }
+
+    .modal-body li {
+      margin-bottom: 0.35rem;
+    }
+
+    .modal-body pre {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+      padding: 1rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      margin-bottom: 1.25rem;
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: #38bdf8;
+    }
+
+    .modal-body code {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 0.15rem 0.35rem;
+      border-radius: 0.25rem;
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: var(--primary);
+    }
+
+    .modal-body blockquote {
+      border-left: 4px solid var(--primary);
+      padding-left: 1rem;
+      margin-bottom: 1rem;
+      font-style: italic;
+      color: var(--text-muted);
+      background: rgba(20, 184, 166, 0.03);
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+
+    .modal-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      background: rgba(7, 14, 23, 0.4);
+      border-radius: 0 0 1rem 1rem;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: #0f172a;
+      border: 1px solid rgba(20, 184, 166, 0.25);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      border-radius: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      color: var(--text-main);
+      font-size: 0.88rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: var(--transition);
+      z-index: 1100;
+      pointer-events: none;
+    }
+
+    .toast.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 3rem 0;
+      margin-top: 4rem;
+      background: rgba(7, 14, 23, 0.8);
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-dark);
+    }
+
+    .footer-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header>
+    <div class="nav-container">
+      <a href="#" class="logo-container">
+        <div class="logo-icon">A</div>
+        <div class="logo-text">AstraPrep <span style="color:var(--primary)">AI</span></div>
+        <span class="logo-tag">Docs Portal</span>
+      </a>
+      <div class="nav-links">
+        <a href="../README.md" class="nav-btn">Readme</a>
+        <a href="./PROJECT_SUBMISSION.html" class="nav-btn">Submission Details</a>
+        <a href="#viva-section" class="nav-btn">Viva Prep</a>
+        <a href="../frontend/index.html" class="nav-btn nav-btn-primary">Launch App</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Hero Header -->
+    <section class="hero">
+      <div class="hero-badge">
+        <svg style="width:0.85rem;height:0.85rem;fill:currentColor" viewBox="0 0 24 24">
+          <path d="M12 2L2 22h20L12 2zm0 3.99L19.53 19H4.47L12 5.99zM13 16h-2v2h2v-2zm0-6h-2v4h2v-4z"/>
+        </svg>
+        University Project Hand-off
+      </div>
+      <h1 class="hero-title">Interactive <span>Documentation Hub</span></h1>
+      <p class="hero-desc">
+        Welcome to the central repository dashboard for the <strong>AI-Based Resume Driven Interview System with Performance Analytics</strong>. Use this portal to access project details, setup guides, code mapping, and practice mock Viva questions.
+      </p>
+    </section>
+
+    <!-- Metrics Dashboard -->
+    <section class="stats-container">
+      <div class="stat-card">
+        <div class="stat-label">Frontend Stack</div>
+        <div class="stat-value">React 18</div>
+        <div class="stat-tech">Vite • Tailwind • Recharts</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Backend Service</div>
+        <div class="stat-value">Flask 3</div>
+        <div class="stat-tech">Python 3.10+ • REST API</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">NLP Processing</div>
+        <div class="stat-value">spaCy</div>
+        <div class="stat-tech">Entity Extraction • NER</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Core AI Engine</div>
+        <div class="stat-value">Gemini 1.5</div>
+        <div class="stat-tech">Flash API • Provider Chains</div>
+      </div>
+    </section>
+
+    <!-- Filters Panel -->
+    <div class="controls-panel">
+      <div class="search-box-container">
+        <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        <input type="text" id="docSearch" class="search-box" placeholder="Search guides, setup instructions, or files..." oninput="filterCards()" />
+      </div>
+      <div class="filter-tabs">
+        <button class="filter-tab active" onclick="setFilter('all', this)">All resources</button>
+        <button class="filter-tab" onclick="setFilter('submission', this)">Submission & Viva</button>
+        <button class="filter-tab" onclick="setFilter('setup', this)">Installation</button>
+        <button class="filter-tab" onclick="setFilter('dev', this)">Development</button>
+      </div>
+    </div>
+
+    <!-- Document Grid -->
+    <section class="docs-grid" id="docsGrid">
+      
+      <!-- Card 1: Project Submission Overview -->
+      <div class="doc-card accent-card" data-category="submission">
+        <div class="doc-card-header">
+          <div class="doc-icon-wrapper">
+            <svg style="width:1.5rem;height:1.5rem;fill:currentColor" viewBox="0 0 24 24">
+              <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+            </svg>
+          </div>
+          <span class="doc-badge">Submission</span>
+        </div>
+        <h3 class="doc-title">Project Submission Details</h3>
+        <p class="doc-desc">Official university project metadata, objective descriptions, problem statements, brief literature surveys, and list of completed features ready for submission review.</p>
+        <div class="doc-metadata">
+          <div class="meta-item"><span>File Link</span><span>docs/PROJECT_SUBMISSION.html</span></div>
+          <div class="meta-item"><span>Format</span><span>HTML + MD</span></div>
+        </div>
+        <div class="doc-actions">
+          <button class="btn btn-outline" onclick="copyPath('docs/PROJECT_SUBMISSION.md')">Copy Path</button>
+          <a href="./PROJECT_SUBMISSION.html" target="_blank" class="btn btn-accent">Open File</a>
+          <button class="btn btn-outline btn-full-width" onclick="viewDoc('PROJECT_SUBMISSION')">View Details</button>
+        </div>
+      </div>
+
+      <!-- Card 2: Admin Setup Guide -->
+      <div class="doc-card" data-category="setup">
+        <div class="doc-card-header">
+          <div class="doc-icon-wrapper">
+            <svg style="width:1.5rem;height:1.5rem;fill:currentColor" viewBox="0 0 24 24">
+              <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+            </svg>
+          </div>
+          <span class="doc-badge">Setup</span>
+        </div>
+        <h3 class="doc-title">Admin Setup Guide</h3>
+        <p class="doc-desc">Complete requirements and configuration steps. Guides you through acquiring free API tokens (Hugging Face / Gemini) and launching the full application locally.</p>
+        <div class="doc-metadata">
+          <div class="meta-item"><span>File Link</span><span>ADMIN_SETUP.md</span></div>
+          <div class="meta-item"><span>Format</span><span>Markdown</span></div>
+        </div>
+        <div class="doc-actions">
+          <button class="btn btn-outline" onclick="copyPath('ADMIN_SETUP.md')">Copy Path</button>
+          <a href="../ADMIN_SETUP.md" target="_blank" class="btn btn-fill">Open File</a>
+          <button class="btn btn-outline btn-full-width" onclick="viewDoc('ADMIN_SETUP')">View Details</button>
+        </div>
+      </div>
+
+      <!-- Card 3: Backend Development Guide -->
+      <div class="doc-card" data-category="dev">
+        <div class="doc-card-header">
+          <div class="doc-icon-wrapper">
+            <svg style="width:1.5rem;height:1.5rem;fill:currentColor" viewBox="0 0 24 24">
+              <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 12H4v-2h8v2zm8-4H4V8h16v4z"/>
+            </svg>
+          </div>
+          <span class="doc-badge">Dev Guide</span>
+        </div>
+        <h3 class="doc-title">Backend Architecture</h3>
+        <p class="doc-desc">Deep-dive into the Flask app setup, routing structures, spaCy NLP integration, prompt-engineered question generators, and detailed answer evaluation modules.</p>
+        <div class="doc-metadata">
+          <div class="meta-item"><span>File Link</span><span>docs/BACKEND_DEV.md</span></div>
+          <div class="meta-item"><span>Format</span><span>Markdown</span></div>
+        </div>
+        <div class="doc-actions">
+          <button class="btn btn-outline" onclick="copyPath('docs/BACKEND_DEV.md')">Copy Path</button>
+          <a href="./BACKEND_DEV.md" target="_blank" class="btn btn-fill">Open File</a>
+          <button class="btn btn-outline btn-full-width" onclick="viewDoc('BACKEND_DEV')">View Details</button>
+        </div>
+      </div>
+
+      <!-- Card 4: Frontend Development Guide -->
+      <div class="doc-card" data-category="dev">
+        <div class="doc-card-header">
+          <div class="doc-icon-wrapper">
+            <svg style="width:1.5rem;height:1.5rem;fill:currentColor" viewBox="0 0 24 24">
+              <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/>
+            </svg>
+          </div>
+          <span class="doc-badge">Dev Guide</span>
+        </div>
+        <h3 class="doc-title">Frontend Architecture</h3>
+        <p class="doc-desc">Explanation of React component architecture, routing layouts, React Context providers for API synchronization, Zustand store usage, and visual Recharts reporting UI.</p>
+        <div class="doc-metadata">
+          <div class="meta-item"><span>File Link</span><span>docs/FRONTEND_DEV.md</span></div>
+          <div class="meta-item"><span>Format</span><span>Markdown</span></div>
+        </div>
+        <div class="doc-actions">
+          <button class="btn btn-outline" onclick="copyPath('docs/FRONTEND_DEV.md')">Copy Path</button>
+          <a href="./FRONTEND_DEV.md" target="_blank" class="btn btn-fill">Open File</a>
+          <button class="btn btn-outline btn-full-width" onclick="viewDoc('FRONTEND_DEV')">View Details</button>
+        </div>
+      </div>
+
+      <!-- Card 5: Deployment Guide -->
+      <div class="doc-card" data-category="setup">
+        <div class="doc-card-header">
+          <div class="doc-icon-wrapper">
+            <svg style="width:1.5rem;height:1.5rem;fill:currentColor" viewBox="0 0 24 24">
+              <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/>
+            </svg>
+          </div>
+          <span class="doc-badge">Setup</span>
+        </div>
+        <h3 class="doc-title">Deployment Guide</h3>
+        <p class="doc-desc">Details on production setups including Docker Compose configurations, container environments, and Gunicorn-Nginx reverse proxy wiring for high availability.</p>
+        <div class="doc-metadata">
+          <div class="meta-item"><span>File Link</span><span>docs/DEPLOYMENT.md</span></div>
+          <div class="meta-item"><span>Format</span><span>Markdown</span></div>
+        </div>
+        <div class="doc-actions">
+          <button class="btn btn-outline" onclick="copyPath('docs/DEPLOYMENT.md')">Copy Path</button>
+          <a href="./DEPLOYMENT.md" target="_blank" class="btn btn-fill">Open File</a>
+          <button class="btn btn-outline btn-full-width" onclick="viewDoc('DEPLOYMENT')">View Details</button>
+        </div>
+      </div>
+
+      <!-- Card 6: Free Stack & License -->
+      <div class="doc-card" data-category="submission">
+        <div class="doc-card-header">
+          <div class="doc-icon-wrapper">
+            <svg style="width:1.5rem;height:1.5rem;fill:currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+            </svg>
+          </div>
+          <span class="doc-badge">Submission</span>
+        </div>
+        <h3 class="doc-title">Free & Open Source Stack</h3>
+        <p class="doc-desc">Breakdown of the zero-cost API integrations and libraries (Google Gemini Free tier, Hugging Face Hub, spaCy NLP pipeline) enabling offline evaluation modes.</p>
+        <div class="doc-metadata">
+          <div class="meta-item"><span>File Link</span><span>docs/FREE_OPEN_SOURCE_STACK.md</span></div>
+          <div class="meta-item"><span>Format</span><span>Markdown</span></div>
+        </div>
+        <div class="doc-actions">
+          <button class="btn btn-outline" onclick="copyPath('docs/FREE_OPEN_SOURCE_STACK.md')">Copy Path</button>
+          <a href="./FREE_OPEN_SOURCE_STACK.md" target="_blank" class="btn btn-fill">Open File</a>
+          <button class="btn btn-outline btn-full-width" onclick="viewDoc('FREE_STACK')">View Details</button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Interactive Section: Viva Prep & Project Directory -->
+    <div class="section-title-wrapper" id="viva-section">
+      <div class="section-indicator"></div>
+      <h2 class="section-title">Viva-Voce Prep & Codebase Directory</h2>
+    </div>
+
+    <div class="layout-split">
+      
+      <!-- Left Column: Viva-Voce Simulator -->
+      <div class="viva-panel">
+        <h3 class="doc-title" style="margin-bottom: 0.5rem">
+          <svg style="width:1.25rem;height:1.25rem;fill:var(--accent);vertical-align:middle;margin-right:0.25rem" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/>
+          </svg>
+          Viva-Voce Practice Simulator
+        </h3>
+        <p class="viva-desc">Review high-yield questions examiners typically ask during final project presentations. Click on any question to view structured responses and technical justifications.</p>
+        
+        <div class="viva-list">
+          
+          <!-- Viva Item 1 -->
+          <div class="viva-item">
+            <div class="viva-question" onclick="toggleAccordion(this)">
+              <div class="viva-question-text">
+                <span class="viva-q-tag">Q1: Project Goal</span>
+                <span>What is the core contribution of this system?</span>
+              </div>
+              <span class="viva-arrow">▼</span>
+            </div>
+            <div class="viva-answer">
+              <div class="viva-answer-content">
+                <p>The system bridges the gap between static resume screening and behavioral interview prep. It parses a candidate's uploaded resume (PDF/DOCX/TXT) using <strong>NLP (spaCy)</strong> to extract skills, education, and experiences. It then uses <strong>Generative AI (Gemini 1.5 Flash)</strong> to generate structured, role-specific, and resume-aware technical/soft question sets, culminating in voice/video practice with detailed scores (accuracy, pacing, depth) and analytics trends.</p>
+                <div class="viva-badge-score">Topics: System Value, Target Problem</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Viva Item 2 -->
+          <div class="viva-item">
+            <div class="viva-question" onclick="toggleAccordion(this)">
+              <div class="viva-question-text">
+                <span class="viva-q-tag">Q2: Natural Language Processing</span>
+                <span>Why did you choose spaCy over basic regex or NLTK?</span>
+              </div>
+              <span class="viva-arrow">▼</span>
+            </div>
+            <div class="viva-answer">
+              <div class="viva-answer-content">
+                <p><strong>spaCy</strong> provides a production-grade NLP pipeline with pre-trained statistical models. We utilize the English pipeline (<code>en_core_web_sm</code>) for:</p>
+                <ul>
+                  <li><strong>Named Entity Recognition (NER)</strong>: Extracting companies (ORG), dates (DATE), and education degrees.</li>
+                  <li><strong>Part-of-Speech (POS) Tagging</strong>: Understanding sentence structure for filtering nouns and verbs.</li>
+                  <li><strong>Phrase Matching</strong>: Running matcher logic against a dictionary of 800+ standard tech skills to ensure high extraction precision.</li>
+                </ul>
+                <p>Unlike NLTK (which is academic/research focused) or Regex (which is fragile), spaCy parses resumes into clean structured JSON datasets in milliseconds.</p>
+                <div class="viva-badge-score">Topics: NLP, Entity Extraction</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Viva Item 3 -->
+          <div class="viva-item">
+            <div class="viva-question" onclick="toggleAccordion(this)">
+              <div class="viva-question-text">
+                <span class="viva-q-tag">Q3: Fallback Logic</span>
+                <span>How does the system function if the LLM API key is missing?</span>
+              </div>
+              <span class="viva-arrow">▼</span>
+            </div>
+            <div class="viva-answer">
+              <div class="viva-answer-content">
+                <p>We designed the app to be highly resilient with a **Fallback Mode**:</p>
+                <ol>
+                  <li><strong>Question Generation</strong>: If Gemini fails/is unauthorized, the backend pulls from a local dataset of 100+ vetted questions filtered by candidate role.</li>
+                  <li><strong>Answer Evaluation</strong>: Falls back to a deterministic heuristic script (<code>backend/ai/answer_evaluator.py</code>) that evaluates structural depth, keyword density, word counts, presence of structural patterns (like STAR method), and numeric details.</li>
+                </ol>
+                <p>This guarantees the app remains completely operational during live evaluator demos even without active internet or credentials.</p>
+                <div class="viva-badge-score">Topics: Resilience, Heuristics</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Viva Item 4 -->
+          <div class="viva-item">
+            <div class="viva-question" onclick="toggleAccordion(this)">
+              <div class="viva-question-text">
+                <span class="viva-q-tag">Q4: UI/State Architecture</span>
+                <span>Explain how you manage state and routing in the client app.</span>
+              </div>
+              <span class="viva-arrow">▼</span>
+            </div>
+            <div class="viva-answer">
+              <div class="viva-answer-content">
+                <p>We built a multi-layered state architecture:</p>
+                <ul>
+                  <li><strong>React Context API (AppContext)</strong>: Handles global state like API base configurations, health checks, and active session objects.</li>
+                  <li><strong>Zustand Store (store.js)</strong>: Provides lightweight, reactive states for audio recordings, feedback logs, and visual settings.</li>
+                  <li><strong>React Router v6</strong>: Manages URL routes with <code>ProtectedRoute</code> layers ensuring user profiles are instantiated before interviews.</li>
+                </ul>
+                <p>Routing uses lazy loading (<code>lazy</code> / <code>Suspense</code>) to split bundles, keeping the initial load under 300KB.</p>
+                <div class="viva-badge-score">Topics: React, State, Lazy Loading</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Viva Item 5 -->
+          <div class="viva-item">
+            <div class="viva-question" onclick="toggleAccordion(this)">
+              <div class="viva-question-text">
+                <span class="viva-q-tag">Q5: Security</span>
+                <span>What security protections are implemented in the API?</span>
+              </div>
+              <span class="viva-arrow">▼</span>
+            </div>
+            <div class="viva-answer">
+              <div class="viva-answer-content">
+                <p>The backend includes multiple layers of defensive security:</p>
+                <ul>
+                  <li><strong>Rate Limiting</strong>: Restricts endpoints using a memory-based bucket to prevent API scraping and LLM cost spikes.</li>
+                  <li><strong>Input Validation</strong>: Uses <strong>Pydantic</strong> validators (<code>validators.py</code>) to enforce schema checkups on inputs.</li>
+                  <li><strong>Security Headers</strong>: Integrates Werkzeug middleware to apply CSP (Content Security Policy), HSTS, and X-XSS protection.</li>
+                  <li><strong>File Upload Filters</strong>: Restricts uploads strictly to PDFs, DOCX, and TXT files, capped at 16MB.</li>
+                </ul>
+                <div class="viva-badge-score">Topics: Flask Security, Pydantic</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Right Column: Interactive Code Tree Explorer -->
+      <div class="tree-panel">
+        <h3 class="doc-title" style="margin-bottom: 0.5rem">
+          <svg style="width:1.25rem;height:1.25rem;fill:var(--primary);vertical-align:middle;margin-right:0.25rem" viewBox="0 0 24 24">
+            <path d="M19 15v4H5v-4h14m1-2H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-6c0-.55-.45-1-1-1zM7 18.5c-.82 0-1.5-.68-1.5-1.5s.68-1.5 1.5-1.5 1.5.68 1.5 1.5-.68 1.5-1.5 1.5zM19 5v4H5V5h14m1-2H4c-.55 0-1 .45-1 1v6c0 .55.45 1 1 1h16c.55 0 1-.45 1-1V4c0-.55-.45-1-1-1zM7 8.5C6.18 8.5 5.5 7.82 5.5 7S6.18 5.5 7 5.5s1.5.68 1.5 1.5S7.82 8.5 7 8.5z"/>
+          </svg>
+          Interactive Codebase Explorer
+        </h3>
+        <p class="tree-desc">Click on directories to expand and view the core mapping of files that implement the platform's features.</p>
+        
+        <div class="tree-root">
+          <!-- Root Project Folder -->
+          <div class="tree-node tree-folder expanded">
+            <div class="tree-node-title" onclick="toggleTreeNode(this)">
+              <span class="tree-node-icon">▼</span>
+              <span>ai-interview-system/</span>
+            </div>
+            <div class="tree-node-children">
+              
+              <!-- backend/ -->
+              <div class="tree-node tree-folder expanded">
+                <div class="tree-node-title" onclick="toggleTreeNode(this)">
+                  <span class="tree-node-icon">▼</span>
+                  <span>backend/</span>
+                </div>
+                <div class="tree-node-children">
+                  
+                  <div class="tree-node tree-folder">
+                    <div class="tree-node-title" onclick="toggleTreeNode(this)">
+                      <span class="tree-node-icon">▶</span>
+                      <span>ai/</span>
+                    </div>
+                    <div class="tree-node-children">
+                      <div class="tree-node tree-file">
+                        <div class="tree-node-title">
+                          <span class="tree-node-icon">📄</span>
+                          <span>gemini_service.py</span>
+                          <span class="tree-node-desc">AI provider chain (HF/Gemini API calls)</span>
+                        </div>
+                      </div>
+                      <div class="tree-node tree-file">
+                        <div class="tree-node-title">
+                          <span class="tree-node-icon">📄</span>
+                          <span>question_generator.py</span>
+                          <span class="tree-node-desc">Custom resume-aware question logic</span>
+                        </div>
+                      </div>
+                      <div class="tree-node tree-file">
+                        <div class="tree-node-title">
+                          <span class="tree-node-icon">📄</span>
+                          <span>answer_evaluator.py</span>
+                          <span class="tree-node-desc">AI evaluation & heuristic grading</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="tree-node tree-folder">
+                    <div class="tree-node-title" onclick="toggleTreeNode(this)">
+                      <span class="tree-node-icon">▶</span>
+                      <span>routes/</span>
+                    </div>
+                    <div class="tree-node-children">
+                      <div class="tree-node tree-file">
+                        <div class="tree-node-title">
+                          <span class="tree-node-icon">📄</span>
+                          <span>resume_routes.py</span>
+                          <span class="tree-node-desc">File uploading & parsing endpoints</span>
+                        </div>
+                      </div>
+                      <div class="tree-node tree-file">
+                        <div class="tree-node-title">
+                          <span class="tree-node-icon">📄</span>
+                          <span>interview_routes.py</span>
+                          <span class="tree-node-desc">Q&A session state manager API</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="tree-node tree-file">
+                    <div class="tree-node-title">
+                      <span class="tree-node-icon">📄</span>
+                      <span>app.py</span>
+                      <span class="tree-node-desc">Flask entry-point & middleware</span>
+                    </div>
+                  </div>
+
+                  <div class="tree-node tree-file">
+                    <div class="tree-node-title">
+                      <span class="tree-node-icon">📄</span>
+                      <span>validators.py</span>
+                      <span class="tree-node-desc">Pydantic input checks</span>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- frontend/ -->
+              <div class="tree-node tree-folder expanded">
+                <div class="tree-node-title" onclick="toggleTreeNode(this)">
+                  <span class="tree-node-icon">▼</span>
+                  <span>frontend/</span>
+                </div>
+                <div class="tree-node-children">
+                  
+                  <div class="tree-node tree-folder">
+                    <div class="tree-node-title" onclick="toggleTreeNode(this)">
+                      <span class="tree-node-icon">▶</span>
+                      <span>src/</span>
+                    </div>
+                    <div class="tree-node-children">
+                      
+                      <div class="tree-node tree-folder">
+                        <div class="tree-node-title" onclick="toggleTreeNode(this)">
+                          <span class="tree-node-icon">▶</span>
+                          <span>pages/</span>
+                        </div>
+                        <div class="tree-node-children">
+                          <div class="tree-node tree-file">
+                            <div class="tree-node-title">
+                              <span class="tree-node-icon">📄</span>
+                              <span>LandingPage.jsx</span>
+                              <span class="tree-node-desc">Dynamic marketing entrypage</span>
+                            </div>
+                          </div>
+                          <div class="tree-node tree-file">
+                            <div class="tree-node-title">
+                              <span class="tree-node-icon">📄</span>
+                              <span>InterviewPage.jsx</span>
+                              <span class="tree-node-desc">Audio/video interview simulation UI</span>
+                            </div>
+                          </div>
+                          <div class="tree-node tree-file">
+                            <div class="tree-node-title">
+                              <span class="tree-node-icon">📄</span>
+                              <span>AnalyticsPage.jsx</span>
+                              <span class="tree-node-desc">Recharts history and progress graphs</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="tree-node tree-file">
+                        <div class="tree-node-title">
+                          <span class="tree-node-icon">📄</span>
+                          <span>App.jsx</span>
+                          <span class="tree-node-desc">Router definitions & Toast config</span>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Document Viewer Modal -->
+  <div class="modal-overlay" id="docModal" onclick="closeDocModal(event)">
+    <div class="modal-container">
+      <div class="modal-header">
+        <div class="modal-title-wrapper">
+          <svg style="width:1.5rem;height:1.5rem;fill:var(--primary)" viewBox="0 0 24 24">
+            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+          </svg>
+          <span class="modal-title" id="modalTitle">Document Viewer</span>
+        </div>
+        <button class="modal-close" onclick="hideModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Content gets loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="hideModal()">Close Reader</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Element -->
+  <div class="toast" id="toast">
+    <svg style="width:1rem;height:1rem;fill:var(--primary)" viewBox="0 0 24 24">
+      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+    </svg>
+    <span id="toastText">Path copied!</span>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-content">
+      <a href="#" class="footer-logo">
+        <span class="logo-icon" style="box-shadow:none">A</span>
+        <span>AstraPrep AI Project Documentation</span>
+      </a>
+      <p>Prepared for Project Exhibition / Submission. Version 2.0.0. Licensed under MIT.</p>
+    </div>
+  </footer>
+
+  <script>
+    /* Raw summaries to use as local fallbacks if server fetch fails */
+    const DOC_FALLBACKS = {
+      PROJECT_SUBMISSION: `
+        <h1>Project Submission Details & Abstract</h1>
+        <blockquote>
+          <strong>Title:</strong> AI-BASED RESUME DRIVEN INTERVIEW SYSTEM WITH PERFORMANCE ANALYTICS<br/>
+          <strong>Date:</strong> May 31, 2026<br/>
+          <strong>Author:</strong> Project Team
+        </blockquote>
+        <h2>Project Objective</h2>
+        <p>The objective is to build an intelligent candidate coaching platform that extracts technical skillsets from resumes, generates personalized mock interviews tailored to those exact details using modern generative AI APIs, and runs timed text/voice/video interviews. Results are parsed and rendered onto dashboard analytics to let candidates assess their readiness levels.</p>
+        <h2>Key Modules Completed</h2>
+        <ul>
+          <li><strong>Resume Processor:</strong> Integration of PDF parsing and spaCy Named Entity Recognition model to filter relevant skills and background details.</li>
+          <li><strong>Generative Q&A Engine:</strong> Prompting pipelines configured for Gemini 1.5 and Hugging Face models, packing answers into structured JSON datasets.</li>
+          <li><strong>Adaptive Audio Simulator:</strong> Speech-to-text recording widgets in the client frontend, measuring clarity pacing.</li>
+          <li><strong>Analytical Dashboard:</strong> Charts tracing weakness groups, average grades, and session histories using Recharts.</li>
+        </ul>
+        <h2>Exhibition Demonstration Walkthrough</h2>
+        <ol>
+          <li>Open the browser on the homepage and click <em>"Launch App"</em>.</li>
+          <li>Navigate to the **Resume** page and drag-and-drop a sample profile. Verify the extracted skills list.</li>
+          <li>Click <em>"Start Interview"</em>, pick the target role and interview length, and start speaking or typing responses.</li>
+          <li>Finish the final question and check the generated **Results Page** highlighting clarity and accuracy scores.</li>
+        </ol>
+      `,
+      ADMIN_SETUP: `
+        <h1>Installation & Admin Setup Guide</h1>
+        <p>Follow these quick instructions to run the full application ecosystem locally.</p>
+        <h2>Prerequisites</h2>
+        <ul>
+          <li>Node.js version 18 or above</li>
+          <li>Python version 3.10 or above</li>
+          <li>A free API token from Google AI Studio (Gemini Key) or Hugging Face Settings</li>
+        </ul>
+        <h2>1. Backend Environment Setup</h2>
+        <pre>
+cd backend
+python -m venv .venv
+.venv\\Scripts\\activate  # On Windows
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+cp .env.example .env
+# Open .env and write: GEMINI_API_KEY=your_key_here
+python app.py
+        </pre>
+        <p>Verify backend server starts successfully on: <code>http://127.0.0.1:5000</code></p>
+        <h2>2. Frontend Setup</h2>
+        <pre>
+cd frontend
+npm install
+npm run dev
+        </pre>
+        <p>Launch the client portal in your browser at: <code>http://localhost:5173</code></p>
+        <h2>3. Run via Docker Compose (Alternative)</h2>
+        <pre>
+docker-compose up --build
+        </pre>
+        <p>Loads frontend Nginx on port 80 and links backend API dynamically.</p>
+      `,
+      BACKEND_DEV: `
+        <h1>Backend Architecture Reference</h1>
+        <p>The backend is built as a Flask REST service implementing a decoupled controller-service pattern.</p>
+        <h2>Folder Organization</h2>
+        <ul>
+          <li><code>app.py</code>: Handles application instantiation, CORS configurations, rate-limit policies, and error boundaries.</li>
+          <li><code>routes/</code>: Expresses endpoints (/api/resume, /api/interview, /api/quiz) and parses inputs.</li>
+          <li><code>services/</code>: Implements core business logic such as parsing text streams, building session states, and loading JSON storage.</li>
+          <li><code>ai/</code>: Houses third-party API service layers (Gemini prompt wrappers, evaluator logic, fallback local models).</li>
+        </ul>
+        <h2>API Security Features</h2>
+        <p>We restrict raw traffic using: (a) Werkzeug security headers to prevent clicksjacking; (b) CORS white-listing to secure frontend queries; (c) Pydantic wrappers validation to throw bad schemas early.</p>
+      `,
+      FRONTEND_DEV: `
+        <h1>Frontend UI Architecture Reference</h1>
+        <p>The client app is constructed as a modern single-page React app bundled via Vite.</p>
+        <h2>Core Directories</h2>
+        <ul>
+          <li><code>src/App.jsx</code>: Implements navigation routing structure using React Router v6.</li>
+          <li><code>src/context/AppContext.jsx</code>: Holds global application settings, theme configurations, and API connectivity metrics.</li>
+          <li><code>src/store/</code>: Lightweight Zustand hooks managing micro-states like user mic state, waveforms, and toast alerts.</li>
+          <li><code>src/pages/</code>: Implements layouts for Landing page, Interview console, and Analytics reports.</li>
+        </ul>
+        <h2>Styling Guidelines</h2>
+        <p>Styling uses **Tailwind CSS v3** combined with custom keyframes in <code>index.css</code> for floating animation glows and premium dark-mode backgrounds.</p>
+      `,
+      DEPLOYMENT: `
+        <h1>Production Deployment Guide</h1>
+        <p>Deploy the full-stack system onto staging servers or production instances.</p>
+        <h2>Containerization</h2>
+        <p>Our <code>docker-compose.yml</code> file orchestrates two core services:</p>
+        <ul>
+          <li><strong>frontend-service</strong>: Uses a multi-stage Dockerfile starting with node build and packaging assets inside an Nginx server, running on host port 80.</li>
+          <li><strong>backend-service</strong>: Spawns the Flask app using Gunicorn production workers on host port 5000.</li>
+        </ul>
+        <h2>Cloud Targets</h2>
+        <p>The app can be deployed on AWS ECS (Elastic Container Service) using Fargate tasks, or via a single-instance deployer like Heroku or render.com with mapped persistent volumes for session JSON files.</p>
+      `,
+      FREE_STACK: `
+        <h1>Free & Open Source Component Summary</h1>
+        <p>The project is structured to run with completely free stacks:</p>
+        <h2>Zero-Cost Technologies</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Component</th>
+              <th>Technology</th>
+              <th>License</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Frontend Framework</td>
+              <td>React 18 & Vite</td>
+              <td>MIT</td>
+            </tr>
+            <tr>
+              <td>Server Core</td>
+              <td>Flask 3</td>
+              <td>BSD</td>
+            </tr>
+            <tr>
+              <td>Language Models</td>
+              <td>Gemini 1.5 (Free Tier) / HF Hub</td>
+              <td>Developer Free API</td>
+            </tr>
+            <tr>
+              <td>NLP Classifier</td>
+              <td>spaCy (en_core_web_sm)</td>
+              <td>MIT</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>This license stack is safe for commercial derivatives and guarantees examiners can run the code without purchasing premium licenses.</p>
+      `
+    };
+
+    /* Accordion Toggle Logic */
+    function toggleAccordion(header) {
+      const item = header.parentElement;
+      const answer = item.querySelector('.viva-answer');
+      const isActive = item.classList.contains('active');
+      
+      // Close all other items
+      document.querySelectorAll('.viva-item').forEach(i => {
+        i.classList.remove('active');
+        i.querySelector('.viva-answer').style.maxHeight = null;
+      });
+
+      if (!isActive) {
+        item.classList.add('active');
+        answer.style.maxHeight = answer.scrollHeight + "px";
+      }
+    }
+
+    /* Folder Tree Toggles */
+    function toggleTreeNode(element) {
+      const node = element.parentElement;
+      const children = node.querySelector('.tree-node-children');
+      const icon = element.querySelector('.tree-node-icon');
+      
+      if (node.classList.contains('expanded')) {
+        node.classList.remove('expanded');
+        icon.textContent = '▶';
+      } else {
+        node.classList.add('expanded');
+        icon.textContent = '▼';
+      }
+    }
+
+    /* Clipboard Helper */
+    function copyPath(path) {
+      navigator.clipboard.writeText(path).then(() => {
+        showToast('Path copied: ' + path);
+      }).catch(err => {
+        console.error('Failed to copy: ', err);
+      });
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const toastText = document.getElementById('toastText');
+      toastText.textContent = message;
+      toast.classList.add('active');
+      
+      setTimeout(() => {
+        toast.classList.remove('active');
+      }, 2500);
+    }
+
+    /* Card Filters */
+    let currentFilter = 'all';
+
+    function setFilter(category, tabElement) {
+      currentFilter = category;
+      
+      // Update active tab style
+      document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      tabElement.classList.add('active');
+      
+      filterCards();
+    }
+
+    function filterCards() {
+      const searchQuery = document.getElementById('docSearch').value.toLowerCase();
+      const cards = document.querySelectorAll('.doc-card');
+      
+      cards.forEach(card => {
+        const category = card.getAttribute('data-category');
+        const title = card.querySelector('.doc-title').textContent.toLowerCase();
+        const desc = card.querySelector('.doc-desc').textContent.toLowerCase();
+        
+        const matchesCategory = (currentFilter === 'all' || category === currentFilter);
+        const matchesSearch = (title.includes(searchQuery) || desc.includes(searchQuery));
+        
+        if (matchesCategory && matchesSearch) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    /* Doc Modal Reader */
+    function viewDoc(docKey) {
+      const modal = document.getElementById('docModal');
+      const modalBody = document.getElementById('modalBody');
+      const modalTitle = document.getElementById('modalTitle');
+      
+      modalTitle.textContent = docKey.replace('_', ' ') + ' Reader';
+      
+      // Load local fallback summary by default
+      modalBody.innerHTML = DOC_FALLBACKS[docKey] || '<p>Document summary not found.</p>';
+      
+      // Open modal
+      modal.classList.add('active');
+      
+      // Try to fetch actual markdown file if page is hosted on a dev server
+      let fetchUrl = '';
+      if (docKey === 'PROJECT_SUBMISSION') fetchUrl = './PROJECT_SUBMISSION.md';
+      else if (docKey === 'ADMIN_SETUP') fetchUrl = '../ADMIN_SETUP.md';
+      else if (docKey === 'BACKEND_DEV') fetchUrl = './BACKEND_DEV.md';
+      else if (docKey === 'FRONTEND_DEV') fetchUrl = './FRONTEND_DEV.md';
+      else if (docKey === 'DEPLOYMENT') fetchUrl = './DEPLOYMENT.md';
+      else if (docKey === 'FREE_STACK') fetchUrl = './FREE_OPEN_SOURCE_STACK.md';
+
+      if (fetchUrl) {
+        fetch(fetchUrl)
+          .then(res => {
+            if (!res.ok) throw new Error('Not ok');
+            return res.text();
+          })
+          .then(text => {
+            // Very simple MD-to-HTML parser just for displaying lists, headers, code blocks
+            const parsedHtml = parseMarkdownToHtml(text, docKey);
+            modalBody.innerHTML = parsedHtml;
+          })
+          .catch(err => {
+            console.log('Using local embedded summary fallback. (CORS blocks fetch for local file:// protocols)');
+          });
+      }
+    }
+
+    function hideModal() {
+      document.getElementById('docModal').classList.remove('active');
+    }
+
+    function closeDocModal(event) {
+      if (event.target.id === 'docModal') {
+        hideModal();
+      }
+    }
+
+    // Simple parser for local preview
+    function parseMarkdownToHtml(markdown, key) {
+      let html = markdown
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+      // Code blocks
+      html = html.replace(/```([\s\S]*?)```/g, (match, code) => {
+        return '<pre><code>' + code.trim() + '</code></pre>';
+      });
+
+      // Inline code
+      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+      // Headings
+      html = html.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+      html = html.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+      html = html.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+
+      // Unordered lists
+      html = html.replace(/^\-\s+(.+)$/gm, '<li>$1</li>');
+      html = html.replace(/^\*\s+(.+)$/gm, '<li>$1</li>');
+      
+      // Simple list wrapping
+      html = html.replace(/((?:<li>.+<\/li>\s*)+)/g, '<ul>$1</ul>');
+
+      // Paragraphs
+      html = html.replace(/^([^<#\-\*\|].+)$/gm, '<p>$1</p>');
+
+      return html;
+    }
+  </script>
+</body>
+</html>

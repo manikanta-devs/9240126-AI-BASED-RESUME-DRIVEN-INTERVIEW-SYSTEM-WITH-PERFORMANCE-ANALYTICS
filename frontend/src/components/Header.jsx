@@ -16,12 +16,9 @@ export default function Header({ title = '', subtitle = '' }) {
       <div className="absolute inset-0 bg-white dark:bg-surface-900 border-b border-gray-100 dark:border-white/5" />
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(90deg,rgba(20,184,166,0.04),transparent_42%,rgba(245,158,11,0.04))] dark:bg-[linear-gradient(90deg,rgba(20,184,166,0.08),transparent_42%,rgba(245,158,11,0.06))]" />
 
-      {/* Animated gradient accent bar */}
-      <div className="absolute bottom-0 left-0 right-0 h-[2px] gradient-animated"
-        style={{ background: 'linear-gradient(90deg, #0f766e, #06b6d4, #f59e0b, #06b6d4, #0f766e)', backgroundSize: '200% 100%' }}
-      />
 
-      <div className="relative flex flex-col justify-center w-full max-w-5xl mx-auto items-center z-10">
+
+      <div className="relative flex flex-col justify-center w-full max-w-7xl mx-auto items-center z-10">
         {title && (
           <h2 className="font-bold text-gray-900 dark:text-white text-lg leading-tight text-center">{title}</h2>
         )}

@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 
 
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 
 import toast from 'react-hot-toast'
@@ -73,7 +73,7 @@ import {
 import clsx from 'clsx'
 
 
-import { generateQuestions, startInterview, submitAnswer, completeInterview, submitFollowUp } from '../api/client'
+import { generateQuestions, startInterview, submitAnswer, completeInterview, submitFollowUp, submitOnboardingResponse } from '../api/client'
 
 
 import { useApp } from '../context/AppContext'
@@ -99,7 +99,6 @@ import InterviewStatsBar from '../components/InterviewStatsBar'
 
 import PanelAvatar, { PanelRoster } from '../components/PanelAvatar'
 import AIInterviewerRoom from '../components/AIInterviewerRoom'
-import FreeStackPanel from '../components/FreeStackPanel'
 import VoiceCaptureStudio from '../components/VoiceCaptureStudio'
 import AdvancedToolPanel from '../components/AdvancedToolPanel'
 
@@ -186,6 +185,290 @@ const COMPANY_OPTIONS = [
   { value: 'Custom', label: 'Custom', desc: 'Provide your own company/context' },
 ]
 
+const VOICE_PROFILES = {
+  sarah: {
+    gender: 'female',
+    pitch: 1.08,
+    rate: 0.92,
+    preferredNames: ['zira', 'aria', 'jenny', 'susan', 'samantha', 'victoria', 'female', 'woman'],
+  },
+  marcus: {
+    gender: 'male',
+    pitch: 0.9,
+    rate: 0.9,
+    preferredNames: ['david', 'guy', 'mark', 'daniel', 'alex', 'male', 'man'],
+  },
+}
+
+const PANEL_VOICE_PROFILES = {
+  technical_lead: VOICE_PROFILES.marcus,
+  hr_manager: VOICE_PROFILES.sarah,
+  strict_manager: VOICE_PROFILES.marcus,
+}
+
+function chooseBrowserVoice(voices = [], profile = VOICE_PROFILES.sarah) {
+  const englishVoices = voices.filter(voice => voice.lang?.toLowerCase().startsWith('en'))
+  const candidates = englishVoices.length ? englishVoices : voices
+  const preferredTerms = profile.preferredNames || []
+
+  return candidates.find(voice => {
+    const haystack = `${voice.name} ${voice.voiceURI} ${voice.lang}`.toLowerCase()
+    return preferredTerms.some(term => haystack.includes(term))
+  }) || candidates[0] || null
+}
+
+
+function normalizeQuestion(question, index) {
+  return {
+    id: index + 1,
+    text: question.text,
+    category: question.category || 'General',
+    difficulty: question.difficulty || 'medium',
+    type: question.type || 'behavioral',
+    persona_id: question.persona_id,
+    round: question.round || question.category || 'Interview',
+    time_limit_seconds: question.time_limit_seconds || null,
+  }
+}
+
+function buildCorporateInterviewQuestions({ generatedQuestions = [], resumeData, candidateName, company, panelMode }) {
+  const firstName = (candidateName || 'Candidate').trim().split(/\s+/)[0] || 'Candidate'
+  const education = resumeData?.education?.[0]
+  const skills = resumeData?.skills?.all || []
+  const primarySkill = skills[0] || 'your strongest technical skill'
+  const secondarySkill = skills[1] || 'your project work'
+  const companyName = company && company !== 'General' && company !== 'Custom' ? company : 'our company'
+  const technicalPersona = panelMode ? 'technical_lead' : undefined
+  const hrPersona = panelMode ? 'hr_manager' : undefined
+  const strictPersona = panelMode ? 'strict_manager' : undefined
+
+  if (generatedQuestions.length <= 5) {
+    const openingQ = {
+      text: `Hello ${firstName}. Let's start with a brief introduction. Could you tell me a little about yourself and walk me through your background?`,
+      category: 'Introduction',
+      round: 'Introduction',
+      type: 'behavioral',
+      difficulty: 'easy',
+      persona_id: hrPersona,
+    }
+    const closingQ = {
+      text: 'We have reached the end of the interview. Do you have any questions for me about the company, role, or next steps?',
+      category: 'Candidate Questions',
+      round: 'Wrap Up',
+      type: 'behavioral',
+      difficulty: 'easy',
+      persona_id: hrPersona,
+    }
+    return [openingQ, ...generatedQuestions, closingQ].map((q, idx) => ({ ...q, id: idx + 1 }))
+  }
+
+  const opening = [
+    {
+      text: `Good morning ${firstName}. Please confirm your full name before we begin.`,
+      category: 'Identity Verification',
+      round: 'Identity Verification',
+      type: 'behavioral',
+      difficulty: 'easy',
+      persona_id: hrPersona,
+    },
+    {
+      text: education
+        ? `According to your resume, your education includes: ${education}. Is that correct? Please briefly confirm and add one important academic achievement.`
+        : 'Please confirm your current education or latest qualification and one academic achievement you are proud of.',
+      category: 'Resume Verification',
+      round: 'Resume Verification',
+      type: 'behavioral',
+      difficulty: 'easy',
+      persona_id: hrPersona,
+    },
+    {
+      text: 'Great. How are you feeling today, and what mindset are you bringing into this interview?',
+      category: 'Ice Breaker',
+      round: 'Ice Breaking',
+      type: 'behavioral',
+      difficulty: 'easy',
+      persona_id: hrPersona,
+    },
+    {
+      text: 'Please introduce yourself in about 60 to 90 seconds. Include your education, key skills, important projects, and career goals.',
+      category: 'Introduction',
+      round: 'Tell Me About Yourself',
+      type: 'behavioral',
+      difficulty: 'easy',
+      persona_id: hrPersona,
+      time_limit_seconds: 90,
+    },
+  ]
+
+  const generated = generatedQuestions
+    .filter(q => q?.text && q.category !== 'Resume Walkthrough')
+    .slice(0, 8)
+    .map(q => ({ ...q, round: q.type === 'technical' ? 'Technical Round' : q.type === 'situational' ? 'Situation Round' : 'Resume-Based Questions' }))
+
+  const hrRound = [
+    { text: 'Why should we hire you for this role?', category: 'HR Round', round: 'HR Round', type: 'behavioral', difficulty: 'medium', persona_id: hrPersona },
+    { text: 'Tell me one strength that will help you succeed in this job, and give a real example.', category: 'HR Round', round: 'HR Round', type: 'behavioral', difficulty: 'easy', persona_id: hrPersona },
+    { text: 'What is one weakness you are actively improving, and what steps are you taking?', category: 'HR Round', round: 'HR Round', type: 'behavioral', difficulty: 'medium', persona_id: hrPersona },
+    { text: 'Tell me about a time you worked in a team. What was your role and what was the result?', category: 'Teamwork', round: 'HR Round', type: 'behavioral', difficulty: 'medium', persona_id: hrPersona },
+    { text: `Why do you want to join ${companyName}, and how does this role connect with your long-term goals?`, category: 'Company Fit', round: 'HR Round', type: 'behavioral', difficulty: 'medium', persona_id: hrPersona },
+  ]
+
+  const technicalRound = [
+    { text: `I noticed ${primarySkill} on your resume. Explain your practical experience with it and one problem you solved using it.`, category: primarySkill, round: 'Technical Round', type: 'technical', difficulty: 'medium', persona_id: technicalPersona },
+    { text: `Compare ${primarySkill} with ${secondarySkill} from a project point of view. Where did each one help you most?`, category: 'Technical Comparison', round: 'Technical Round', type: 'technical', difficulty: 'medium', persona_id: technicalPersona },
+    { text: 'You now have a coding-style question: reverse a string without using built-in reverse functions. Explain your approach, edge cases, and complexity.', category: 'Coding Round', round: 'Coding Round', type: 'technical', difficulty: 'medium', persona_id: technicalPersona, time_limit_seconds: 300 },
+  ]
+
+  const situationRound = [
+    { text: 'Imagine your project deadline is tomorrow and your teammate suddenly becomes unavailable. What would you do?', category: 'Deadline Pressure', round: 'Situation Round', type: 'situational', difficulty: 'medium', persona_id: strictPersona },
+    { text: 'A customer is angry because your application crashed during an important demo. How would you handle the situation?', category: 'Customer Handling', round: 'Situation Round', type: 'situational', difficulty: 'medium', persona_id: hrPersona },
+    { text: 'Your manager asks you to learn a completely new technology within one week. How would you approach it?', category: 'Learning Agility', round: 'Situation Round', type: 'situational', difficulty: 'medium', persona_id: strictPersona },
+  ]
+
+  const rapidFire = [
+    { text: 'Rapid fire: What is polymorphism? Answer in 20 seconds.', category: 'Rapid Fire', round: 'Rapid Fire', type: 'technical', difficulty: 'easy', persona_id: technicalPersona, time_limit_seconds: 20 },
+    { text: 'Rapid fire: What is the difference between GET and POST? Answer in 20 seconds.', category: 'Rapid Fire', round: 'Rapid Fire', type: 'technical', difficulty: 'easy', persona_id: technicalPersona, time_limit_seconds: 20 },
+    { text: 'Rapid fire: What is an API? Answer in 20 seconds.', category: 'Rapid Fire', round: 'Rapid Fire', type: 'technical', difficulty: 'easy', persona_id: technicalPersona, time_limit_seconds: 20 },
+  ]
+
+  const closing = [
+    { text: 'We have reached the end of the interview. Do you have any questions for me about the company, role, or interview process?', category: 'Candidate Questions', round: 'Candidate Questions', type: 'behavioral', difficulty: 'easy', persona_id: hrPersona },
+    { text: 'Thank you for taking the interview. Before I generate your report, give one final reason you believe you are suitable for the next round.', category: 'Final Closing', round: 'Final Closing', type: 'behavioral', difficulty: 'medium', persona_id: hrPersona },
+  ]
+
+  const allQuestions = [...opening, ...generated, ...hrRound, ...technicalRound, ...situationRound, ...rapidFire, ...closing]
+  const seen = new Set()
+  return allQuestions
+    .filter(question => {
+      const key = question.text.toLowerCase()
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .map(normalizeQuestion)
+}
+
+
+function WalkInInterviewRoom({
+  candidateName = 'Candidate',
+  roleLabel = 'Candidate',
+  resumeData,
+  interviewerPersona = 'sarah',
+  interviewerName = 'Sarah Chen',
+  onBegin,
+  onBack,
+}) {
+  const [step, setStep] = useState(0)
+  const hasResume = Boolean(resumeData)
+  const topSkills = resumeData?.skills?.all?.slice(0, 4) || []
+  const steps = [
+    { label: 'Welcome', line: 'Good morning! Welcome to the AI Interview Platform. I am your virtual HR interviewer today.' },
+    { label: 'Resume Analyzed', line: hasResume ? 'Before we begin, I have successfully analyzed your resume and prepared personalized questions.' : 'Before we begin, I will conduct a standard company interview because no resume is currently loaded.' },
+    { label: 'Enter Room', line: 'Please come in, take a seat, and relax. This will feel like a real company interview.' },
+    { label: 'Greet HR', line: `Good morning, ${candidateName || 'Candidate'}. Please have a seat.` },
+    { label: 'Hand Resume', line: hasResume ? 'You hand over your resume. The interviewer scans your education, skills, projects, and experience.' : 'You hand over a resume copy. The interviewer will begin with general background questions.' },
+    { label: 'Begin', line: 'The interviewer closes the resume folder and starts with identity verification.' },
+  ]
+  const activeStep = steps[Math.min(step, steps.length - 1)]
+  const personaImage = interviewerPersona === 'marcus' ? '/interviewers/marcus_rodriguez.png' : '/interviewers/sarah_chen.png'
+
+  const advance = () => {
+    if (step >= steps.length - 1) onBegin?.()
+    else setStep(prev => prev + 1)
+  }
+
+  return (
+    <div className="min-h-[calc(100vh-5rem)] bg-slate-950 text-white overflow-hidden relative">
+      <div className="absolute inset-0 office-room-bg opacity-80" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_15%,rgba(56,189,248,0.16),transparent_34%),linear-gradient(180deg,rgba(2,6,23,0.15),rgba(2,6,23,0.92))]" />
+
+      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 lg:py-10">
+        <div className="flex items-center justify-between gap-3 mb-5">
+          <button onClick={onBack} className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-sm font-semibold text-white/70 hover:bg-white/10 hover:text-white transition-colors">
+            Back to setup
+          </button>
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-[0.28em] text-cyan-300 font-bold">In-person simulation</p>
+            <p className="text-sm text-white/55">{roleLabel} interview room</p>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-[1.2fr_0.8fr] gap-5 items-stretch">
+          <div className="relative min-h-[540px] rounded-2xl border border-white/10 bg-slate-900/55 backdrop-blur-xl overflow-hidden shadow-2xl">
+            <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white/10 to-transparent" />
+            <div className="absolute left-8 right-8 top-8 h-20 rounded-b-[40px] bg-cyan-100/10 border border-cyan-100/10 shadow-[0_0_90px_rgba(125,211,252,0.2)]" />
+            <div className="absolute left-[8%] right-[8%] bottom-20 h-40 rounded-t-[28px] bg-gradient-to-b from-slate-700 to-slate-950 border border-white/10 shadow-2xl" />
+            <div className="absolute left-[12%] right-[12%] bottom-32 h-16 rounded-xl bg-slate-800/95 border border-white/10" />
+            <div className="absolute left-[18%] bottom-36 w-28 h-16 rounded-lg bg-white/90 text-slate-900 p-2 shadow-xl transform -rotate-6 transition-all duration-500" style={{ opacity: step >= 4 ? 1 : 0.45, transform: step >= 4 ? 'translateX(250px) rotate(2deg)' : 'translateX(0) rotate(-6deg)' }}>
+              <div className="h-1.5 w-16 bg-slate-800 rounded mb-1.5" />
+              <div className="h-1 w-20 bg-slate-300 rounded mb-1" />
+              <div className="h-1 w-14 bg-slate-300 rounded mb-1" />
+              <div className="h-1 w-24 bg-cyan-300 rounded" />
+            </div>
+
+            <div className="absolute right-[13%] bottom-36 w-56 flex flex-col items-center">
+              <div className="relative w-44 aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-slate-950">
+                <img src={personaImage} alt={interviewerName} className="w-full h-full object-cover object-[center_20%]" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-transparent to-transparent" />
+              </div>
+              <div className="mt-3 px-4 py-3 rounded-xl bg-slate-950/80 border border-white/10 text-center backdrop-blur">
+                <p className="font-black text-sm">{interviewerName}</p>
+                <p className="text-[11px] text-white/45">HR interview lead</p>
+              </div>
+            </div>
+
+            <div className="absolute left-[14%] bottom-24 w-36 flex flex-col items-center transition-all duration-500" style={{ transform: step >= 1 ? 'translateX(80px)' : 'translateX(0)' }}>
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-300 to-slate-200 border-4 border-slate-900 shadow-xl" />
+              <div className="w-28 h-36 -mt-1 rounded-t-[38px] bg-gradient-to-b from-blue-700 to-slate-950 border border-white/10" />
+              <div className="mt-2 text-center">
+                <p className="text-xs font-bold">{candidateName || 'Candidate'}</p>
+                <p className="text-[10px] text-white/45">Candidate</p>
+              </div>
+            </div>
+
+            <div className="absolute left-6 top-32 max-w-sm rounded-2xl border border-white/10 bg-slate-950/75 p-4 shadow-xl backdrop-blur">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-cyan-300 font-bold mb-2">Room moment</p>
+              <p className="text-base font-bold leading-snug">{activeStep.line}</p>
+              {step >= 4 && topSkills.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {topSkills.map(skill => (
+                    <span key={skill} className="px-2 py-1 rounded-full bg-cyan-400/10 border border-cyan-400/20 text-[10px] text-cyan-100 font-semibold">{skill}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 backdrop-blur-xl p-5 flex flex-col justify-between shadow-2xl">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-cyan-300 font-bold mb-3">Interview sequence</p>
+              <h2 className="text-3xl font-black leading-tight mb-3">Walk in, submit resume, then answer naturally.</h2>
+              <p className="text-sm text-white/60 leading-relaxed mb-5">
+                This interview includes introduction, resume verification, HR round, technical round, coding-style prompt, situation questions, rapid fire, candidate questions, and final feedback.
+              </p>
+              <div className="space-y-3">
+                {steps.map((item, index) => (
+                  <div key={item.label} className={clsx('flex items-center gap-3 rounded-xl border px-3 py-3 transition-colors', index <= step ? 'bg-cyan-400/10 border-cyan-400/25 text-white' : 'bg-white/[0.03] border-white/10 text-white/40')}>
+                    <div className={clsx('w-7 h-7 rounded-full flex items-center justify-center text-xs font-black', index <= step ? 'bg-cyan-400 text-slate-950' : 'bg-white/10 text-white/40')}>{index + 1}</div>
+                    <div>
+                      <p className="text-sm font-bold">{item.label}</p>
+                      <p className="text-[11px] text-white/45">{index === 0 ? 'First impression' : index === 1 ? 'Professional greeting' : index === 2 ? 'Resume review' : 'Formal Q&A'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button onClick={advance} className="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30 transition-all">
+              {step >= steps.length - 1 ? 'Begin Real Interview' : steps[step + 1].label}
+              <Play className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 
 
@@ -197,6 +480,9 @@ const PHASE = {
 
 
   GENERATING: 'generating',
+
+
+  ROOM_ENTRY: 'room_entry',
 
 
   INTERVIEWING: 'interviewing',
@@ -215,6 +501,9 @@ export default function InterviewPage() {
 
 
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const hasSpeechSupport = typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition)
 
 
   const {
@@ -253,7 +542,7 @@ export default function InterviewPage() {
   const [phase, setPhase] = useState(PHASE.SETUP)
 
 
-  const [interviewFormat, setInterviewFormat] = useState('voice')
+  const [interviewFormat, setInterviewFormat] = useState(hasSpeechSupport ? 'voice' : 'text')
 
 
   const [numQuestions, setNumQuestions] = useState(6)
@@ -299,6 +588,12 @@ export default function InterviewPage() {
 
   const [recordingUrl, setRecordingUrl] = useState('')
   const [activeMediaStream, setActiveMediaStream] = useState(null)
+  const [cameraEnabled, setCameraEnabled] = useState(true)
+  const [micEnabled, setMicEnabled] = useState(true)
+  const [audioDevices, setAudioDevices] = useState([])
+  const [videoDevices, setVideoDevices] = useState([])
+  const [selectedMicId, setSelectedMicId] = useState('')
+  const [selectedCameraId, setSelectedCameraId] = useState('')
 
 
   const [cameraReady, setCameraReady] = useState(false)
@@ -314,6 +609,7 @@ export default function InterviewPage() {
 
 
   const [scoreHistory, setScoreHistory] = useState([])
+  const [submittedAnswerCount, setSubmittedAnswerCount] = useState(0)
 
 
   const [isRetrying, setIsRetrying] = useState(false)
@@ -327,9 +623,20 @@ export default function InterviewPage() {
 
   const [panelMode, setPanelMode] = useState(false)
   const [aiInterviewerMode, setAiInterviewerMode] = useState(true)
+  const [interviewerPersona, setInterviewerPersona] = useState('sarah')
   const [interviewerVoice, setInterviewerVoice] = useState(true)
+  const [browserVoices, setBrowserVoices] = useState([])
   const [isInterviewerSpeaking, setIsInterviewerSpeaking] = useState(false)
   const [emotionSnapshot, setEmotionSnapshot] = useState(createEmotionSnapshot())
+
+  const [zoomPhase, setZoomPhase] = useState(null)
+  const [encouragementText, setEncouragementText] = useState('')
+  const [onboardingQuestionText, setOnboardingQuestionText] = useState('')
+  const hasEncouragedRef = useRef(false)
+  const lastSpeechTimeRef = useRef(Date.now())
+  const lastTranscriptLengthRef = useRef(0)
+  const silenceIntervalRef = useRef(null)
+  const hasGreetNudgeRef = useRef(false)
 
 
 
@@ -363,14 +670,23 @@ export default function InterviewPage() {
 
 
   const saveRecordingPreviewRef = useRef(true)
+  const selectedMicIdRef = useRef('')
+  const selectedCameraIdRef = useRef('')
 
 
   const questionStartedAtRef = useRef(null)
 
 
   const autoCaptureAttemptedRef = useRef(-1)
+  const hasGreetedRef = useRef(false)
+  const isTelemetryOverriddenRef = useRef(false)
+  const handleTelemetryOverrideChange = useCallback((val) => {
+    isTelemetryOverriddenRef.current = val
+  }, [])
   const stopEmotionSamplerRef = useRef(null)
+  const activeUtteranceRef = useRef(null)
   const emotionHistoryRef = useRef([])
+  const isStartingCaptureRef = useRef(false)
 
 
 
@@ -381,11 +697,80 @@ export default function InterviewPage() {
 
   const progress = questions.length > 0 ? (currentIndex / questions.length) * 100 : 0
   const activePanelMember = panelMode ? getPanelMemberForQuestion(currentQuestion) : null
-  const interviewerName = activePanelMember?.name || 'AI Hiring Manager'
+  const interviewerName = activePanelMember?.name || (interviewerPersona === 'marcus' ? 'Marcus Rodriguez' : 'Sarah Chen')
+  const selectedRoleLabel = ROLE_OPTIONS.find(option => option.value === selectedRole)?.label || 'Candidate'
 
 
 
 
+
+  const handleStartPregenerated = async (pregenerated) => {
+    hasGreetedRef.current = false
+    setPhase(PHASE.GENERATING)
+    const toastId = toast.loading('Initializing personalized interview from resume...')
+    try {
+      const interviewQuestions = buildCorporateInterviewQuestions({
+        generatedQuestions: pregenerated,
+        resumeData: resumeData || {},
+        candidateName: candidateName || 'Candidate',
+        company: selectedCompany,
+        panelMode,
+      })
+
+      setQuestions(interviewQuestions)
+
+      const { data: startData } = await startInterview({
+        questions: interviewQuestions,
+        resume_data: resumeData || {},
+        role: selectedRole,
+        candidate_name: candidateName || 'Candidate',
+        interview_format: interviewFormat,
+        difficulty: difficulty,
+        panel_mode: panelMode,
+      })
+
+      setSessionId(startData.session_id)
+      setInterviewSession(startData)
+      setCurrentIndex(0)
+      setEvaluation(null)
+      setAnswer('')
+      setVoiceTranscript('')
+      setVoiceInterim('')
+      setVoiceMetrics(null)
+      setVoiceError('')
+      setEmotionSnapshot(createEmotionSnapshot())
+      isTelemetryOverriddenRef.current = false
+      setShowHint(false)
+      setShowTypingFallback(false)
+      setPhase(PHASE.ROOM_ENTRY)
+      if (typeof window !== 'undefined') {
+        window._heardHello = false
+      }
+      if (interviewFormat !== 'text') {
+        setZoomPhase('connecting')
+        setOnboardingQuestionText('')
+        hasGreetedRef.current = false
+        hasEncouragedRef.current = false
+        hasGreetNudgeRef.current = false
+        lastSpeechTimeRef.current = Date.now()
+        setEncouragementText('')
+      }
+      toast.success(`Mock interview session started!`, { id: toastId })
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to start personalized interview.', { id: toastId })
+      setPhase(PHASE.SETUP)
+    }
+  }
+
+  useEffect(() => {
+    if (location.state?.pregeneratedQuestions && location.state.pregeneratedQuestions.length > 0) {
+      const q = location.state.pregeneratedQuestions
+      // Clear location state to prevent double-firing
+      window.history.replaceState({}, document.title)
+      handleStartPregenerated(q)
+    }
+  }, [location.state])
 
   useEffect(() => {
 
@@ -500,28 +885,126 @@ export default function InterviewPage() {
   }, [phase, currentIndex, interviewFormat, showTypingFallback])
 
   useEffect(() => {
-    if (!interviewerVoice || phase !== PHASE.INTERVIEWING || !currentQuestion?.text || typeof window === 'undefined') {
+    const mainEl = document.querySelector('main')
+    if (mainEl) {
+      mainEl.scrollTop = 0
+    }
+  }, [phase])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return undefined
+
+    const synth = window.speechSynthesis
+    const loadVoices = () => setBrowserVoices(synth.getVoices())
+    loadVoices()
+    synth.addEventListener?.('voiceschanged', loadVoices)
+    synth.onvoiceschanged = loadVoices
+
+    return () => {
+      synth.removeEventListener?.('voiceschanged', loadVoices)
+      if (synth.onvoiceschanged === loadVoices) synth.onvoiceschanged = null
+    }
+  }, [])
+
+
+  useEffect(() => {
+    if (!interviewerVoice || phase !== PHASE.INTERVIEWING || typeof window === 'undefined') {
       return undefined
     }
+
+    if (interviewFormat === 'text') {
+      return undefined
+    }
+
+    // If we are not in greeting phase and there is no question, return
+    if (!zoomPhase && !currentQuestion?.text) {
+      return undefined
+    }
+
+    // Cleanly stop any existing capture before speaking the question
+    stopVoiceCapture({ keepTranscript: true }).catch(() => {})
 
     const synth = window.speechSynthesis
     if (!synth || typeof SpeechSynthesisUtterance === 'undefined') return undefined
 
     synth.cancel()
-    const utterance = new SpeechSynthesisUtterance(currentQuestion.text)
-    utterance.rate = 0.92
-    utterance.pitch = panelMode ? 0.96 : 1
-    utterance.onstart = () => setIsInterviewerSpeaking(true)
-    utterance.onend = () => setIsInterviewerSpeaking(false)
-    utterance.onerror = () => setIsInterviewerSpeaking(false)
+    
+    let textToSpeak = ''
 
-    const timer = window.setTimeout(() => synth.speak(utterance), 350)
+    if (onboardingQuestionText && zoomPhase && zoomPhase !== 'greet_mic') {
+      textToSpeak = onboardingQuestionText
+    } else if (zoomPhase === 'greet_mic') {
+      textToSpeak = "Hello, good morning! Can you hear me clearly?"
+    } else if (zoomPhase === 'greet_camera') {
+      textToSpeak = "Great. Can you also see me clearly?"
+    } else if (zoomPhase === 'small_talk') {
+      textToSpeak = "Wonderful. Thank you for joining on time. How has your day been so far?"
+    } else if (zoomPhase === 'identity_confirm') {
+      textToSpeak = "That's nice to hear! Before we begin, could you please introduce yourself and confirm your full name?"
+    } else if (zoomPhase === 'resume_confirm') {
+      const name = candidateName || 'candidate'
+      textToSpeak = `Thank you, Mr. ${name}. I can see you've uploaded your resume. Could you please confirm that this is your latest resume?`
+    } else if (zoomPhase === 'resume_summary') {
+      const skillsList = resumeData?.skills?.all?.slice(0, 5).join(', ') || 'Python, Java, and AI projects'
+      textToSpeak = `Perfect. I noticed you have experience in ${skillsList}, and have completed some interesting projects or internships. Is that correct?`
+    } else if (zoomPhase === 'explain_structure') {
+      textToSpeak = "Perfect. Today's interview will take approximately 20 to 30 minutes. We'll begin with a brief introduction, followed by questions about your resume, some technical questions, and finally a few behavioral questions. Feel free to take a few moments before answering."
+    } else if (zoomPhase === 'candidate_questions') {
+      textToSpeak = "We've covered all of my questions. Before we conclude, do you have any questions for me about the role or the interview process?"
+    } else if (zoomPhase === 'closing') {
+      textToSpeak = "Thank you for your question. We have a highly collaborative, fast-paced culture where we support each other. It was a pleasure speaking with you today. Your interview has been completed successfully. You'll receive your performance report shortly."
+    } else {
+      textToSpeak = currentQuestion.text
+      if (currentIndex === 0 && !hasGreetedRef.current) {
+        textToSpeak = "Let's start with something simple. Could you tell me a little about yourself?"
+        hasGreetedRef.current = true
+      } else {
+        const connectors = [
+          "Thank you. Let's move on to the next question. ",
+          "Interesting. Now, let's discuss: ",
+          "That's a good point. Next, ",
+          "I understand. Let's transition to the next topic. ",
+          "Good explanation. Let's discuss: ",
+          "Makes sense. Moving forward: "
+        ]
+        const conn = connectors[currentIndex % connectors.length]
+        textToSpeak = conn + textToSpeak
+      }
+    }
+
+    const voiceProfile = panelMode
+      ? PANEL_VOICE_PROFILES[activePanelMember?.id] || VOICE_PROFILES.marcus
+      : VOICE_PROFILES[interviewerPersona] || VOICE_PROFILES.sarah
+    const selectedVoice = chooseBrowserVoice(browserVoices.length ? browserVoices : synth.getVoices(), voiceProfile)
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak)
+    activeUtteranceRef.current = utterance
+    if (selectedVoice) utterance.voice = selectedVoice
+    utterance.lang = selectedVoice?.lang || 'en-US'
+    utterance.rate = voiceProfile.rate
+    utterance.pitch = voiceProfile.pitch
+    utterance.onstart = () => setIsInterviewerSpeaking(true)
+    utterance.onend = () => {
+      setIsInterviewerSpeaking(false)
+      if (zoomPhase === 'explain_structure') {
+        setZoomPhase(null)
+      } else if (zoomPhase === 'closing') {
+        handleFinish()
+      }
+      startVoiceCapture().catch(() => {})
+    }
+    utterance.onerror = () => {
+      setIsInterviewerSpeaking(false)
+      startVoiceCapture().catch(() => {})
+    }
+
+    const timer = window.setTimeout(() => synth.speak(utterance), 400)
     return () => {
       window.clearTimeout(timer)
       synth.cancel()
       setIsInterviewerSpeaking(false)
     }
-  }, [phase, currentIndex, currentQuestion?.text, interviewerVoice, panelMode])
+  }, [phase, currentIndex, currentQuestion?.text, interviewerVoice, panelMode, activePanelMember?.id, interviewerPersona, browserVoices, zoomPhase, interviewFormat, onboardingQuestionText])
 
 
 
@@ -607,6 +1090,100 @@ export default function InterviewPage() {
 
   }, [phase])
 
+  const speakEncouragement = async (phrase) => {
+    // 1. Stop listening
+    await stopVoiceCapture({ keepTranscript: true })
+
+    const synth = window.speechSynthesis
+    if (!synth) return
+
+    synth.cancel()
+    const voiceProfile = panelMode
+      ? PANEL_VOICE_PROFILES[activePanelMember?.id] || VOICE_PROFILES.marcus
+      : VOICE_PROFILES[interviewerPersona] || VOICE_PROFILES.sarah
+    const selectedVoice = chooseBrowserVoice(browserVoices.length ? browserVoices : synth.getVoices(), voiceProfile)
+
+    const utterance = new SpeechSynthesisUtterance(phrase)
+    activeUtteranceRef.current = utterance
+    if (selectedVoice) utterance.voice = selectedVoice
+    utterance.lang = selectedVoice?.lang || 'en-US'
+    utterance.rate = voiceProfile.rate
+    utterance.pitch = voiceProfile.pitch
+
+    utterance.onstart = () => setIsInterviewerSpeaking(true)
+    utterance.onend = () => {
+      setIsInterviewerSpeaking(false)
+      // Resume listening
+      startVoiceCapture().catch(() => {})
+      lastSpeechTimeRef.current = Date.now()
+    }
+    utterance.onerror = () => {
+      setIsInterviewerSpeaking(false)
+      startVoiceCapture().catch(() => {})
+      lastSpeechTimeRef.current = Date.now()
+    }
+
+    synth.speak(utterance)
+  }
+
+  const speakTransitionAndSkip = async () => {
+    // Stop listening
+    await stopVoiceCapture({ keepTranscript: true })
+
+    const synth = window.speechSynthesis
+    if (!synth) {
+      handleSkip()
+      return
+    }
+
+    synth.cancel()
+    const voiceProfile = panelMode
+      ? PANEL_VOICE_PROFILES[activePanelMember?.id] || VOICE_PROFILES.marcus
+      : VOICE_PROFILES[interviewerPersona] || VOICE_PROFILES.sarah
+    const selectedVoice = chooseBrowserVoice(browserVoices.length ? browserVoices : synth.getVoices(), voiceProfile)
+
+    const transitionPhrase = "No worries at all. Let's move on to the next question to keep the momentum going."
+    const utterance = new SpeechSynthesisUtterance(transitionPhrase)
+    activeUtteranceRef.current = utterance
+    if (selectedVoice) utterance.voice = selectedVoice
+    utterance.lang = selectedVoice?.lang || 'en-US'
+    utterance.rate = voiceProfile.rate
+    utterance.pitch = voiceProfile.pitch
+
+    utterance.onstart = () => setIsInterviewerSpeaking(true)
+    utterance.onend = () => {
+      setIsInterviewerSpeaking(false)
+      handleSkip()
+    }
+    utterance.onerror = () => {
+      setIsInterviewerSpeaking(false)
+      handleSkip()
+    }
+
+    synth.speak(utterance)
+  }
+
+
+
+  // Zoom Phase and Speech-Driven Transitions
+  useEffect(() => {
+    if (phase !== PHASE.INTERVIEWING || !zoomPhase || interviewFormat === 'text') return undefined
+
+    if (zoomPhase === 'connecting') {
+      const timer = setTimeout(() => {
+        setZoomPhase('greet_mic')
+      }, 3500)
+      return () => clearTimeout(timer)
+    }
+
+
+  }, [voiceTranscript, zoomPhase, phase, interviewFormat])
+
+  useEffect(() => {
+    // Silence timer and automatic skipping disabled to ensure the candidate has full manual control and isn't interrupted.
+    return undefined
+  }, [])
+
 
 
 
@@ -615,102 +1192,53 @@ export default function InterviewPage() {
 
 
   useEffect(() => {
-
-
     if (phase !== PHASE.INTERVIEWING || !isListening) {
-
-
       return
-
-
     }
 
-
     const interval = setInterval(() => {
-
-
       const transcript = `${finalTranscriptRef.current} ${voiceInterim}`.trim()
-
-
       const fillerCount = countFillers(transcript)
-
-
       const tips = generateLiveCoachingTips(
-
-
         transcript,
-
-
         elapsedSeconds,
-
-
         currentQuestion?.type || 'technical',
-
-
         fillerCount
-
-
       )
-
-
       setCoachingTips(tips)
 
-
-    }, 3000)
-
+      // Auto-submit silence detection based on transcript growth
+      if (transcript.length > 2) {
+        if (transcript.length > lastTranscriptLengthRef.current) {
+          lastTranscriptLengthRef.current = transcript.length
+          lastSpeechTimeRef.current = Date.now()
+          setEncouragementText('')
+        } else {
+          const timeSinceLastSpeech = Date.now() - lastSpeechTimeRef.current
+          const threshold = zoomPhase ? 2800 : 3800
+          if (timeSinceLastSpeech > threshold) {
+            console.log(`Silence threshold of ${threshold}ms reached. Automatically submitting response...`);
+            lastTranscriptLengthRef.current = 0
+            handleSubmitAnswer()
+          }
+        }
+      }
+    }, 1000)
 
     return () => clearInterval(interval)
-
-
-  }, [phase, isListening, elapsedSeconds, voiceInterim, currentQuestion])
-
-
-
-
-
-  useEffect(() => {
-
-
-    if (phase !== PHASE.INTERVIEWING) return
-
-
-    if (interviewFormat === 'text') return
-
-
-    if (isListening) return
-
-
-    if (autoCaptureAttemptedRef.current === currentIndex) return
+  }, [phase, isListening, elapsedSeconds, voiceInterim, currentQuestion, zoomPhase, answer])
 
 
 
 
 
-    autoCaptureAttemptedRef.current = currentIndex
-
-
-    const timer = window.setTimeout(() => {
-
-
-      startVoiceCapture().catch(() => {})
-
-
-    }, 350)
 
 
 
 
 
-    return () => window.clearTimeout(timer)
 
-
-  }, [phase, currentIndex, interviewFormat, isListening])
-
-
-
-
-
-  const stopVoiceCapture = async ({ keepTranscript = true, saveRecordingPreview = true, persistMetrics = true } = {}) => {
+  const stopVoiceCapture = async ({ keepTranscript = true, saveRecordingPreview = true, persistMetrics = true, stopCamera = false } = {}) => {
 
 
     const recognition = recognitionRef.current
@@ -777,32 +1305,17 @@ export default function InterviewPage() {
 
 
 
-    if (mediaStreamRef.current) {
-
-
-      mediaStreamRef.current.getTracks().forEach(track => track.stop())
-
-
-      mediaStreamRef.current = null
-
-
+    if (stopCamera) {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(track => track.stop())
+        mediaStreamRef.current = null
+      }
+      setActiveMediaStream(null)
+      if (cameraPreviewRef.current) {
+        cameraPreviewRef.current.srcObject = null
+      }
+      setCameraReady(false)
     }
-    setActiveMediaStream(null)
-
-
-
-
-
-    if (cameraPreviewRef.current) {
-
-
-      cameraPreviewRef.current.srcObject = null
-
-
-    }
-
-
-    setCameraReady(false)
 
 
     saveRecordingPreviewRef.current = saveRecordingPreview
@@ -890,70 +1403,163 @@ export default function InterviewPage() {
 
 
     return metrics
+  }
 
+  const handleMicChange = async (deviceId) => {
+    setSelectedMicId(deviceId)
+    selectedMicIdRef.current = deviceId
+    if (recognitionRef.current || mediaStreamRef.current) {
+      toast.loading('Switching microphone...', { id: 'device-switch', duration: 1000 })
+      await stopVoiceCapture({ keepTranscript: true, persistMetrics: false })
+      setTimeout(() => {
+        startVoiceCapture()
+      }, 400)
+    }
+  }
 
+  const handleCameraChange = async (deviceId) => {
+    setSelectedCameraId(deviceId)
+    selectedCameraIdRef.current = deviceId
+    if (recognitionRef.current || mediaStreamRef.current) {
+      toast.loading('Switching camera...', { id: 'device-switch', duration: 1000 })
+      await stopVoiceCapture({ keepTranscript: true, persistMetrics: false })
+      setTimeout(() => {
+        startVoiceCapture()
+      }, 400)
+    }
+  }
+  const handleCameraToggle = () => {
+    const nextVal = !cameraEnabled
+    setCameraEnabled(nextVal)
+    if (activeMediaStream) {
+      activeMediaStream.getVideoTracks().forEach(track => { track.enabled = nextVal })
+    }
+  }
+
+  const handleMicToggle = async () => {
+    const nextVal = !micEnabled
+    setMicEnabled(nextVal)
+    if (activeMediaStream) {
+      activeMediaStream.getAudioTracks().forEach(track => { track.enabled = nextVal })
+    }
+    if (!nextVal) {
+      await stopVoiceCapture({ keepTranscript: true })
+    } else {
+      if (!isInterviewerSpeaking) {
+        startVoiceCapture().catch(() => {})
+      }
+    }
   }
 
 
 
 
 
-  const startVoiceCapture = async () => {
+  const getFriendlyVoiceErrorMessage = (error) => {
+    const errorStr = typeof error === 'string' ? error : (error?.name || error?.message || '');
+    const err = errorStr.toLowerCase();
 
+    if (err.includes('notallowed') || err.includes('not-allowed') || err.includes('permission')) {
+      return 'Microphone or Speech Recognition access denied. Please ensure microphone permissions are granted in your browser settings (click the padlock/site settings icon in the URL bar).';
+    }
+    if (err.includes('timeout')) {
+      return 'Camera/Microphone request timed out. Another application (e.g. Teams, Zoom, or another browser tab) might be locking your camera. Please release the device or grant permissions and reload.';
+    }
+    if (err.includes('network')) {
+      return 'Network communication failed. Browser speech recognition (especially in Chrome/Edge) requires an active internet connection to Google/Microsoft recognition servers.';
+    }
+    if (err.includes('no-speech') || err.includes('nospeech')) {
+      return 'No speech detected. Please verify your microphone is active and speak clearly.';
+    }
+    if (err.includes('notfound') || err.includes('not-found') || err.includes('device')) {
+      return 'No microphone detected. Please plug in a microphone or headset and try again.';
+    }
+    if (err.includes('notreadable') || err.includes('already in use') || err.includes('track')) {
+      return 'Microphone is already in use by another application (e.g. Zoom, Teams, or another browser tab).';
+    }
+    if (err.includes('aborted')) {
+      return 'Voice recognition was aborted.';
+    }
+    return `Voice capture failed: ${errorStr}`;
+  }
+
+  const startVoiceCapture = async () => {
+    if (!micEnabled) return
+    if (isStartingCaptureRef.current) return
+    isStartingCaptureRef.current = true
 
     const Recognition = getSpeechRecognition()
-
-
     if (!Recognition || !navigator.mediaDevices?.getUserMedia) {
-
-
       toast.error('Voice recognition is not supported in this browser.')
-
-
+      setShowTypingFallback(true)
+      isStartingCaptureRef.current = false
       return
-
-
     }
 
-
-
-
-
     try {
-
-
       setVoiceError('')
-
-
       setVoiceMetrics(null)
-
-
       setVoiceTranscript('')
-
-
       setVoiceInterim('')
-
-
       setShowTypingFallback(false)
-
-
       finalTranscriptRef.current = ''
-
-
       transcriptConfidenceRef.current = { sum: 0, count: 0 }
-
-
       audioChunksRef.current = []
 
-
-
-
-
       const useVideo = interviewFormat === 'video'
+      const activeMicId = selectedMicIdRef.current
+      const activeCameraId = selectedCameraIdRef.current
 
+      const audioConstraints = activeMicId
+        ? { deviceId: { exact: activeMicId } }
+        : true;
+      const videoConstraints = useVideo
+        ? (activeCameraId ? { deviceId: { exact: activeCameraId } } : true)
+        : false;
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: useVideo })
+      let stream = mediaStreamRef.current
+      const hasActiveTracks = stream && stream.active && stream.getAudioTracks().length > 0 && (!useVideo || stream.getVideoTracks().length > 0)
+      
+      if (!hasActiveTracks) {
+        if (stream) {
+          try { stream.getTracks().forEach(t => t.stop()) } catch(e) {}
+        }
+        const mediaPromise = navigator.mediaDevices.getUserMedia({
+          audio: audioConstraints,
+          video: videoConstraints,
+        })
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('MediaDeviceTimeout: Camera or microphone request timed out. Please check permissions.')), 7500)
+        )
+        stream = await Promise.race([mediaPromise, timeoutPromise])
+        mediaStreamRef.current = stream
+        setActiveMediaStream(stream)
+      }
 
+      // Enumerate devices once permission is granted
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        const audioDevs = devices.filter(d => d.kind === 'audioinput')
+        const videoDevs = devices.filter(d => d.kind === 'videoinput')
+        setAudioDevices(audioDevs)
+        setVideoDevices(videoDevs)
+
+        // Sync selected ids if empty
+        if (audioDevs.length > 0 && !selectedMicIdRef.current) {
+          const activeTrack = stream.getAudioTracks()[0]
+          const activeId = activeTrack?.getSettings()?.deviceId || audioDevs[0].deviceId
+          setSelectedMicId(activeId)
+          selectedMicIdRef.current = activeId
+        }
+        if (videoDevs.length > 0 && !selectedCameraIdRef.current && useVideo) {
+          const activeTrack = stream.getVideoTracks()[0]
+          const activeId = activeTrack?.getSettings()?.deviceId || videoDevs[0].deviceId
+          setSelectedCameraId(activeId)
+          selectedCameraIdRef.current = activeId
+        }
+      } catch (err) {
+        console.warn('Failed to enumerate media devices:', err)
+      }
 
       mediaStreamRef.current = stream
       setActiveMediaStream(stream)
@@ -979,13 +1585,22 @@ export default function InterviewPage() {
         stopEmotionSamplerRef.current?.()
         emotionHistoryRef.current = []
         setEmotionSnapshot(createEmotionSnapshot())
+        isTelemetryOverriddenRef.current = false
         const beginEmotionSampling = () => {
           stopEmotionSamplerRef.current?.()
           stopEmotionSamplerRef.current = startEmotionSampler({
             video: cameraPreviewRef.current,
             onUpdate: snapshot => {
               emotionHistoryRef.current = [...emotionHistoryRef.current.slice(-79), snapshot]
-              setEmotionSnapshot(snapshot)
+              if (!isTelemetryOverriddenRef.current) {
+                setEmotionSnapshot(snapshot)
+              } else {
+                setEmotionSnapshot(prev => ({
+                  ...prev,
+                  raw_landmarks: snapshot.raw_landmarks,
+                  raw_stats: snapshot.raw_stats
+                }))
+              }
             },
           })
         }
@@ -1083,10 +1698,15 @@ export default function InterviewPage() {
 
 
 
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort() } catch (err) {}
+        recognitionRef.current = null
+      }
+
       const recognition = new Recognition()
 
 
-      recognition.continuous = true
+      recognition.continuous = false
 
 
       recognition.interimResults = true
@@ -1152,7 +1772,14 @@ export default function InterviewPage() {
         setVoiceInterim(interimText.trim())
 
 
-        if (liveTranscript) setAnswer(liveTranscript)
+        if (liveTranscript) {
+          setAnswer(liveTranscript)
+          lastSpeechTimeRef.current = Date.now()
+          if (liveTranscript.toLowerCase().includes('hello') && !window._heardHello) {
+            window._heardHello = true
+            toast.success('Mic Check: Heard you say "hello"! Voice recognition is working.', { id: 'hello-check', duration: 5000 })
+          }
+        }
 
 
       }
@@ -1162,29 +1789,38 @@ export default function InterviewPage() {
 
 
       recognition.onerror = event => {
+        const errorType = event.error;
+        console.warn(`Speech recognition error: ${errorType}`);
 
+        if (errorType === 'no-speech' || errorType === 'aborted') {
+          // Do not show an error toast or stop voice capture.
+          // The onend event will handle restarting if appropriate.
+          return;
+        }
 
-        setVoiceError(event.error || 'Voice capture failed.')
-
-
+        const msg = getFriendlyVoiceErrorMessage(event.error);
+        setVoiceError(msg)
         toast.error('Voice capture stopped.')
-
-
         stopVoiceCapture({ keepTranscript: true }).catch(() => {})
-
-
       }
 
-
-
-
-
       recognition.onend = () => {
-
-
-        setIsListening(false)
-
-
+        if (recognitionRef.current === recognition) {
+          const finalVal = finalTranscriptRef.current.trim()
+          if (finalVal.length > 0) {
+            console.log('User finished speaking. Submitting transcript:', finalVal)
+            handleSubmitAnswer()
+          } else {
+            try {
+              recognition.start()
+            } catch (err) {
+              console.error('Failed to restart speech recognition:', err)
+              setIsListening(false)
+            }
+          }
+        } else {
+          setIsListening(false)
+        }
       }
 
 
@@ -1192,29 +1828,18 @@ export default function InterviewPage() {
 
 
       recognitionRef.current = recognition
-
-
       setIsListening(true)
-
-
       recognition.start()
 
-
+      isStartingCaptureRef.current = false
       toast.success(useVideo ? 'Video interview started' : 'Voice capture started')
-
-
     } catch (error) {
-
-
-      setVoiceError(error.response?.data?.error || error.message || 'Unable to start voice capture.')
-
-
+      isStartingCaptureRef.current = false
+      const msg = getFriendlyVoiceErrorMessage(error);
+      setVoiceError(msg)
       toast.error('Could not access the microphone')
-
-
+      setShowTypingFallback(true)
       await stopVoiceCapture({ keepTranscript: false })
-
-
     }
 
 
@@ -1226,7 +1851,7 @@ export default function InterviewPage() {
 
   const handleGenerate = async () => {
 
-
+    hasGreetedRef.current = false
     setPhase(PHASE.GENERATING)
 
 
@@ -1250,13 +1875,22 @@ export default function InterviewPage() {
       if (data.success && data.questions.length > 0) {
 
 
-        setQuestions(data.questions)
+        const interviewQuestions = buildCorporateInterviewQuestions({
+          generatedQuestions: data.questions,
+          resumeData: resumeData || {},
+          candidateName: candidateName || 'Candidate',
+          company: selectedCompany,
+          panelMode,
+        })
+
+
+        setQuestions(interviewQuestions)
 
 
         const { data: startData } = await startInterview({
 
 
-          questions: data.questions,
+          questions: interviewQuestions,
 
 
           resume_data: resumeData || {},
@@ -1306,6 +1940,7 @@ export default function InterviewPage() {
 
         setVoiceError('')
         setEmotionSnapshot(createEmotionSnapshot())
+        isTelemetryOverriddenRef.current = false
 
 
         setShowHint(false)
@@ -1314,10 +1949,20 @@ export default function InterviewPage() {
         setShowTypingFallback(false)
 
 
-        setPhase(PHASE.INTERVIEWING)
-
-
-        toast.success(`${data.questions.length} questions ready!`, { id: toastId })
+        setPhase(PHASE.ROOM_ENTRY)
+        if (typeof window !== 'undefined') {
+          window._heardHello = false
+        }
+        if (interviewFormat !== 'text') {
+          setZoomPhase('connecting')
+          setOnboardingQuestionText('')
+          hasGreetedRef.current = false
+          hasEncouragedRef.current = false
+          hasGreetNudgeRef.current = false
+          lastSpeechTimeRef.current = Date.now()
+          setEncouragementText('')
+        }
+        toast.success(`Mock interview session started!`, { id: toastId })
 
 
       } else {
@@ -1348,50 +1993,65 @@ export default function InterviewPage() {
 
 
   const handleSubmitAnswer = async () => {
+    if (zoomPhase) {
+      const finalAnswer = (answer.trim() || `${finalTranscriptRef.current} ${voiceInterim}`.trim() || "[No verbal response captured]").trim()
+      const nextPhaseMap = {
+        'greet_mic': 'greet_camera',
+        'greet_camera': 'small_talk',
+        'small_talk': 'identity_confirm',
+        'identity_confirm': 'resume_confirm',
+        'resume_confirm': 'resume_summary',
+        'resume_summary': 'explain_structure',
+        'candidate_questions': 'closing'
+      }
+      const nextPhase = nextPhaseMap[zoomPhase]
+      
+      await stopVoiceCapture({ keepTranscript: true })
+      
+      try {
+        const { data } = await submitOnboardingResponse({
+          session_id: sessionId,
+          current_phase: zoomPhase,
+          answer: finalAnswer
+        })
+        if (data?.success && data?.response) {
+          setOnboardingQuestionText(data.response)
+        } else {
+          setOnboardingQuestionText('')
+        }
+      } catch (err) {
+        console.warn('Failed to fetch dynamic onboarding transition:', err)
+        setOnboardingQuestionText('')
+      }
 
+      if (nextPhase) {
+        setZoomPhase(nextPhase)
+      }
+      setVoiceTranscript('')
+      setVoiceInterim('')
+      setAnswer('')
+      lastTranscriptLengthRef.current = 0
+      return
+    }
 
     const draftAnswer = answer.trim() || `${voiceTranscript} ${voiceInterim}`.trim()
 
-
-    if (!draftAnswer) {
-
-
+    if (!draftAnswer && interviewFormat === 'text') {
       toast.error('Please write an answer before submitting.')
-
-
       return
-
-
     }
-
-
-
-
 
     let latestVoiceMetrics = voiceMetrics
 
-
     if (isListening) {
-
-
       latestVoiceMetrics = await stopVoiceCapture({ keepTranscript: true })
-
-
     }
 
-
-
-
-
-    const finalAnswer = (answer.trim() || `${finalTranscriptRef.current} ${voiceInterim}`.trim() || draftAnswer).trim()
+    const finalAnswer = (answer.trim() || `${finalTranscriptRef.current} ${voiceInterim}`.trim() || draftAnswer || "[No verbal response captured]").trim()
 
 
     setPhase(PHASE.EVALUATING)
-
-
-    const toastId = toast.loading('AI is evaluating your answer...')
-
-
+    lastTranscriptLengthRef.current = 0
     try {
 
 
@@ -1420,6 +2080,7 @@ export default function InterviewPage() {
 
 
       setEvaluation(data.evaluation)
+      setSubmittedAnswerCount(count => count + 1)
 
 
 
@@ -1474,15 +2135,22 @@ export default function InterviewPage() {
 
 
       setCoachingTips([])
-
-
-      toast.success('Answer evaluated!', { id: toastId })
+      
+      // Auto-advance loop: Only auto-advance in voice/video modes, leave text mode on evaluation feedback
+      if (interviewFormat === 'text') {
+        setPhase(PHASE.EVALUATING)
+      } else {
+        setPhase(PHASE.INTERVIEWING)
+        setTimeout(() => {
+          handleNextQuestion()
+        }, 1200)
+      }
 
 
     } catch (error) {
 
 
-      toast.error('Evaluation failed', { id: toastId })
+      toast.error('Evaluation failed')
 
 
       setPhase(PHASE.INTERVIEWING)
@@ -1507,14 +2175,16 @@ export default function InterviewPage() {
 
 
     if (nextIndex >= questions.length) {
-
-
-      handleFinish()
-
-
+      if (interviewFormat !== 'text') {
+        setPhase(PHASE.INTERVIEWING)
+        setZoomPhase('candidate_questions')
+        setVoiceTranscript('')
+        setVoiceInterim('')
+        setAnswer('')
+      } else {
+        handleFinish()
+      }
       return
-
-
     }
 
 
@@ -1548,6 +2218,7 @@ export default function InterviewPage() {
 
     setVoiceError('')
     setEmotionSnapshot(createEmotionSnapshot())
+    isTelemetryOverriddenRef.current = false
 
 
     if (recordingUrl) {
@@ -1599,6 +2270,7 @@ export default function InterviewPage() {
 
 
       })
+      setSubmittedAnswerCount(count => count + 1)
 
 
     } catch (_) {
@@ -1618,7 +2290,28 @@ export default function InterviewPage() {
   const handleFinish = async () => {
 
 
-    await stopVoiceCapture({ keepTranscript: false, saveRecordingPreview: false, persistMetrics: false }).catch(() => {})
+    await stopVoiceCapture({ keepTranscript: false, saveRecordingPreview: false, persistMetrics: false, stopCamera: true }).catch(() => {})
+    window.speechSynthesis?.cancel()
+    if (document.fullscreenElement) {
+      await document.exitFullscreen().catch(() => {})
+    }
+
+    const hasSubmittedAnswers = submittedAnswerCount > 0 || scoreHistory.length > 0 || currentIndex > 0 || evaluation
+
+    if (!hasSubmittedAnswers) {
+      setPhase(PHASE.SETUP)
+      setAnswer('')
+      setVoiceTranscript('')
+      setVoiceInterim('')
+      setRecordingUrl('')
+      setQuestions([])
+      setCurrentIndex(0)
+      setElapsedSeconds(0)
+      setTotalElapsed(0)
+      setIsInterviewerSpeaking(false)
+      toast.success('Interview ended. You are back at setup.')
+      return
+    }
 
 
     const toastId = toast.loading('Completing interview...')
@@ -1642,7 +2335,7 @@ export default function InterviewPage() {
     } catch (error) {
 
 
-      toast.error('Failed to complete interview', { id: toastId })
+      toast.error(error?.message || 'Failed to complete interview', { id: toastId })
 
 
     }
@@ -1681,6 +2374,7 @@ export default function InterviewPage() {
 
     setVoiceError('')
     setEmotionSnapshot(createEmotionSnapshot())
+    isTelemetryOverriddenRef.current = false
 
 
     setCoachingTips([])
@@ -1797,7 +2491,7 @@ export default function InterviewPage() {
     return (
 
 
-      <div className="max-w-3xl mx-auto space-y-5 animate-in">
+      <div className="max-w-3xl mx-auto space-y-5 animate-in pt-4">
         <AdvancedToolPanel type="interview" />
 
 
@@ -1920,10 +2614,6 @@ export default function InterviewPage() {
 
 
 
-
-          <div className="mb-6">
-            <FreeStackPanel compact />
-          </div>
 
           <div className="mb-5">
 
@@ -2131,14 +2821,18 @@ export default function InterviewPage() {
                 >
 
 
-                  <div className="font-semibold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                  <div className="font-semibold text-sm text-gray-800 dark:text-gray-200 flex items-center justify-between w-full">
 
+                    <span className="flex items-center gap-2">
+                      {value === 'text' ? <Type className="w-4 h-4" /> : value === 'voice' ? <Mic className="w-4 h-4" /> : <Video className="w-4 h-4" />}
+                      {label}
+                    </span>
 
-                    {value === 'text' ? <Type className="w-4 h-4" /> : value === 'voice' ? <Mic className="w-4 h-4" /> : <Video className="w-4 h-4" />}
-
-
-                    {label}
-
+                    {!hasSpeechSupport && value !== 'text' && (
+                      <span className="text-[10px] bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20 px-1.5 py-0.5 rounded-full font-normal">
+                        Unsupported
+                      </span>
+                    )}
 
                   </div>
 
@@ -2153,6 +2847,13 @@ export default function InterviewPage() {
 
 
             </div>
+
+            {!hasSpeechSupport && (
+              <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-3 text-xs text-yellow-700 dark:text-yellow-200 mt-3 space-y-1">
+                <span className="font-semibold text-yellow-800 dark:text-yellow-300">⚠️ Browser Speech Support Warning:</span>
+                <p>Voice and Video modes require the browser Web Speech API, which is not supported by your current browser (like Firefox or sandboxed IDE preview panes). If you run the interview in these modes, live speech transcription will not work. We recommend selecting <strong>Text Mode</strong>, or running the application in <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>.</p>
+              </div>
+            )}
 
 
           </div>
@@ -2216,8 +2917,8 @@ export default function InterviewPage() {
             <div className="rounded-2xl border border-white/10 bg-slate-950 text-white p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-bold">2D AI Interviewer</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Avatar room with camera preview and emotion signals</p>
+                  <p className="text-sm font-bold">AI Interviewer Room</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Photorealistic interviewer with live camera & emotion tracking</p>
                 </div>
                 <button
                   onClick={() => setAiInterviewerMode(!aiInterviewerMode)}
@@ -2226,6 +2927,24 @@ export default function InterviewPage() {
                   <span className={clsx('absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform', aiInterviewerMode ? 'translate-x-6' : 'translate-x-0')} />
                 </button>
               </div>
+              {aiInterviewerMode && (
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => setInterviewerPersona('sarah')}
+                    className={clsx('flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all', interviewerPersona === 'sarah' ? 'bg-blue-500/15 border-blue-500/30 text-blue-300' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white')}
+                  >
+                    <img src="/interviewers/sarah_chen.png" className="w-6 h-6 rounded-full object-cover" alt="" />
+                    Sarah Chen
+                  </button>
+                  <button
+                    onClick={() => setInterviewerPersona('marcus')}
+                    className={clsx('flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all', interviewerPersona === 'marcus' ? 'bg-teal-500/15 border-teal-500/30 text-teal-300' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white')}
+                  >
+                    <img src="/interviewers/marcus_rodriguez.png" className="w-6 h-6 rounded-full object-cover" alt="" />
+                    Marcus Rodriguez
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-slate-950 text-white p-4">
@@ -2375,6 +3094,35 @@ export default function InterviewPage() {
 
 
 
+  if (phase === PHASE.ROOM_ENTRY) {
+    return (
+      <WalkInInterviewRoom
+        candidateName={candidateName || 'Candidate'}
+        roleLabel={selectedRoleLabel}
+        resumeData={resumeData}
+        interviewerPersona={interviewerPersona}
+        interviewerName={interviewerName}
+        onBack={() => setPhase(PHASE.SETUP)}
+        onBegin={() => {
+          setPhase(PHASE.INTERVIEWING)
+          if (typeof window !== 'undefined') {
+            window._heardHello = false
+          }
+          if (interviewFormat !== 'text') {
+            setZoomPhase('connecting')
+            setOnboardingQuestionText('')
+            hasGreetedRef.current = false
+            hasEncouragedRef.current = false
+            hasGreetNudgeRef.current = false
+            lastSpeechTimeRef.current = Date.now()
+            setEncouragementText('')
+          }
+        }}
+      />
+    )
+  }
+
+
   if (phase === PHASE.GENERATING) {
 
 
@@ -2406,12 +3154,55 @@ export default function InterviewPage() {
 
 
     )
-
-
   }
 
 
-
+  if (phase === PHASE.INTERVIEWING && (interviewFormat === 'video' || interviewFormat === 'voice')) {
+    return (
+      <AIInterviewerRoom
+        cameraPreviewRef={cameraPreviewRef}
+        currentQuestion={currentQuestion}
+        interviewerName={interviewerName}
+        interviewerPersona={interviewerPersona}
+        isListening={isListening}
+        isSpeaking={isInterviewerSpeaking}
+        cameraReady={cameraReady}
+        emotionSnapshot={emotionSnapshot}
+        onEmotionSnapshotChange={setEmotionSnapshot}
+        onTelemetryOverrideChange={handleTelemetryOverrideChange}
+        voiceTranscript={voiceTranscript}
+        onVoiceTranscriptChange={setVoiceTranscript}
+        voiceInterim={voiceInterim}
+        voiceMetrics={voiceMetrics}
+        elapsedSeconds={elapsedSeconds}
+        totalElapsed={totalElapsed}
+        currentIndex={currentIndex}
+        totalQuestions={questions.length}
+        onSubmitAnswer={handleSubmitAnswer}
+        onIsSpeakingChange={setIsInterviewerSpeaking}
+        onSkipQuestion={handleSkip}
+        onEndInterview={handleFinish}
+        audioDevices={audioDevices}
+        videoDevices={videoDevices}
+        selectedMicId={selectedMicId}
+        selectedCameraId={selectedCameraId}
+        onMicChange={handleMicChange}
+        onCameraChange={handleCameraChange}
+        activeMediaStream={activeMediaStream}
+        zoomPhase={zoomPhase}
+        onboardingQuestionText={onboardingQuestionText}
+        encouragementText={encouragementText}
+        cameraEnabled={cameraEnabled}
+        onCameraToggle={handleCameraToggle}
+        micEnabled={micEnabled}
+        onMicToggle={handleMicToggle}
+        showTypingFallback={showTypingFallback}
+        onShowTypingFallbackChange={setShowTypingFallback}
+        answer={answer}
+        onAnswerChange={setAnswer}
+      />
+    )
+  }
 
 
   return (
@@ -2527,10 +3318,17 @@ export default function InterviewPage() {
               cameraPreviewRef={cameraPreviewRef}
               currentQuestion={currentQuestion}
               interviewerName={interviewerName}
+              interviewerPersona={interviewerPersona}
               isListening={isListening}
               isSpeaking={isInterviewerSpeaking}
               cameraReady={cameraReady}
               emotionSnapshot={emotionSnapshot}
+              onEmotionSnapshotChange={setEmotionSnapshot}
+              onTelemetryOverrideChange={handleTelemetryOverrideChange}
+              voiceTranscript={voiceTranscript}
+              onVoiceTranscriptChange={setVoiceTranscript}
+              onIsSpeakingChange={setIsInterviewerSpeaking}
+              onEndInterview={handleFinish}
             />
           )}
 
@@ -2623,7 +3421,13 @@ export default function InterviewPage() {
             <div className="flex flex-wrap gap-2">
 
 
+              {currentQuestion?.round && <span className="badge badge-green">{currentQuestion.round}</span>}
+
+
               {currentQuestion?.category && <span className="badge badge-blue">{currentQuestion.category}</span>}
+
+
+              {currentQuestion?.time_limit_seconds && <span className="badge badge-red">{currentQuestion.time_limit_seconds}s</span>}
 
 
               {currentQuestion?.difficulty && (
@@ -2795,6 +3599,12 @@ export default function InterviewPage() {
                 recordingUrl={recordingUrl}
                 interviewFormat={interviewFormat}
                 onVoiceTelemetryUpdate={(tel) => setAvgTremorScore(tel.avg_tremor)}
+                audioDevices={audioDevices}
+                videoDevices={videoDevices}
+                selectedMicId={selectedMicId}
+                selectedCameraId={selectedCameraId}
+                onMicChange={handleMicChange}
+                onCameraChange={handleCameraChange}
               />
 
 
@@ -2804,7 +3614,19 @@ export default function InterviewPage() {
               {voiceError && (
 
 
-                <div className="rounded-xl border border-orange-400/20 bg-orange-500/10 px-3 py-2 text-xs text-orange-200 mb-3">{voiceError}</div>
+                <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-200 mb-3 space-y-2">
+                  <div className="font-bold text-red-300">Voice Recognition Issue:</div>
+                  <div>{voiceError}</div>
+                  <div className="pt-1.5 text-[11px] text-gray-400 border-t border-white/5 space-y-1">
+                    <p className="font-semibold text-gray-300">💡 Quick Troubleshooting Tips:</p>
+                    <ul className="list-disc pl-4 space-y-0.5">
+                      <li>Use a supported browser like <strong className="text-gray-300">Google Chrome</strong> or <strong className="text-gray-300">Microsoft Edge</strong>.</li>
+                      <li>Ensure you are accessing the app via <code className="bg-white/5 px-1 rounded text-gray-300">http://localhost:5173</code> (IP address access requires HTTPS for media devices).</li>
+                      <li>Click the site settings/padlock icon next to the URL in your browser address bar and verify Microphone permission is set to <strong>Allow</strong>.</li>
+                      <li>If you still experience issues, click the <strong>Keyboard/Type icon (⌨️)</strong> above to enable the <strong className="text-gray-300">Typed Fallback mode</strong> and type your answers.</li>
+                    </ul>
+                  </div>
+                </div>
 
 
               )}

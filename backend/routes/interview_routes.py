@@ -5,6 +5,7 @@ import uuid
 from services.interview_service import InterviewService
 from ai.question_generator import QuestionGenerator
 from ai.answer_evaluator import AnswerEvaluator
+from utils.auth_utils import token_required
 
 logger = logging.getLogger(__name__)
 interview_bp = Blueprint("interview", __name__)
@@ -21,6 +22,7 @@ def safe_int(value, default=0):
 
 
 @interview_bp.route("/interview/generate-questions", methods=["POST"])
+@token_required
 def generate_questions():
     """Generate interview questions from resume data or role"""
     try:
@@ -67,6 +69,7 @@ def generate_questions():
 
 
 @interview_bp.route("/interview/start", methods=["POST"])
+@token_required
 def start_interview():
     """Start a new interview session"""
     try:
@@ -95,6 +98,7 @@ def start_interview():
             interview_format=interview_format,
             difficulty=difficulty,
             panel_mode=panel_mode,
+            username=request.username,
         )
 
         first_question = questions[0] if questions else None
@@ -120,6 +124,7 @@ def start_interview():
 
 
 @interview_bp.route("/interview/answer", methods=["POST"])
+@token_required
 def submit_answer():
     """Submit an answer and get evaluation + next question"""
     try:
@@ -243,7 +248,47 @@ def submit_answer():
         return jsonify({"error": str(e)}), 500
 
 
+@interview_bp.route("/interview/onboarding-response", methods=["POST"])
+@token_required
+def generate_onboarding_response():
+    """Generate a personalized conversational response during onboarding"""
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        session_id = data.get("session_id")
+        current_phase = data.get("current_phase")
+        answer = data.get("answer", "").strip()
+
+        if not session_id or not current_phase:
+            return jsonify({"error": "Session ID and current_phase required"}), 400
+
+        session = interview_service.get_session(session_id)
+        if not session:
+            return jsonify({"error": "Session not found"}), 404
+
+        candidate_name = session.get("resume_data", {}).get("personal", {}).get("name", "Candidate")
+        
+        response_text = answer_evaluator.generate_onboarding_response(
+            current_phase=current_phase,
+            answer=answer,
+            candidate_name=candidate_name,
+            resume_data=session.get("resume_data", {}),
+        )
+
+        return jsonify({
+            "success": True,
+            "response": response_text
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Onboarding response error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @interview_bp.route("/interview/follow-up", methods=["POST"])
+@token_required
 def generate_follow_up():
     """Generate a personalized follow-up question based on the answer"""
     try:
@@ -262,6 +307,8 @@ def generate_follow_up():
         session = interview_service.get_session(session_id)
         if not session:
             return jsonify({"error": "Session not found"}), 404
+        if session.get("username") and session.get("username") != request.username:
+            return jsonify({"error": "Forbidden"}), 403
 
         follow_up = answer_evaluator.generate_follow_up(
             question=question,
@@ -278,6 +325,7 @@ def generate_follow_up():
 
 
 @interview_bp.route("/interview/complete", methods=["POST"])
+@token_required
 def complete_interview():
     """Complete the interview and get full results"""
     try:
@@ -290,8 +338,13 @@ def complete_interview():
         session = interview_service.get_session(session_id)
         if not session:
             return jsonify({"error": "Session not found"}), 404
+        if session.get("username") and session.get("username") != request.username:
+            return jsonify({"error": "Forbidden"}), 403
 
-        results = interview_service.complete_session(session_id)
+        try:
+            results = interview_service.complete_session(session_id)
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
 
         return jsonify({"success": True, "results": results}), 200
 
@@ -301,10 +354,11 @@ def complete_interview():
 
 
 @interview_bp.route("/interview/sessions", methods=["GET"])
+@token_required
 def get_sessions():
     """Get all interview sessions"""
     try:
-        sessions = interview_service.get_all_sessions()
+        sessions = interview_service.get_all_sessions(username=request.username)
         return jsonify({"success": True, "sessions": sessions}), 200
     except Exception as e:
         logger.error(f"Get sessions error: {e}")
@@ -312,12 +366,15 @@ def get_sessions():
 
 
 @interview_bp.route("/interview/session/<session_id>", methods=["GET"])
+@token_required
 def get_session(session_id):
     """Get a specific interview session"""
     try:
         session = interview_service.get_session(session_id)
         if not session:
             return jsonify({"error": "Session not found"}), 404
+        if session.get("username") and session.get("username") != request.username:
+            return jsonify({"error": "Forbidden"}), 403
         return jsonify({"success": True, "session": session}), 200
     except Exception as e:
         logger.error(f"Get session error: {e}")
@@ -325,9 +382,15 @@ def get_session(session_id):
 
 
 @interview_bp.route("/interview/session/<session_id>", methods=["DELETE"])
+@token_required
 def delete_session(session_id):
     """Delete an interview session"""
     try:
+        session = interview_service.get_session(session_id)
+        if not session:
+            return jsonify({"error": "Session not found"}), 404
+        if session.get("username") and session.get("username") != request.username:
+            return jsonify({"error": "Forbidden"}), 403
         interview_service.delete_session(session_id)
         return jsonify({"success": True, "message": "Session deleted"}), 200
     except Exception as e:

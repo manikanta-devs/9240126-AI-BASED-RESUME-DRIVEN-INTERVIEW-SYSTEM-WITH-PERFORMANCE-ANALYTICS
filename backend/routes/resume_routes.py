@@ -4,6 +4,7 @@ import os
 import logging
 
 from services.resume_service import ResumeService
+from utils.auth_utils import token_required
 
 logger = logging.getLogger(__name__)
 resume_bp = Blueprint("resume", __name__)
@@ -17,6 +18,7 @@ def allowed_file(filename):
 
 
 @resume_bp.route("/resume/upload", methods=["POST"])
+@token_required
 def upload_resume():
     """Upload and analyze a resume file"""
     try:
@@ -38,7 +40,8 @@ def upload_resume():
                 400,
             )
 
-        filename = secure_filename(file.filename)
+        import uuid
+        filename = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
         upload_folder = current_app.config["UPLOAD_FOLDER"]
         filepath = os.path.join(upload_folder, filename)
         file.save(filepath)
@@ -69,6 +72,7 @@ def upload_resume():
 
 
 @resume_bp.route("/resume/analyze-text", methods=["POST"])
+@token_required
 def analyze_text():
     """Analyze plain text resume"""
     try:
@@ -100,6 +104,7 @@ def analyze_text():
 
 
 @resume_bp.route("/resume/match-job", methods=["POST"])
+@token_required
 def match_resume_to_job():
     """Compare analyzed resume data against a job description."""
     try:
@@ -124,6 +129,7 @@ def match_resume_to_job():
 
 
 @resume_bp.route("/resume/roles", methods=["GET"])
+@token_required
 def get_roles():
     """Get available interview roles"""
     roles = [

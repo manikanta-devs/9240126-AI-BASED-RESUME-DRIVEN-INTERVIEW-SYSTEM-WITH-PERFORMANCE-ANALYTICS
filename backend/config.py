@@ -20,7 +20,7 @@ class Config:
     ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 
     # Rate limiting
-    RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+    RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "false").lower() == "true"
     RATE_LIMIT_DEFAULT = "200 per day"
     RATE_LIMIT_HOURLY = "50 per hour"
 
@@ -47,6 +47,7 @@ class DevelopmentConfig(Config):
     FLASK_ENV = "development"
     DEBUG = True
     TESTING = False
+    RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "false").lower() == "true"
 
 
 class ProductionConfig(Config):
@@ -55,7 +56,8 @@ class ProductionConfig(Config):
     FLASK_ENV = "production"
     DEBUG = False
     TESTING = False
-    # Enforce secure headers in production
+    RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+    # Enforce secure cookies in production
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"

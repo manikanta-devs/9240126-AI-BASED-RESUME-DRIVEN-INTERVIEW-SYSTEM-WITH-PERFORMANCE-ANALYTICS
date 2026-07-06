@@ -305,6 +305,7 @@ See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for:
 
 ## 📚 Documentation
 
+- **[Interactive Documentation Portal](docs/index.html)** - 🌟 **Start Here!** A premium dashboard containing visual guides, directory explorer, and university Viva-Voce prep simulator.
 - **[API Documentation](backend/API_DOCS.md)** - Complete endpoint reference with examples
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment across platforms
 - **[Contributing Guide](CONTRIBUTING.md)** - Development setup, code style, testing

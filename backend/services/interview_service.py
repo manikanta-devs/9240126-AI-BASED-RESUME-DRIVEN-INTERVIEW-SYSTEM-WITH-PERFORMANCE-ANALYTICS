@@ -24,10 +24,12 @@ class InterviewService:
         interview_format="voice",
         difficulty="medium",
         panel_mode=False,
+        username=None,
     ):
         """Create a new interview session."""
         session = {
             "id": session_id,
+            "username": username or "Candidate",
             "candidate_name": candidate_name,
             "role": role,
             "interview_format": interview_format,
@@ -241,9 +243,9 @@ class InterviewService:
         except Exception:
             return 0
 
-    def get_all_sessions(self):
+    def get_all_sessions(self, username=None):
         """Get all sessions (summary only)."""
-        sessions = db.get_all_sessions()
+        sessions = db.get_all_sessions(username)
         summaries = []
         for s in sessions:
             summaries.append(

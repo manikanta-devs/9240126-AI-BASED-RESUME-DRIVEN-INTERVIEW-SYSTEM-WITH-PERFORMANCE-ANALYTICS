@@ -47,7 +47,7 @@ Dataset and Tools Used
 - AI providers: Hugging Face Inference API (primary), optional `transformers` local LLM (LocalLLM), Google Gemini (optional fallback).
 - Frontend: React + Vite + Tailwind; source in `frontend/src/`.
 - Dev tools: `black`, `flake8`, `pytest`, ESLint.
-- Packaging: Docker Compose (`docker-compose.yml`), packaging script `package_release.ps1`.
+- Packaging: Docker Compose (`docker-compose.yml`), packaging script `scripts/package_release.ps1`.
 
 Work Completed So Far
 ---------------------

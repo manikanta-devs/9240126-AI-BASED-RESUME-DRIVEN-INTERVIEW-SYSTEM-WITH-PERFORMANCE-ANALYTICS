@@ -334,6 +334,70 @@ SKILL_QUESTIONS = {
 }
 
 # ── Experience-level questions ───────────────────────────────────
+SKILL_QUESTIONS.update({
+    "reactjs": SKILL_QUESTIONS["react"],
+    "springboot": SKILL_QUESTIONS["spring"],
+    "sql": [
+        {
+            "text": "Write or explain a SQL query to find the second highest salary from an employee table. What edge cases would you handle?",
+            "category": "SQL",
+            "type": "technical",
+            "difficulty": "medium",
+        },
+        {
+            "text": "Explain joins, indexes, and query optimization using a real reporting or dashboard example.",
+            "category": "SQL",
+            "type": "technical",
+            "difficulty": "medium",
+        },
+    ],
+    "mysql": [
+        {
+            "text": "Write or explain a SQL query to find the second highest salary from an employee table. What edge cases would you handle?",
+            "category": "SQL",
+            "type": "technical",
+            "difficulty": "medium",
+        }
+    ],
+    "machinelearning": [
+        {
+            "text": "Explain supervised learning with an example from a real project or business problem.",
+            "category": "Machine Learning",
+            "type": "technical",
+            "difficulty": "easy",
+        },
+        {
+            "text": "What is the difference between classification and regression, and how would you choose the right approach for a problem?",
+            "category": "Machine Learning",
+            "type": "technical",
+            "difficulty": "medium",
+        },
+    ],
+    "ml": [
+        {
+            "text": "Explain supervised learning with an example from a real project or business problem.",
+            "category": "Machine Learning",
+            "type": "technical",
+            "difficulty": "easy",
+        }
+    ],
+})
+
+SKILL_QUESTIONS["java"].extend([
+    {
+        "text": "Explain JVM, JRE, and JDK. How does JVM help Java run across different platforms?",
+        "category": "Java",
+        "type": "technical",
+        "difficulty": "easy",
+    },
+    {
+        "text": "What is the difference between HashMap and Hashtable, and which one would you use in a modern Java application?",
+        "category": "Java Collections",
+        "type": "technical",
+        "difficulty": "medium",
+    },
+])
+
 EXPERIENCE_QUESTIONS = {
     "entry": [
         {
@@ -714,6 +778,80 @@ SCENARIO_QUESTIONS = [
 ]
 
 
+REAL_LIFE_INTERVIEW_QUESTIONS = [
+    {
+        "text": "Thank you for sharing your resume. Please walk me through your background, the main projects you want me to notice, and why this role is the right next step for you.",
+        "category": "Resume Walkthrough",
+        "type": "behavioral",
+        "difficulty": "easy",
+        "persona": "hr_manager",
+    },
+    {
+        "text": "I see several skills on your resume. Pick one project that best proves those skills and explain the problem, your exact contribution, and the final result.",
+        "category": "Project Deep Dive",
+        "type": "behavioral",
+        "difficulty": "medium",
+        "persona": "hr_manager",
+    },
+    {
+        "text": "Imagine I am the hiring manager and I only have two minutes. How would you convince me that your resume matches this job better than another candidate's?",
+        "category": "Candidate Pitch",
+        "type": "behavioral",
+        "difficulty": "medium",
+        "persona": "hr_manager",
+    },
+    {
+        "text": "Tell me about a time something on your resume did not go perfectly. What failed, what did you own personally, and what changed after that?",
+        "category": "Failure and Learning",
+        "type": "behavioral",
+        "difficulty": "medium",
+        "persona": "strict_manager",
+    },
+    {
+        "text": "A manager asks you about a skill listed on your resume, but your experience with it is limited. How do you answer honestly while still showing readiness to learn?",
+        "category": "Resume Pressure",
+        "type": "situational",
+        "difficulty": "medium",
+        "persona": "hr_manager",
+    },
+    {
+        "text": "You join a new team and discover the codebase is poorly documented. What do you do in your first week to become productive without slowing the team down?",
+        "category": "First 30 Days",
+        "type": "situational",
+        "difficulty": "medium",
+        "persona": "technical_lead",
+    },
+    {
+        "text": "A senior teammate challenges your design during a review. Walk me through how you defend your reasoning, listen to feedback, and decide what to change.",
+        "category": "Design Review",
+        "type": "situational",
+        "difficulty": "medium",
+        "persona": "strict_manager",
+    },
+    {
+        "text": "Describe a time you had to explain a technical decision to a non-technical person. How did you make it clear and useful?",
+        "category": "Communication",
+        "type": "behavioral",
+        "difficulty": "medium",
+        "persona": "hr_manager",
+    },
+    {
+        "text": "Suppose you are given an urgent task five minutes before leaving for the day. What questions do you ask, and how do you handle the priority?",
+        "category": "Workplace Judgment",
+        "type": "situational",
+        "difficulty": "easy",
+        "persona": "hr_manager",
+    },
+    {
+        "text": "At the end of this interview, what is one concern you think I might have about your profile, and how would you address it?",
+        "category": "Self Awareness",
+        "type": "behavioral",
+        "difficulty": "hard",
+        "persona": "strict_manager",
+    },
+]
+
+
 class QuestionGenerator:
     """Generates interview questions using Gemini AI with smart fallback"""
 
@@ -822,14 +960,16 @@ Relevant background on top skill (if available):
 {self.wiki.get_summary(skills[0]) if skills else ''}
 
 Requirements for Question Generation:
-1. Tailoring & Accuracy: Questions MUST be highly specific to the candidate's background and target role. Do NOT ask generic questions.
-2. Technical & Coding: For technical questions, construct a realistic scenario (e.g., debugging a memory leak, optimizing database query speed, designing an API endpoint, or refactoring components). Ask them to explain the implementation details, trade-offs, and edge cases. Avoid textbook definitions (do not ask "Explain what X is", ask "How would you design/optimize/debug X under constraint Y?").
-3. Behavioral & Situational: For behavioral questions, prompt the candidate for a specific past situation from their experience, their exact action, and the outcome/metrics. Enforce that they describe a real-world project conflict, system failure, or leadership challenge.
-4. Difficulty Level: The questions must strictly match the '{difficulty}' level:
+1. Real interview arc: The FIRST question must feel like the interviewer has just accepted the candidate's resume and is beginning the conversation. Ask for a concise resume walkthrough, strongest project, and why this role fits.
+2. Tailoring & Accuracy: Questions MUST be highly specific to the candidate's background and target role. Do NOT ask generic questions. Refer to resume skills, projects, titles, education, or company context when possible.
+3. Balanced question mix: Include resume walkthrough, project deep dive, technical scenario, behavioral STAR question, workplace conflict/teamwork, pressure or ambiguity situation, and one hiring-manager fit/self-awareness question when the count allows.
+4. Technical & Coding: For technical questions, construct a realistic scenario (e.g., debugging a memory leak, optimizing database query speed, designing an API endpoint, refactoring components, handling a production incident). Ask implementation details, trade-offs, edge cases, and how they would communicate risk. Avoid textbook definitions.
+5. Behavioral & Situational: Prompt the candidate for specific past examples using the STAR pattern: situation, task, action, result. For situational questions, create realistic office dilemmas like tight deadlines, unclear requirements, teammate conflict, stakeholder pressure, security incidents, or production bugs.
+6. Difficulty Level: The questions must strictly match the '{difficulty}' level:
    - 'easy': Foundational concepts applied to real-world tasks, clear and structured.
    - 'medium': System design trade-offs, debugging medium-complexity problems, and common production issues.
    - 'hard': Deep architectural decisions, high scale bottlenecks, distributed system tradeoffs, security vulnerabilities, and complex debugging scenarios.
-5. Natural Conversational Tone: Frame the questions as if you are a senior practitioner or hiring manager speaking to them: "I see you listed X on your resume. In your previous role as Y, how did you handle..." or "Suppose you are building a system that uses Z...".
+7. Natural Conversational Tone: Frame the questions as if you are a senior practitioner or hiring manager speaking in a real interview room: "I see you listed X on your resume...", "Walk me through...", "Suppose this happens in your first month...".
 
 Return a JSON array. Each question object must have:
 - "id": number (1 to {num_questions})
@@ -922,20 +1062,21 @@ Return a JSON array. Each question object must have:
             )
 
         # ── 4. Add role-based fallbacks to fill gaps ─────────────
+        pool = [{**q} for q in REAL_LIFE_INTERVIEW_QUESTIONS[:2]] + pool
+
         role_questions = FALLBACK_QUESTIONS.get(role, FALLBACK_QUESTIONS["default"])
         pool.extend([{**q} for q in role_questions])
 
-        # ── 5. Add scenario-based questions ──────────────────────
+        pool.extend([{**q} for q in REAL_LIFE_INTERVIEW_QUESTIONS[2:]])
         pool.extend(
             [
                 {**q}
                 for q in random.sample(
-                    SCENARIO_QUESTIONS, min(3, len(SCENARIO_QUESTIONS))
+                    SCENARIO_QUESTIONS, min(5, len(SCENARIO_QUESTIONS))
                 )
             ]
         )
 
-        # ── 6. Add generic defaults last ─────────────────────────
         if role != "default":
             pool.extend([{**q} for q in FALLBACK_QUESTIONS["default"]])
 
@@ -955,17 +1096,24 @@ Return a JSON array. Each question object must have:
                 unique.append(q)
 
         # ── 8. Select and shuffle ────────────────────────────────
-        selected = unique[:num_questions]
-        random.shuffle(selected)
+        opener = next(
+            (q for q in unique if q.get("category") == "Resume Walkthrough"),
+            unique[0] if unique else None,
+        )
+        remaining = [q for q in unique if q is not opener]
+        random.shuffle(remaining)
+        selected = ([opener] if opener else []) + remaining[: max(0, num_questions - 1)]
         for i, q in enumerate(selected):
             q["id"] = i + 1
             if panel_mode and not q.get("persona_id"):
-                # Assign persona based on type if missing in fallback
-                if q.get("type") == "behavioral":
+                if q.get("persona"):
+                    q["persona_id"] = q.get("persona")
+                elif q.get("type") == "behavioral":
                     q["persona_id"] = "hr_manager"
                 elif q.get("type") == "situational":
                     q["persona_id"] = random.choice(["strict_manager", "hr_manager"])
                 else:
                     q["persona_id"] = "technical_lead"
+            q.pop("persona", None)
 
         return selected

@@ -54,10 +54,10 @@ export default function AppLogo({ size = 40, showText = true, className = '' }) 
       {showText && (
         <div className="min-w-0">
           <div className="font-black leading-tight text-sm brand-text">
-            AstraPrep AI
+            AstraPrep
           </div>
           <div className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 leading-tight">
-            Interview intelligence suite
+            Interview Practice Suite
           </div>
         </div>
       )}
