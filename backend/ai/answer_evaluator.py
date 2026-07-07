@@ -195,28 +195,16 @@ class AnswerEvaluator:
         """Generate a personalized, conversational HR transition & question based on user response during onboarding"""
         phase_flow = {
             "greet_mic": {
-                "next": "greet_camera",
-                "goal": "Acknowledge that they can hear you, and check if they can see your video feed clearly as well."
-            },
-            "greet_camera": {
                 "next": "small_talk",
-                "goal": "Acknowledge that they can see you, welcome them to the room, and ask how their day has been so far."
+                "goal": "Acknowledge that they can hear and see you, welcome them warmly to the interview, and ask how their day has been so far."
             },
             "small_talk": {
                 "next": "identity_confirm",
-                "goal": "Respond conversationally to how their day was (be empathetic if it was bad, happy if it was good). Then ask them to introduce themselves and confirm their full name."
+                "goal": "Respond conversationally to how their day was (be empathetic or happy as appropriate). Then ask them to briefly introduce themselves and walk through their background."
             },
             "identity_confirm": {
                 "next": "resume_confirm",
-                "goal": "Address them by name, say it's a pleasure to meet them, and ask them to confirm if the uploaded resume is their latest version."
-            },
-            "resume_confirm": {
-                "next": "resume_summary",
-                "goal": "Acknowledge resume confirmation, mention that you see their software/technical skills, and ask if they are ready for a quick overview."
-            },
-            "resume_summary": {
-                "next": "explain_structure",
-                "goal": "Briefly summarize their core experience, explain that the interview will take 20-30 minutes covering technical and behavioral questions, and ask if they are ready to begin the first question."
+                "goal": "Acknowledge their introduction warmly, express excitement to interview them today, and say that we will now begin with the core questions."
             }
         }
 

@@ -259,20 +259,11 @@ export default function AIInterviewerRoom({
   if (onboardingQuestionText && zoomPhase && zoomPhase !== 'greet_mic') {
     displayedQuestionText = onboardingQuestionText
   } else if (zoomPhase === 'greet_mic') {
-    displayedQuestionText = "Hello, good morning! Can you hear me clearly?"
-  } else if (zoomPhase === 'greet_camera') {
-    displayedQuestionText = "Great. Can you also see me clearly?"
+    displayedQuestionText = "Hello, good morning! Welcome to the interview. Can you hear and see me clearly?"
   } else if (zoomPhase === 'small_talk') {
     displayedQuestionText = "Wonderful. Thank you for joining on time. How has your day been so far?"
   } else if (zoomPhase === 'identity_confirm') {
-    displayedQuestionText = "That's nice to hear! Before we begin, could you please introduce yourself and confirm your full name?"
-  } else if (zoomPhase === 'resume_confirm') {
-    const name = localStorage.getItem('candidate_name') || 'Candidate'
-    displayedQuestionText = `Thank you, Mr. ${name}. I can see you've uploaded your resume. Could you please confirm that this is your latest resume?`
-  } else if (zoomPhase === 'resume_summary') {
-    displayedQuestionText = "Perfect. I noticed you have experience in software development and AI projects. Is that correct?"
-  } else if (zoomPhase === 'explain_structure') {
-    displayedQuestionText = "Perfect. Today's interview will take approximately 15 to 20 minutes. We will start with a brief introduction, followed by technical questions, and wrap up with behavioral questions."
+    displayedQuestionText = "Before we begin, could you please introduce yourself, confirm your full name, and walk me through your background?"
   } else if (zoomPhase === 'candidate_questions') {
     displayedQuestionText = "We've covered all of my questions. Before we conclude, do you have any questions for me about the role?"
   } else if (zoomPhase === 'closing') {

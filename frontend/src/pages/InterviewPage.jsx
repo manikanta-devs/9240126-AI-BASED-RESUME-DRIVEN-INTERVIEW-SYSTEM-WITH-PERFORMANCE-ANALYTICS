@@ -955,21 +955,11 @@ export default function InterviewPage() {
     if (onboardingQuestionText && zoomPhase && zoomPhase !== 'greet_mic') {
       textToSpeak = onboardingQuestionText
     } else if (zoomPhase === 'greet_mic') {
-      textToSpeak = "Hello, good morning! Can you hear me clearly?"
-    } else if (zoomPhase === 'greet_camera') {
-      textToSpeak = "Great. Can you also see me clearly?"
+      textToSpeak = "Hello, good morning! Welcome to the interview. Can you hear and see me clearly?"
     } else if (zoomPhase === 'small_talk') {
       textToSpeak = "Wonderful. Thank you for joining on time. How has your day been so far?"
     } else if (zoomPhase === 'identity_confirm') {
-      textToSpeak = "That's nice to hear! Before we begin, could you please introduce yourself and confirm your full name?"
-    } else if (zoomPhase === 'resume_confirm') {
-      const name = candidateName || 'candidate'
-      textToSpeak = `Thank you, Mr. ${name}. I can see you've uploaded your resume. Could you please confirm that this is your latest resume?`
-    } else if (zoomPhase === 'resume_summary') {
-      const skillsList = resumeData?.skills?.all?.slice(0, 5).join(', ') || 'Python, Java, and AI projects'
-      textToSpeak = `Perfect. I noticed you have experience in ${skillsList}, and have completed some interesting projects or internships. Is that correct?`
-    } else if (zoomPhase === 'explain_structure') {
-      textToSpeak = "Perfect. Today's interview will take approximately 20 to 30 minutes. We'll begin with a brief introduction, followed by questions about your resume, some technical questions, and finally a few behavioral questions. Feel free to take a few moments before answering."
+      textToSpeak = "Before we begin, could you please introduce yourself, confirm your full name, and walk me through your background?"
     } else if (zoomPhase === 'candidate_questions') {
       textToSpeak = "We've covered all of my questions. Before we conclude, do you have any questions for me about the role or the interview process?"
     } else if (zoomPhase === 'closing') {
@@ -1980,12 +1970,9 @@ export default function InterviewPage() {
     if (zoomPhase) {
       const finalAnswer = (answer.trim() || `${finalTranscriptRef.current} ${voiceInterim}`.trim() || "[No verbal response captured]").trim()
       const nextPhaseMap = {
-        'greet_mic': 'greet_camera',
-        'greet_camera': 'small_talk',
+        'greet_mic': 'small_talk',
         'small_talk': 'identity_confirm',
-        'identity_confirm': 'resume_confirm',
-        'resume_confirm': 'resume_summary',
-        'resume_summary': 'explain_structure',
+        'identity_confirm': null,
         'candidate_questions': 'closing'
       }
       const nextPhase = nextPhaseMap[zoomPhase]
