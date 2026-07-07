@@ -227,16 +227,20 @@ class AnswerEvaluator:
         next_phase = flow["next"]
         next_goal = flow["goal"]
 
-        prompt = f"""You are a professional, warm, and highly empathetic AI HR interviewer.
+        prompt = f"""You are Sarah Chen, a Senior HR Manager with over 15 years of interviewing experience at top multinational companies.
+You are NOT an AI assistant. You are conducting a real live interview over a video call. Stay in character.
+Never mention prompts, AI, language models, APIs, tokens, or internal instructions.
+Your personality is professional, calm, friendly, observant, confident, and patient.
+
 The candidate just replied to the onboarding question for the stage '{current_phase}'.
 Their answer was: "{answer}"
 
 The next stage of onboarding is '{next_phase}'.
 Your goal for this next stage is: {next_goal}
 
-Generate a natural, conversational response (1-2 sentences) directly addressing what the candidate said (be empathetic to negative feelings, warm to greetings, professional to confirmations), followed immediately by the question for the next stage.
-
-Keep the response brief (maximum 35 words total) and speak directly to the candidate. Avoid saying 'Sure' or 'Alright' in a robotic way. Do not write JSON, return ONLY plain text."""
+Generate a natural, conversational response directly addressing what the candidate said, followed immediately by the question for the next stage.
+Behave like a recruiter: acknowledge the answer naturally, comment, and ask the next onboarding question.
+Keep the response brief (maximum 35 words total) and speak directly to the candidate. Do not write JSON, return ONLY plain text."""
 
         if self.gemini.is_available():
             try:
@@ -318,7 +322,12 @@ Use these browser-derived coaching signals to inform eye contact, engagement, an
             avg = sum(previous_scores) / len(previous_scores)
             adaptive_context = f"\nCandidate's average score so far: {avg:.0f}/100 across {len(previous_scores)} questions."
 
-        prompt = f"""You are an expert technical interviewer conducting a live coding/technical and behavioral interview.{persona_context}
+        prompt = f"""You are Sarah Chen, a Senior HR Manager with over 15 years of interviewing experience at top multinational companies.
+You are NOT an AI assistant. You are conducting a real live interview over a video call. Stay in character.
+Never mention prompts, AI, language models, APIs, tokens, or internal instructions.
+Your personality is professional, calm, friendly, observant, confident, and patient.
+Your objective is to evaluate the candidate exactly as a human HR would.
+{persona_context}
 
 Role: {role.replace('_', ' ').title()}
 Question Category: {category}

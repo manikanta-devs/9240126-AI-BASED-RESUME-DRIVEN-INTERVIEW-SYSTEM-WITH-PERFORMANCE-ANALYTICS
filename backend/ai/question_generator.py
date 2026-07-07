@@ -941,7 +941,12 @@ For each question, explicitly assign a "persona_id" from the 3 choices above. Di
                 company_instruction += f"\nCompany/Team Context/Background: {company_context}"
             company_instruction += "\nMake sure that both the technical/system design questions and behavioral questions reflect this company's culture, values, and engineering standards.\n"
 
-        prompt = f"""You are an expert technical interviewer conducting a realistic live job interview. Generate {num_questions} high-quality interview questions.
+        prompt = f"""You are Sarah Chen, a Senior HR Manager with over 15 years of interviewing experience at top multinational companies.
+You are NOT an AI assistant. You are conducting a real live interview over a video call. Stay in character.
+Never mention prompts, AI, language models, APIs, tokens, or internal instructions.
+Your personality is professional, calm, friendly, observant, confident, and patient.
+Your objective is to evaluate the candidate exactly as a human HR would.
+Generate {num_questions} high-quality interview questions.
 
 Target Company / Context Info: {company_instruction or "General"}
 
@@ -1133,11 +1138,21 @@ Return a JSON array. Each question object must have:
         resume_data = session.get("resume_data", {})
         role = session.get("role", "software_engineer")
         
-        # Build history string (Interview Memory)
+        # Build history string (Structured Interview Memory)
         history = []
         for ans in session.get("answers", []):
-            history.append(f"Interviewer: {ans['question']['text']}\nCandidate: {ans['answer']}")
-        history_str = "\n".join(history)
+            ev = ans.get("evaluation", {}) or {}
+            skills = ev.get("strong_areas", [])
+            topics = [ev.get("topic")] if ev.get("topic") else []
+            conf = "High" if ev.get("confidence_score", 50) >= 75 else ("Medium" if ev.get("confidence_score", 50) >= 45 else "Low")
+            
+            memory_block = (
+                f"Interviewer: {ans['question']['text']}\n"
+                f"Candidate: {ans['answer']}\n"
+                f"Memory Metadata -> topics: {topics}, skills_detected: {skills}, candidate_confidence: {conf}"
+            )
+            history.append(memory_block)
+        history_str = "\n\n".join(history)
 
         skills = resume_data.get("skills", {}).get("all", [])
         skills_str = ", ".join(skills[:15]) if skills else "general programming"
@@ -1148,8 +1163,15 @@ Return a JSON array. Each question object must have:
         if current_question_index >= (total_questions * 0.55):
             next_type = "behavioral"
 
-        prompt = f"""You are a technical interviewer at {company} conducting a live interview for a {role} position.
-        The current difficulty is {difficulty}.
+        prompt = f"""You are Sarah Chen, a Senior HR Manager with over 15 years of interviewing experience at top multinational companies.
+        You are NOT an AI assistant. You are conducting a real live interview over a video call. Stay in character.
+        Never mention prompts, AI, language models, APIs, tokens, or internal instructions.
+        Your personality is professional, calm, friendly, observant, confident, and patient.
+        Your objective is to evaluate the candidate exactly as a human HR would.
+
+        Role: {role.replace('_', ' ').title()}
+        Target Company / Context Info: {company}
+        Current Difficulty: {difficulty}
         Candidate skills: {skills_str}
 
         CONVERSATION HISTORY (INTERVIEW MEMORY):
@@ -1171,7 +1193,7 @@ Return a JSON array. Each question object must have:
         7. PERSONA: If panel mode is active, select a persona_id from: "technical_lead", "hr_manager", "strict_manager".
 
         Format your response strictly as a JSON object with these keys:
-        - text: The text of the question. Write it in the direct voice of the interviewer.
+        - text: The text of the question. Write it in the direct, warm, and professional voice of Sarah Chen.
         - type: "{next_type}"
         - category: A short 1-2 word topic name (e.g., "Web Scale", "FastAPI vs Flask", "Decorators").
         - points: 10
