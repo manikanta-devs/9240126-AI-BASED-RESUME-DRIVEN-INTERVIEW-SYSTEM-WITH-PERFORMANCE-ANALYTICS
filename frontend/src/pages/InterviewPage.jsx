@@ -1822,8 +1822,9 @@ export default function InterviewPage() {
       isStartingCaptureRef.current = false
       const msg = getFriendlyVoiceErrorMessage(error);
       setVoiceError(msg)
-      toast.error('Could not access the microphone')
+      toast.error('Could not access microphone or webcam. Falling back to text mode.')
       setShowTypingFallback(true)
+      setZoomPhase(null)
       await stopVoiceCapture({ keepTranscript: false })
     }
 
