@@ -50,7 +50,7 @@ def create_app():
     # Strict key check for 2027 Production deployment
     if app.config["ENV"] == "production":
         secret_key = os.getenv("SECRET_KEY")
-        if not secret_key or secret_key in {
+        if not secret_key or len(secret_key) < 32 or secret_key in {
             "dev-secret-key-change-in-prod",
             "dev-secret-key-change-in-prod-secure-128bits-key",
             ""
@@ -304,6 +304,6 @@ if __name__ == "__main__":
     env_mode = os.getenv("FLASK_ENV", "development")
     debug = False
     if env_mode == "development":
-        debug = os.getenv("DEBUG", "true").lower() == "true"
+        debug = os.getenv("DEBUG", os.getenv("FLASK_DEBUG", "false")).lower() == "true"
     logger.info(f"Starting AstraPrep AI Backend on port {port} (debug={debug})")
     app.run(debug=debug, port=port, host="0.0.0.0", use_reloader=False)

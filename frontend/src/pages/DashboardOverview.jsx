@@ -6,7 +6,7 @@ import {
   TrendingUp, Target, Clock, Award, ChevronRight,
   Trophy, Flame, Check, AlertTriangle, Shield, Play, Map
 } from 'lucide-react'
-import { getAnalyticsSummary, getAnalyticsSessions, injectMockSession, getQuizSessions } from '../api/client'
+import { getAnalyticsSummary, getAnalyticsSessions, getQuizSessions, getDashboardInsights } from '../api/client'
 import { useApp } from '../context/AppContext'
 import LoadingSpinner from '../components/LoadingSpinner'
 import AdvancedToolPanel from '../components/AdvancedToolPanel'
@@ -25,23 +25,24 @@ const fadeUp = {
 
 export default function DashboardOverview() {
   const navigate = useNavigate()
-  const { resumeData, candidateName } = useApp()
+  const { resumeData } = useApp()
   const [loading, setLoading] = useState(true)
   const [summary, setSummary] = useState(null)
   const [recentSessions, setRecentSessions] = useState([])
   const [quizSessions, setQuizSessions] = useState([])
-  const [targetCompany, setTargetCompany] = useState('Google')
-  const [targetRole, setTargetRole] = useState('Software Engineer')
+  const [dashboardInsights, setDashboardInsights] = useState(null)
 
   useEffect(() => {
     Promise.allSettled([
       getAnalyticsSummary(),
       getAnalyticsSessions(3),
       getQuizSessions(),
-    ]).then(([sumRes, sessRes, quizRes]) => {
+      getDashboardInsights(),
+    ]).then(([sumRes, sessRes, quizRes, insightsRes]) => {
       if (sumRes.status === 'fulfilled') setSummary(sumRes.value.data.summary)
       if (sessRes.status === 'fulfilled') setRecentSessions(sessRes.value.data.sessions || [])
       if (quizRes.status === 'fulfilled') setQuizSessions(quizRes.value.data.sessions || [])
+      if (insightsRes.status === 'fulfilled') setDashboardInsights(insightsRes.value.data.insights)
     }).finally(() => setLoading(false))
   }, [])
 
@@ -50,8 +51,12 @@ export default function DashboardOverview() {
   }
 
   const hasData = summary && summary.total_sessions > 0
-  const overallReadiness = hasData ? summary.avg_overall : 74
-  const practiceTime = hasData ? (summary.total_sessions * 22) : 18 // simulated time
+  const hasInsightData = dashboardInsights?.has_data
+  const overallReadiness = hasData ? summary.avg_overall : 0
+  const practiceTime = dashboardInsights?.practice_minutes ?? 0
+  const topFocus = dashboardInsights?.top_focus || 'Complete a baseline interview'
+  const trendDelta = dashboardInsights?.trend_delta ?? 0
+  const streakDays = dashboardInsights?.current_streak_days ?? 0
 
   // Define Connected Workflow Steps
   const workflowSteps = [
@@ -88,7 +93,7 @@ export default function DashboardOverview() {
     } else {
       recommendation = {
         title: "Review Performance Analytics",
-        text: "Analyze your speech pacing, filler word ratios, and technical scores to find areas of growth.",
+        text: `Review your real trend and focus next on ${topFocus}.`,
         action: "View Analytics",
         path: "/dashboard/analytics"
       }
@@ -102,7 +107,7 @@ export default function DashboardOverview() {
   // Smart Quick Actions (Prioritized based on lowest scores/weak areas)
   // Default values
   const baseActions = [
-    { id: 'quiz', icon: Brain, label: 'Start SQL Quiz', desc: 'Your weakest area is SQL databases.', path: '/dashboard/quiz', iconColor: 'text-orange-500', isRecommended: true },
+    { id: 'quiz', icon: Brain, label: 'Start Topic Quiz', desc: hasData ? `Practice focus: ${topFocus}.` : 'Calibrate your readiness with a short drill.', path: '/dashboard/quiz', iconColor: 'text-orange-500', isRecommended: !resumeData },
     { id: 'interview', icon: Sparkles, label: 'Mock Interview', desc: 'Start a mock interview session', path: '/dashboard/interview', iconColor: 'text-teal-500', isRecommended: false },
     { id: 'resume', icon: FileText, label: 'Resume Coach', desc: 'Audited checklist and scanner', path: '/dashboard/resume', iconColor: 'text-emerald-500', isRecommended: false },
     { id: 'coach', icon: Mic, label: 'Communication Coach', desc: 'Improve speaking and structure', path: '/dashboard/coach', iconColor: 'text-fuchsia-500', isRecommended: false },
@@ -124,21 +129,15 @@ export default function DashboardOverview() {
     }
   }
 
-  // Heatmap contribution blocks (simulated GitHub style)
-  const heatmapWeeks = Array.from({ length: 15 }, (_, i) => {
-    return Array.from({ length: 7 }, (_, j) => {
-      const active = Math.random() > 0.4
-      const level = active ? Math.floor(Math.random() * 4) + 1 : 0
-      return { level }
-    })
-  })
+  const emptyHeatmap = Array.from({ length: 15 }, () => Array.from({ length: 7 }, () => ({ level: 0, count: 0 })))
+  const heatmapWeeks = dashboardInsights?.heatmap_weeks || emptyHeatmap
 
   // Badges / Achievements
   const achievements = [
     { id: 'first', icon: Trophy, label: 'First Contact', desc: 'Completed first mock session', unlocked: hasData },
     { id: 'streak', icon: Flame, label: '7-Day Streak', desc: 'Consistent practice habit', unlocked: hasData && summary.total_sessions >= 3 },
     { id: 'sql', icon: Shield, label: 'SQL Master', desc: '100% accuracy in query drills', unlocked: hasData && summary.best_score >= 90 },
-    { id: 'debug', icon: Award, label: 'Debug Master', desc: 'Resolved complex logical bugs', unlocked: true }
+    { id: 'debug', icon: Award, label: 'Debug Master', desc: 'Resolved complex logical bugs', unlocked: hasData && summary.best_score >= 85 }
   ]
 
   return (
@@ -200,7 +199,7 @@ export default function DashboardOverview() {
             <div className="grid grid-cols-3 gap-4 bg-white/[0.01] border border-white/5 p-3.5 rounded-2xl">
               <div>
                 <div className="text-lg font-black text-indigo-400">
-                  {resumeData?.score || 70}%
+                  {resumeData?.score || 0}%
                 </div>
                 <div className="text-[9px] text-gray-400 uppercase font-bold mt-0.5">Resume Score</div>
               </div>
@@ -328,49 +327,59 @@ export default function DashboardOverview() {
 
         {/* Right Side */}
         <div className="space-y-6">
-          {/* Upcoming Target tracker */}
+          {/* Readiness intelligence */}
           <div className="card space-y-4 border border-cyan-500/10 bg-cyan-950/[0.01]">
             <div className="flex justify-between items-start border-b border-gray-100 dark:border-gray-800 pb-3">
               <div>
-                <span className="text-[9px] font-bold text-cyan-500 uppercase tracking-widest block">Upcoming Target</span>
-                <h4 className="text-xs font-black text-gray-900 dark:text-white">Software Engineer at Google</h4>
+                <span className="text-[9px] font-bold text-cyan-500 uppercase tracking-widest block">Readiness Intelligence</span>
+                <h4 className="text-xs font-black text-gray-900 dark:text-white">{dashboardInsights?.readiness_label || 'Baseline needed'}</h4>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed max-w-sm">
+                  {dashboardInsights?.readiness_reason || 'Complete one interview to unlock personalized dashboard intelligence.'}
+                </p>
               </div>
-              <span className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/15 text-[9px] font-bold uppercase tracking-wider">
-                Target Setup
+              <span className={clsx(
+                'px-2 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wider',
+                hasInsightData ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/15' : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/15'
+              )}>
+                {hasInsightData ? 'Live Data' : 'Needs Data'}
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-xs font-semibold text-gray-700 dark:text-gray-300">
               <div className="space-y-0.5">
                 <span className="text-[10px] text-gray-400 font-normal">Hiring Readiness</span>
-                <div className="text-lg font-black text-gray-900 dark:text-white">81%</div>
+                <div className="text-lg font-black text-gray-900 dark:text-white">{overallReadiness}%</div>
               </div>
               <div className="space-y-0.5">
-                <span className="text-[10px] text-gray-400 font-normal">Est. Preparation time</span>
-                <div className="text-lg font-black text-gray-900 dark:text-white">12 Days</div>
+                <span className="text-[10px] text-gray-400 font-normal">Trend Delta</span>
+                <div className={clsx('text-lg font-black', trendDelta > 0 ? 'text-emerald-500' : trendDelta < 0 ? 'text-rose-500' : 'text-gray-900 dark:text-white')}>
+                  {trendDelta > 0 ? '+' : ''}{trendDelta}%
+                </div>
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-[10px] text-gray-400 font-normal">Practice Streak</span>
+                <div className="text-lg font-black text-gray-900 dark:text-white">{streakDays}d</div>
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-[10px] text-gray-400 font-normal">Top Focus</span>
+                <div className="text-xs font-black text-cyan-500 line-clamp-2">{topFocus}</div>
               </div>
             </div>
 
-            {/* Checklist */}
             <div className="space-y-2 border-t border-gray-100 dark:border-gray-800/80 pt-3">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Remaining Milestones</span>
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Real Progress Milestones</span>
               <div className="space-y-2 text-xs">
-                <div className="flex items-center gap-2 text-gray-500 font-normal">
-                  <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-bold">✓</div>
-                  <span>Data Structures & Algorithms</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-500 font-normal">
-                  <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-bold">✓</div>
-                  <span>SQL & Advanced Joins</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300 font-normal">
-                  <div className="w-4 h-4 rounded-full bg-white/5 border border-white/10 text-gray-400 flex items-center justify-center text-[10px] font-bold"></div>
-                  <span>System Design Basics</span>
-                </div>
+                {(dashboardInsights?.milestones || []).map((item) => (
+                  <div key={item.label} className={clsx('flex items-center gap-2 font-normal', item.complete ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400')}>
+                    <div className={clsx('w-4 h-4 rounded-full flex items-center justify-center border text-[10px] font-bold', item.complete ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/20' : 'bg-white/5 text-gray-400 border-white/10')}>
+                      {item.complete && <Check className="w-3 h-3" />}
+                    </div>
+                    <span>{item.label}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
-
           {/* Badges / Achievements Panel */}
           <div className="card space-y-4">
             <h3 className="font-extrabold text-gray-900 dark:text-white text-sm">Achievements & Badges</h3>

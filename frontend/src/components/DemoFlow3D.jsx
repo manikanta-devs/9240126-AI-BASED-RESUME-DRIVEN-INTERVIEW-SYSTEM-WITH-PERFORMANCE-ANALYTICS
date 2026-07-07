@@ -8,7 +8,7 @@ const STEPS = [
     title: 'Resume Intelligence',
     detail: 'Extract skills, score resume, detect job-fit gaps',
     accent: 'from-emerald-300 to-teal-300',
-    metric: '76% match',
+    metric: 'Fit gaps',
   },
   {
     icon: Brain,
@@ -29,14 +29,14 @@ const STEPS = [
     title: 'AI Evaluation',
     detail: 'Score clarity, relevance, confidence, and depth',
     accent: 'from-amber-300 to-orange-300',
-    metric: '82/100',
+    metric: 'Rubric',
   },
   {
     icon: BarChart3,
     title: 'Analytics Loop',
     detail: 'Track trends, weak areas, study plan, next drills',
     accent: 'from-violet-300 to-cyan-300',
-    metric: '+18%',
+    metric: 'Next steps',
   },
 ]
 

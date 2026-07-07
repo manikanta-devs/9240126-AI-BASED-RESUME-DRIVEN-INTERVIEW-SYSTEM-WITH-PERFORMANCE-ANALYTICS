@@ -134,7 +134,7 @@ export default function AdvancedToolPanel({ type = 'dashboard', compact = false 
           {data.actions.map(action => (
             <div key={action} className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-black/15 px-3 py-2 text-xs text-white/68">
               <CheckCircle2 className="h-3.5 w-3.5 text-teal-200" />
-              Demo-ready: {action}
+              Ready: {action}
             </div>
           ))}
         </div>

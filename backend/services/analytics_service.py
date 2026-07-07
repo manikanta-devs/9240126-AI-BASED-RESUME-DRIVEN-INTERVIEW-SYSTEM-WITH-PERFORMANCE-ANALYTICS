@@ -1,5 +1,6 @@
 import logging
 from collections import defaultdict
+from datetime import datetime, timezone
 from services import database as db
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ class AnalyticsService:
                 "avg_overall": 0,
                 "avg_technical": 0,
                 "avg_clarity": 0,
+                "avg_completeness": 0,
                 "best_score": 0,
                 "worst_score": 0,
                 "most_common_role": None,
@@ -58,6 +60,10 @@ class AnalyticsService:
         ]
         scores_clarity = [
             s.get("results", {}).get("scores", {}).get("clarity", 0) for s in completed
+        ]
+        scores_completeness = [
+            s.get("results", {}).get("scores", {}).get("completeness", 0)
+            for s in completed
         ]
         roles = [s.get("role", "unknown") for s in completed]
 
@@ -78,10 +84,119 @@ class AnalyticsService:
             "avg_overall": round(sum(scores_overall) / len(scores_overall), 1),
             "avg_technical": round(sum(scores_tech) / len(scores_tech), 1),
             "avg_clarity": round(sum(scores_clarity) / len(scores_clarity), 1),
+            "avg_completeness": round(sum(scores_completeness) / len(scores_completeness), 1),
             "best_score": max(scores_overall),
             "worst_score": min(scores_overall),
             "most_common_role": most_common,
             "improvement_rate": improvement,
+        }
+
+
+    def get_dashboard_insights(self, username: str = None) -> dict:
+        """Create production dashboard insights from real interview history."""
+        sessions = self._load_sessions(username)
+        completed = [
+            s
+            for s in sessions.values()
+            if s.get("status") == "completed" and s.get("results")
+        ]
+        completed.sort(key=lambda item: item.get("completed_at", ""))
+
+        summary = self.get_summary(username=username)
+        weak_areas = self.get_weak_areas(username=username)
+        skill_breakdown = self.get_skill_breakdown(username=username)
+
+        if not completed:
+            return {
+                "has_data": False,
+                "readiness_label": "Baseline needed",
+                "readiness_reason": "Complete one interview to unlock trend, streak, focus, and readiness signals.",
+                "top_focus": "Start baseline interview",
+                "trend_delta": 0,
+                "trend_direction": "flat",
+                "practice_minutes": 0,
+                "current_streak_days": 0,
+                "last_practiced_at": None,
+                "heatmap_weeks": self._build_heatmap([]),
+                "milestones": [
+                    {"label": "Complete first interview", "complete": False},
+                    {"label": "Review weak areas", "complete": False},
+                    {"label": "Retest after practice", "complete": False},
+                ],
+                "recent_sessions": [],
+                "weak_areas": [],
+                "skill_breakdown": [],
+            }
+
+        overall_scores = [
+            s.get("results", {}).get("scores", {}).get("overall", 0)
+            for s in completed
+        ]
+        trend_delta = 0
+        if len(overall_scores) >= 2:
+            trend_delta = round(overall_scores[-1] - overall_scores[-2], 1)
+
+        if trend_delta > 0:
+            trend_direction = "up"
+        elif trend_delta < 0:
+            trend_direction = "down"
+        else:
+            trend_direction = "flat"
+
+        avg_overall = summary.get("avg_overall", 0)
+        if avg_overall >= 85:
+            readiness_label = "Interview-ready"
+        elif avg_overall >= 70:
+            readiness_label = "Almost ready"
+        elif avg_overall >= 50:
+            readiness_label = "Needs focused practice"
+        else:
+            readiness_label = "Build fundamentals"
+
+        top_focus = "Retake a mock interview"
+        if weak_areas:
+            top_focus = weak_areas[0].get("area") or top_focus
+        elif skill_breakdown:
+            weakest_skill = min(skill_breakdown, key=lambda item: item.get("avg_score", 100))
+            top_focus = weakest_skill.get("skill", top_focus)
+
+        practice_minutes = sum(
+            s.get("results", {}).get("duration_minutes", 0) or 0 for s in completed
+        )
+        completed_dates = [
+            parsed.date()
+            for parsed in (self._parse_datetime(s.get("completed_at")) for s in completed)
+            if parsed
+        ]
+        current_streak = self._current_streak(completed_dates)
+        last_practiced_at = completed[-1].get("completed_at") if completed else None
+        latest_score = overall_scores[-1] if overall_scores else 0
+
+        readiness_reason = (
+            f"Latest interview scored {latest_score}%. "
+            f"Focus next on {top_focus}."
+        )
+
+        return {
+            "has_data": True,
+            "readiness_label": readiness_label,
+            "readiness_reason": readiness_reason,
+            "top_focus": top_focus,
+            "trend_delta": trend_delta,
+            "trend_direction": trend_direction,
+            "practice_minutes": practice_minutes,
+            "current_streak_days": current_streak,
+            "last_practiced_at": last_practiced_at,
+            "heatmap_weeks": self._build_heatmap(completed),
+            "milestones": [
+                {"label": "Complete first interview", "complete": True},
+                {"label": "Average score 70+", "complete": avg_overall >= 70},
+                {"label": "Practice streak 3 days", "complete": current_streak >= 3},
+                {"label": "Score 85+ once", "complete": summary.get("best_score", 0) >= 85},
+            ],
+            "recent_sessions": [self._session_summary(s) for s in completed[-3:]][::-1],
+            "weak_areas": weak_areas[:5],
+            "skill_breakdown": skill_breakdown[:5],
         }
 
     def get_performance_trend(self, username: str = None) -> list:
@@ -457,6 +572,46 @@ class AnalyticsService:
             "weak_areas": results.get("weak_areas", []),
             "strong_areas": results.get("strong_areas", []),
         }
+    def _parse_datetime(self, value):
+        if not value:
+            return None
+        try:
+            normalized = str(value).replace("Z", "+00:00")
+            parsed = datetime.fromisoformat(normalized)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed
+        except (TypeError, ValueError):
+            return None
+
+    def _current_streak(self, dates) -> int:
+        unique_dates = sorted(set(dates), reverse=True)
+        if not unique_dates:
+            return 0
+        today = datetime.now(timezone.utc).date()
+        streak = 0
+        cursor = today if unique_dates[0] == today else unique_dates[0]
+        available = set(unique_dates)
+        while cursor in available:
+            streak += 1
+            cursor = cursor.fromordinal(cursor.toordinal() - 1)
+        return streak
+
+    def _build_heatmap(self, sessions: list) -> list:
+        counts = defaultdict(int)
+        for session in sessions:
+            parsed = self._parse_datetime(session.get("completed_at"))
+            if parsed:
+                counts[parsed.date().isoformat()] += 1
+
+        today = datetime.now(timezone.utc).date()
+        start = today.fromordinal(today.toordinal() - (15 * 7) + 1)
+        days = []
+        for offset in range(15 * 7):
+            day = start.fromordinal(start.toordinal() + offset)
+            count = counts.get(day.isoformat(), 0)
+            days.append({"date": day.isoformat(), "count": count, "level": min(count, 4)})
+        return [days[i : i + 7] for i in range(0, len(days), 7)]
 
     def clear_all(self):
         """Clear all data."""

@@ -171,6 +171,19 @@ def test_get_study_plan_generation():
         assert len(plan["days"]) == 7
         assert plan["avg_overall"] == 87.5
 
+
+def test_get_dashboard_insights_generation():
+    """Test production dashboard insights are derived from real sessions."""
+    service = AnalyticsService()
+    with patch("services.database.get_all_sessions", return_value=MOCK_COMPLETED_SESSIONS):
+        insights = service.get_dashboard_insights()
+        assert insights["has_data"] is True
+        assert insights["practice_minutes"] == 11
+        assert insights["trend_delta"] == 5
+        assert insights["trend_direction"] == "up"
+        assert insights["top_focus"] in ["brevity", "examples"]
+        assert len(insights["heatmap_weeks"]) == 15
+        assert len(insights["recent_sessions"]) == 2
 def test_get_communication_coach_generation():
     """Test communication coach recommendations engine."""
     service = AnalyticsService()
@@ -201,6 +214,16 @@ def test_route_sessions(test_client):
         assert data["success"] is True
         assert len(data["sessions"]) == 2
 
+
+def test_route_dashboard_insights(test_client):
+    """Test Flask endpoint /api/analytics/dashboard-insights."""
+    with patch("services.database.get_all_sessions", return_value=MOCK_COMPLETED_SESSIONS):
+        resp = test_client.get("/api/analytics/dashboard-insights")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["success"] is True
+        assert data["insights"]["has_data"] is True
+        assert data["insights"]["trend_direction"] == "up"
 def test_route_performance_trend(test_client):
     """Test Flask endpoint /api/analytics/performance-trend"""
     with patch("services.database.get_all_sessions", return_value=MOCK_COMPLETED_SESSIONS):

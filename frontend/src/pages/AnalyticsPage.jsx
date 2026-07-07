@@ -33,6 +33,7 @@ export default function AnalyticsPage() {
   const [skillBreakdown, setSkillBreakdown] = useState([])
   const [studyPlan, setStudyPlan] = useState(null)
   const [quizSessions, setQuizSessions] = useState([])
+  const devToolsEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true'
 
   const loadData = async () => {
     setLoading(true)
@@ -89,47 +90,31 @@ export default function AnalyticsPage() {
     return <div className="flex items-center justify-center py-24"><LoadingSpinner size="lg" text="Loading performance intelligence..." /></div>
   }
 
-  // Fallbacks to keep the page stunning if no data exists
   const hasData = summary && summary.total_sessions > 0
   const activeSummary = hasData ? summary : {
-    total_sessions: 6,
-    avg_overall: 82,
-    avg_technical: 87,
-    avg_clarity: 81,
-    avg_completeness: 80,
-    improvement_rate: 12,
-    best_score: 91,
-    worst_score: 68
+    total_sessions: 0,
+    avg_overall: 0,
+    avg_technical: 0,
+    avg_clarity: 0,
+    avg_completeness: 0,
+    improvement_rate: 0,
+    best_score: 0,
+    worst_score: 0
   }
 
-  const activeTrend = (trend && trend.length > 0) ? trend : [
-    { name: 'S1', overall: 68, technical: 70, communication: 65 },
-    { name: 'S2', overall: 72, technical: 75, communication: 70 },
-    { name: 'S3', overall: 75, technical: 80, communication: 72 },
-    { name: 'S4', overall: 79, technical: 82, communication: 75 },
-    { name: 'S5', overall: 81, technical: 85, communication: 79 },
-    { name: 'S6', overall: 82, technical: 87, communication: 81 }
-  ]
-
-  const activeSkillBreakdown = (skillBreakdown && skillBreakdown.length > 0) ? skillBreakdown : [
-    { subject: 'Python', score: 88 },
-    { subject: 'SQL', score: 90 },
-    { subject: 'React', score: 82 },
-    { subject: 'DBMS', score: 80 },
-    { subject: 'System Design', score: 62 },
-    { subject: 'OS & CN', score: 60 }
-  ]
+  const activeTrend = (trend && trend.length > 0) ? trend : []
+  const activeSkillBreakdown = (skillBreakdown && skillBreakdown.length > 0) ? skillBreakdown : []
 
   // Calculate Quiz Statistics
   const quizCount = quizSessions.length
   const avgQuizScore = quizCount > 0
     ? Math.round(quizSessions.reduce((acc, s) => acc + (s.score || 0), 0) / quizCount)
-    : 78
+    : 0
 
   // Quiz trend line mapping
   const quizTrendData = quizSessions.length > 0 
     ? [...quizSessions].reverse().map((s, idx) => s.score || 0)
-    : [60, 70, 75, 80, 85, 90]
+    : []
 
   // Merge trends for LineChart
   const combinedTrend = activeTrend.map((t, idx) => ({
@@ -156,7 +141,7 @@ export default function AnalyticsPage() {
       aiRecommendationText = "Your communication delivery is highly structured! Focus on strengthening technical data structures by taking a practice quiz."
     }
   } else {
-    aiRecommendationText = "Start with **3 code debugging tasks** (focusing on system design/SQL latency queries) followed by **1 Mock Interview** in System Design. Est. prep time: 26 Minutes."
+    aiRecommendationText = "Complete your first interview to generate real performance analytics and a personalized improvement plan."
   }
 
   return (
@@ -170,13 +155,13 @@ export default function AnalyticsPage() {
           <p className="text-sm text-gray-500">Analyze score vectors, study planners, and recruiter readiness indexes</p>
         </div>
         <div className="flex gap-2">
-          {!hasData && (
+          {devToolsEnabled && !hasData && (
             <button onClick={handleInjectDemo} className="btn-primary text-xs flex items-center gap-1.5 bg-violet-600/10 border border-violet-500/30 text-violet-400">
-              🚀 Seed Demo AI Data
+              Seed Demo Data
             </button>
           )}
           <button onClick={loadData} className="btn-ghost text-xs flex items-center gap-1"><RefreshCw className="w-3.5 h-3.5" /> Refresh</button>
-          <button onClick={handleClear} className="btn-ghost text-xs text-rose-500 hover:text-rose-600 flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" /> Clear</button>
+          {devToolsEnabled && <button onClick={handleClear} className="btn-ghost text-xs text-rose-500 hover:text-rose-600 flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" /> Clear</button>}
         </div>
       </div>
 
@@ -380,23 +365,23 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs font-semibold text-gray-700 dark:text-gray-300">
             <div className="space-y-0.5">
               <span className="text-[10px] text-gray-400 font-normal">Average Speaking Speed</span>
-              <div className="text-sm font-black text-gray-900 dark:text-white">135 WPM (Ideal)</div>
+              <div className="text-sm font-black text-gray-900 dark:text-white">{hasData ? 'Measured' : 'Needs data'}</div>
             </div>
             <div className="space-y-0.5">
               <span className="text-[10px] text-gray-400 font-normal">Eye Contact Ratio</span>
-              <div className="text-sm font-black text-emerald-500">91%</div>
+              <div className="text-sm font-black text-emerald-500">{hasData ? 'Measured' : 'Needs data'}</div>
             </div>
             <div className="space-y-0.5">
               <span className="text-[10px] text-gray-400 font-normal">Confidence Index</span>
-              <div className="text-sm font-black text-violet-500">82%</div>
+              <div className="text-sm font-black text-violet-500">{activeSummary.avg_completeness}%</div>
             </div>
             <div className="space-y-0.5">
               <span className="text-[10px] text-gray-400 font-normal">Filler Words Ratio</span>
-              <div className="text-sm font-black text-rose-500">4% (Low)</div>
+              <div className="text-sm font-black text-rose-500">{hasData ? 'Measured' : 'Needs data'}</div>
             </div>
             <div className="space-y-0.5">
               <span className="text-[10px] text-gray-400 font-normal">Average Answer Length</span>
-              <div className="text-sm font-black text-gray-900 dark:text-white">1m 48s</div>
+              <div className="text-sm font-black text-gray-900 dark:text-white">{hasData ? 'Measured' : 'Needs data'}</div>
             </div>
           </div>
         </div>
@@ -454,10 +439,10 @@ export default function AnalyticsPage() {
             <div className="relative w-28 h-28 flex items-center justify-center">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="40" fill="transparent" stroke="rgba(255,255,255,0.03)" strokeWidth="8" />
-                <circle cx="50" cy="50" r="40" fill="transparent" stroke="#6366f1" strokeWidth="8" strokeDasharray={251} strokeDashoffset={251 - (251 * 82) / 100} strokeLinecap="round" />
+                <circle cx="50" cy="50" r="40" fill="transparent" stroke="#6366f1" strokeWidth="8" strokeDasharray={251} strokeDashoffset={251 - (251 * activeSummary.avg_overall) / 100} strokeLinecap="round" />
               </svg>
               <div className="absolute text-center">
-                <div className="text-2xl font-black">82%</div>
+                <div className="text-2xl font-black">{activeSummary.avg_overall}%</div>
                 <div className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Completed</div>
               </div>
             </div>
@@ -541,7 +526,7 @@ export default function AnalyticsPage() {
             </span>
             <div>
               <p className="font-bold text-gray-700 dark:text-gray-300">No mock sessions completed yet</p>
-              <p className="text-[11px] text-gray-400 mt-0.5">Click &quot;Seed Demo AI Data&quot; at the top to simulate mock data or take an interview.</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Take an interview to generate real analytics and compare progress over time.</p>
             </div>
           </div>
         )}

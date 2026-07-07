@@ -47,6 +47,7 @@ class EvaluationSchema(BaseModel):
     posture_label: str
     emotion_feedback: str
     sentiment: str
+    interviewer_response: str
 
 
 class AnswerEvaluator:
@@ -105,6 +106,7 @@ class AnswerEvaluator:
                 "posture_label": "Good",
                 "emotion_feedback": "Excellent focus and professional presence.",
                 "sentiment": "Positive",
+                "interviewer_response": "Excellent, that was a strong and well-structured answer. Let us continue with the next question.",
             }
 
         cleaned_answer = answer.strip().lower().replace(".", "").replace("!", "").replace("?", "")
@@ -146,6 +148,7 @@ class AnswerEvaluator:
                 "posture_label": emotion_metrics.get("posture_label", "Good") if emotion_metrics else "Good",
                 "emotion_feedback": emotion_metrics.get("emotion_feedback", "N/A") if emotion_metrics else "N/A",
                 "sentiment": "Neutral",
+                "interviewer_response": "I need a more complete answer before I can assess that properly. Let us try the next prompt carefully.",
             }
 
         if self.gemini.is_available():
@@ -676,6 +679,7 @@ Return JSON:
                 "Maintain steady eye contact, balanced posture, and consistent camera framing.",
             ),
             "sentiment": result.get("sentiment", "neutral"),
+            "interviewer_response": result.get("interviewer_response", ""),
         }
 
         # Coerce lists to list of strings
@@ -697,6 +701,15 @@ Return JSON:
             else:
                 validated["sentiment"] = "negative"
 
+        if not validated.get("interviewer_response"):
+            validated["interviewer_response"] = self._build_interviewer_transition(
+                overall,
+                {
+                    "strong_areas": validated.get("strong_areas", []),
+                    "weak_areas": validated.get("weak_areas", []),
+                },
+            )
+
         try:
             schema_instance = EvaluationSchema(**validated)
             return schema_instance.model_dump()
@@ -704,6 +717,31 @@ Return JSON:
             logger.warning(f"Pydantic validation failed, returning raw validated: {e}")
             return validated
 
+    def _transition_focus(self, value, fallback: str) -> str:
+        detail = str(value or fallback).strip().rstrip(".")
+        if not detail:
+            detail = fallback
+        lowered = detail[:1].lower() + detail[1:]
+        if lowered.startswith("discuss "):
+            return "discussing " + lowered[len("discuss "):]
+        if lowered.startswith("improve "):
+            return "improving " + lowered[len("improve "):]
+        if lowered.startswith("needs "):
+            return lowered
+        return lowered
+
+    def _build_interviewer_transition(self, overall_score: int, evaluation: dict) -> str:
+        """Create a short spoken bridge so the interview feels like a real HR conversation."""
+        strong = (evaluation or {}).get("strong_areas") or []
+        weak = (evaluation or {}).get("weak_areas") or []
+        if overall_score >= 75:
+            detail = self._transition_focus(strong[0] if strong else None, "your structure")
+            return f"Thank you, that was a solid answer, especially around {detail}. Let us go a little deeper now."
+        if overall_score >= 45:
+            detail = self._transition_focus(weak[0] if weak else None, "adding more specifics")
+            return f"Thanks, I followed your point. I would like a bit more depth with {detail}, so let us continue."
+        detail = self._transition_focus(weak[0] if weak else None, "giving a fuller answer")
+        return f"Thanks for trying that. For the next one, focus on {detail} and answer with a clear example."
     def _fallback_evaluation(
         self,
         answer: str,
@@ -931,4 +969,5 @@ Return JSON:
                 if overall >= 70
                 else "neutral" if overall >= 45 else "negative"
             ),
+            "interviewer_response": self._build_interviewer_transition(overall, {"strong_areas": strong, "weak_areas": weak}),
         }

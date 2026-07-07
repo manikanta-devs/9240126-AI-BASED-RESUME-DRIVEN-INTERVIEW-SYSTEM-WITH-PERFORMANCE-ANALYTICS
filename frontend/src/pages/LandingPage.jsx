@@ -38,9 +38,9 @@ const STATS = [
 ]
 
 const SIGNALS = [
-  { icon: Gauge, label: 'Confidence', value: '82%' },
-  { icon: MessageSquare, label: 'Answer depth', value: 'Strong' },
-  { icon: Layers, label: 'Skill match', value: '76%' },
+  { icon: Gauge, label: 'Voice signal', value: 'Ready' },
+  { icon: MessageSquare, label: 'Answer review', value: 'Live' },
+  { icon: Layers, label: 'Question flow', value: 'Adaptive' },
 ]
 
 export default function LandingPage() {
@@ -142,7 +142,7 @@ export default function LandingPage() {
                 <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
                 <span className="w-2.5 h-2.5 rounded-full bg-teal-300" />
-                <span className="ml-auto text-xs text-white/45 font-semibold">Live mock interview</span>
+                <span className="ml-auto text-xs text-white/45 font-semibold">Interview room preview</span>
               </div>
               <div className="p-5 space-y-4">
                 <div className="rounded-2xl bg-[#0b1726] border border-white/[0.08] p-5">
@@ -173,11 +173,11 @@ export default function LandingPage() {
 
                 <div className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-5">
                   <div className="flex items-center justify-between text-xs font-bold text-white/55 mb-3">
-                    <span>Answer quality</span>
-                    <span>78%</span>
+                    <span>Feedback pipeline</span>
+                    <span>Ready</span>
                   </div>
                   <div className="h-2 rounded-full bg-white/[0.08] overflow-hidden">
-                    <div className="h-full w-[78%] rounded-full bg-gradient-to-r from-teal-300 via-cyan-300 to-amber-300" />
+                    <div className="h-full w-full rounded-full bg-gradient-to-r from-teal-300 via-cyan-300 to-amber-300" />
                   </div>
                   <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-white/58">
                     <div className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5 text-teal-300" /> Clear structure</div>

@@ -647,6 +647,16 @@ export default function InterviewPage() {
   const lastSpeechTimeRef = useRef(Date.now())
   const lastTranscriptLengthRef = useRef(0)
   const silenceIntervalRef = useRef(null)
+  const isListeningRef = useRef(false)
+  useEffect(() => {
+    isListeningRef.current = isListening
+  }, [isListening])
+
+  const isInterviewerSpeakingRef = useRef(false)
+  useEffect(() => {
+    isInterviewerSpeakingRef.current = isInterviewerSpeaking
+  }, [isInterviewerSpeaking])
+
   const hasGreetNudgeRef = useRef(false)
 
 
@@ -995,7 +1005,10 @@ export default function InterviewPage() {
     utterance.rate = voiceProfile.rate
     utterance.pitch = voiceProfile.pitch
     utterance.onstart = () => setIsInterviewerSpeaking(true)
-    utterance.onend = () => {
+
+    let fallbackTimeout = null
+    const handleSpeechEnd = () => {
+      if (fallbackTimeout) clearTimeout(fallbackTimeout)
       setIsInterviewerSpeaking(false)
       if (zoomPhase === 'explain_structure') {
         setZoomPhase(null)
@@ -1004,14 +1017,26 @@ export default function InterviewPage() {
       }
       startVoiceCapture().catch(() => {})
     }
-    utterance.onerror = () => {
-      setIsInterviewerSpeaking(false)
-      startVoiceCapture().catch(() => {})
+
+    utterance.onend = handleSpeechEnd
+    utterance.onerror = (err) => {
+      console.warn('SpeechSynthesis error:', err)
+      handleSpeechEnd()
     }
 
-    const timer = window.setTimeout(() => synth.speak(utterance), 400)
+    const durationEstimate = (textToSpeak.length * 80) + 4000
+    const timer = window.setTimeout(() => {
+      synth.speak(utterance)
+      fallbackTimeout = setTimeout(() => {
+        console.warn('SpeechSynthesis onend failed to fire within estimate. Force triggering end handler.')
+        synth.cancel()
+        handleSpeechEnd()
+      }, durationEstimate)
+    }, 400)
+
     return () => {
       window.clearTimeout(timer)
+      if (fallbackTimeout) clearTimeout(fallbackTimeout)
       synth.cancel()
       setIsInterviewerSpeaking(false)
     }
@@ -1270,37 +1295,19 @@ export default function InterviewPage() {
 
 
   const stopVoiceCapture = async ({ keepTranscript = true, saveRecordingPreview = true, persistMetrics = true, stopCamera = false } = {}) => {
-
-
+    setIsListening(false)
     const recognition = recognitionRef.current
 
-
-    if (recognition) {
-
-
+    if (recognition && stopCamera) {
       recognition.onresult = null
-
-
       recognition.onerror = null
-
-
       recognition.onend = null
-
-
       try {
-
-
         recognition.stop()
-
-
       } catch (_) {
         void _
       }
-
-
       recognitionRef.current = null
-
-
     }
 
 
@@ -1729,79 +1736,48 @@ export default function InterviewPage() {
 
 
 
-      if (recognitionRef.current) {
-        try { recognitionRef.current.abort() } catch (err) { console.warn('Failed to abort speech recognition:', err) }
-        recognitionRef.current = null
+      let recognition = recognitionRef.current
+      if (recognition) {
+        finalTranscriptRef.current = ''
+        setVoiceTranscript('')
+        setVoiceInterim('')
+        setAnswer('')
+        lastSpeechTimeRef.current = Date.now()
+        lastTranscriptLengthRef.current = 0
+        setIsListening(true)
+        isStartingCaptureRef.current = false
+        return
       }
 
-      const recognition = new Recognition()
-
-
+      recognition = new Recognition()
+      recognitionRef.current = recognition
       recognition.continuous = true
-
-
       recognition.interimResults = true
-
-
       recognition.lang = 'en-US'
 
-
-
-
-
       recognition.onresult = event => {
-
-
-        let interimText = ''
-
-
-        for (let index = event.resultIndex; index < event.results.length; index += 1) {
-
-
-          const result = event.results[index]
-
-
-          const transcript = result[0]?.transcript || ''
-
-
-          if (result.isFinal) {
-
-
-            finalTranscriptRef.current = `${finalTranscriptRef.current} ${transcript}`.trim()
-
-
-            const confidence = result[0]?.confidence ?? 0
-
-
-            transcriptConfidenceRef.current.sum += confidence
-
-
-            transcriptConfidenceRef.current.count += 1
-
-
-          } else {
-
-
-            interimText += transcript
-
-
-          }
-
-
+        if (!isListeningRef.current || isInterviewerSpeakingRef.current) {
+          return
         }
 
+        let interimText = ''
+        for (let index = event.resultIndex; index < event.results.length; index += 1) {
+          const result = event.results[index]
+          const transcript = result[0]?.transcript || ''
 
-
-
+          if (result.isFinal) {
+            finalTranscriptRef.current = `${finalTranscriptRef.current} ${transcript}`.trim()
+            const confidence = result[0]?.confidence ?? 0
+            transcriptConfidenceRef.current.sum += confidence
+            transcriptConfidenceRef.current.count += 1
+          } else {
+            interimText += transcript
+          }
+        }
 
         const liveTranscript = `${finalTranscriptRef.current} ${interimText}`.trim()
-
-
         setVoiceTranscript(finalTranscriptRef.current)
-
-
         setVoiceInterim(interimText.trim())
-
 
         if (liveTranscript) {
           setAnswer(liveTranscript)
@@ -1811,21 +1787,13 @@ export default function InterviewPage() {
             toast.success('Mic Check: Heard you say "hello"! Voice recognition is working.', { id: 'hello-check', duration: 5000 })
           }
         }
-
-
       }
-
-
-
-
 
       recognition.onerror = event => {
         const errorType = event.error;
         console.warn(`Speech recognition error: ${errorType}`);
 
         if (errorType === 'no-speech' || errorType === 'aborted') {
-          // Do not show an error toast or stop voice capture.
-          // The onend event will handle restarting if appropriate.
           return;
         }
 
@@ -1837,26 +1805,16 @@ export default function InterviewPage() {
 
       recognition.onend = () => {
         if (recognitionRef.current === recognition) {
-          const finalVal = finalTranscriptRef.current.trim()
-          if (finalVal.length > 0) {
-            console.log('User finished speaking. Submitting transcript:', finalVal)
-            handleSubmitAnswer()
-          } else {
-            try {
-              recognition.start()
-            } catch (err) {
-              console.error('Failed to restart speech recognition:', err)
-              setIsListening(false)
-            }
+          try {
+            recognition.start()
+          } catch (err) {
+            console.error('Failed to restart speech recognition:', err)
+            setIsListening(false)
           }
         } else {
           setIsListening(false)
         }
       }
-
-
-
-
 
       recognitionRef.current = recognition
       setIsListening(true)

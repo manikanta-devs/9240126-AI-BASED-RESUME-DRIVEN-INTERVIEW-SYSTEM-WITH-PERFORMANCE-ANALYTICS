@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import clsx from 'clsx'
-import { 
-  Camera, CameraOff, Mic, MicOff, PhoneOff, Maximize, Minimize, 
-  Settings, Sparkles, UserRound, Wifi, Keyboard, Send, Eye, 
-  BrainCircuit, MessageSquare, Volume2, Terminal, X, SkipForward, 
-  Clock, ChevronRight, Activity, Check, MoreVertical, Monitor 
+import {
+  Camera, CameraOff, Mic, MicOff, PhoneOff,
+  Settings, Sparkles, UserRound, Wifi, Keyboard,
+  BrainCircuit, X, SkipForward,
+  Clock, ChevronRight, Activity, Monitor
 } from 'lucide-react'
 
 // ─── AMBIENT PARTICLES FOR BACKGROUND AESTHETICS ───
@@ -98,6 +98,7 @@ export default function AIInterviewerRoom({
   const micEnabled = propMicEnabled !== undefined ? propMicEnabled : localMicEnabled
 
   const [audioLevel, setAudioLevel] = useState(0)
+  const [showLiveAnalysis, setShowLiveAnalysis] = useState(false)
   let eyeContact = 0
   let posture = 0
   let postureLabel = 'Waiting...'
@@ -155,12 +156,11 @@ export default function AIInterviewerRoom({
   }, [activeMediaStream, micEnabled])
 
   const [showSettings, setShowSettings] = useState(false)
-  const [showTypeInput, setShowTypeInput] = useState(false)
+  const devToolsEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true'
   const [showDevPanel, setShowDevPanel] = useState(false)
-  const [godModeActive, setGodModeActive] = useState(true)
-  const [typedAnswer, setTypedAnswer] = useState('')
+  const [godModeActive, setGodModeActive] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [debugModeActive, setDebugModeActive] = useState(true)
+  const [debugModeActive, setDebugModeActive] = useState(false)
 
   const debugCanvasRef = useRef(null)
 
@@ -177,6 +177,9 @@ export default function AIInterviewerRoom({
         confidence: 96,
         posture_label: 'Good'
       })
+    } else {
+      onTelemetryOverrideChange?.(false)
+      onEmotionSnapshotChange?.({ ...(emotionSnapshot || {}), god_mode: false })
     }
   }, [godModeActive])
 
@@ -186,13 +189,13 @@ export default function AIInterviewerRoom({
   // Sync state values
   const cameraActive = cameraReady && cameraEnabled
   const emotionLabel = emotionSnapshot?.emotion_label || 'Focused'
-  
+
   // 1. Dynamic Speaking Pace (WPM)
   const totalWords = voiceTranscript?.split(/\s+/).filter(Boolean).length || 0
   const elapsedMinutes = elapsedSeconds / 60
   const liveWpm = elapsedMinutes > 0.05 ? Math.round(totalWords / elapsedMinutes) : 0
-  const liveSpeakingPace = voiceMetrics?.speaking_pace_wpm 
-    ? Math.max(0, Math.min(100, Math.round((voiceMetrics.speaking_pace_wpm / 150) * 100))) 
+  const liveSpeakingPace = voiceMetrics?.speaking_pace_wpm
+    ? Math.max(0, Math.min(100, Math.round((voiceMetrics.speaking_pace_wpm / 150) * 100)))
     : 0
 
   // 2. Dynamic Filler Words count
@@ -209,8 +212,8 @@ export default function AIInterviewerRoom({
   const liveSmile = cameraActive ? (emotionSnapshot?.smile_score || 0) : 0
 
   // 5. Dynamic Confidence based on camera posture/emotions and filler words
-  const liveConfidence = cameraActive 
-    ? (emotionSnapshot?.confidence || 0) 
+  const liveConfidence = cameraActive
+    ? (emotionSnapshot?.confidence || 0)
     : (micEnabled ? Math.max(50, Math.min(99, 92 - (liveFillerWords * 3))) : 0)
 
   // 6. Dynamic Voice Clarity based on audio Level
@@ -252,7 +255,7 @@ export default function AIInterviewerRoom({
   }
 
   // Dynamic question formatting
-  let displayedQuestionText = currentQuestion?.text || "Preparing your next question..."
+  let displayedQuestionText = encouragementText || currentQuestion?.text || "Preparing your next question..."
   if (onboardingQuestionText && zoomPhase && zoomPhase !== 'greet_mic') {
     displayedQuestionText = onboardingQuestionText
   } else if (zoomPhase === 'greet_mic') {
@@ -310,14 +313,6 @@ export default function AIInterviewerRoom({
         activeMediaStream.getAudioTracks().forEach(track => { track.enabled = nextVal })
       }
     }
-  }
-
-  // Submit typed response
-  const handleTypedSubmit = () => {
-    if (!typedAnswer.trim()) return
-    onSubmitAnswer?.(typedAnswer)
-    setTypedAnswer('')
-    setShowTypeInput(false)
   }
 
   // Debug wireframe drawing
@@ -412,17 +407,17 @@ export default function AIInterviewerRoom({
   ]
 
   // Dynamic analytic metrics (using strictly live data if available, fallback to 0 instead of fake static values if not calibrated)
-  
+
   const overallVal = cameraActive ? (emotionSnapshot?.engagement_score || 0) : 0
   const commVal = cameraActive ? (emotionSnapshot?.confidence || 0) : 0
-  
+
   // Real-time voice length based relevance
   const wordCount = voiceTranscript.trim().split(/\s+/).filter(Boolean).length
   const relevanceVal = wordCount > 0 ? Math.min(100, Math.round((wordCount / 40) * 100)) : 0
-  
+
   // Real-time confidence score from camera
   const confVal = cameraActive ? (emotionSnapshot?.confidence || 0) : 0
-  
+
   // Technical score scales as candidate completes stages of the interview
   const techVal = currentStageIndex > 0 ? Math.min(100, Math.round((currentStageIndex / 6) * 100)) : 0
 
@@ -488,14 +483,14 @@ export default function AIInterviewerRoom({
         suggestion: "Please begin speaking your answer once you are ready. Look directly at the camera."
       }
     }
-    
+
     const strengths = ["Good details and vocabulary"]
     const improvements = []
-    
+
     if (cameraActive && emotionSnapshot) {
       if (emotionSnapshot.eye_contact_score >= 60) strengths.push("Strong eye contact")
       else improvements.push("Maintain eye line with webcam")
-      
+
       if (emotionSnapshot.posture_label === 'Good') strengths.push("Aligned sitting posture")
       else improvements.push("Keep posture centered")
     }
@@ -506,7 +501,7 @@ export default function AIInterviewerRoom({
       } else {
         strengths.push("Minimal filler words")
       }
-      
+
       if (paceWpm && (paceWpm < 110 || paceWpm > 175)) {
         improvements.push(`Speed: ${Math.round(paceWpm)} WPM`)
       }
@@ -528,7 +523,7 @@ export default function AIInterviewerRoom({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col text-white font-sans overflow-hidden select-none bg-[#090d16] interview-mesh-bg">
-      
+
       <AmbientParticles />
 
       {/* ━━━ TOP HEADER BAR ━━━ */}
@@ -557,22 +552,33 @@ export default function AIInterviewerRoom({
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1 animate-pulse" />
             <Wifi className="w-4 h-4" />
           </button>
-          <button 
+          <button
+            onClick={() => setShowLiveAnalysis(!showLiveAnalysis)}
+            className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all ${
+              showLiveAnalysis ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 animate-pulse' : 'bg-white/[0.03] border-white/5 hover:bg-white/[0.08] text-gray-400 hover:text-white'
+            }`}
+            title="Toggle AI Live Analysis sidebar"
+          >
+            <Activity className="w-4 h-4" />
+          </button>
+          <button
             onClick={() => setShowSettings(true)}
             className="w-9 h-9 rounded-xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.08] flex items-center justify-center text-gray-400 hover:text-white transition-all"
             title="Settings"
           >
             <Settings className="w-4 h-4" />
           </button>
-          <button 
-            onClick={() => setShowDevPanel(!showDevPanel)}
-            className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all ${
-              showDevPanel ? 'bg-violet-500/20 border-violet-400 text-violet-300' : 'bg-white/[0.03] border-white/5 hover:bg-white/[0.08] text-gray-400'
-            }`}
-            title="Developer Control"
-          >
-            <Terminal className="w-4 h-4" />
-          </button>
+          {devToolsEnabled && (
+            <button
+              onClick={() => setShowDevPanel(!showDevPanel)}
+              className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all ${
+                showDevPanel ? 'bg-violet-500/20 border-violet-400 text-violet-300' : 'bg-white/[0.03] border-white/5 hover:bg-white/[0.08] text-gray-400'
+              }`}
+              title="Developer Control"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={onEndInterview}
             className="px-4 py-1.5 rounded-full bg-red-600 hover:bg-red-500 text-xs font-bold text-white transition-all shadow-md shadow-red-600/20"
@@ -600,7 +606,7 @@ export default function AIInterviewerRoom({
       ) : (
         <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 min-h-0 relative z-10 overflow-hidden">
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-0">
-          
+
           {/* ─── LEFT PANEL: CANDIDATE WEBCAM (You) ─── */}
           <div className="relative flex flex-col rounded-3xl border border-white/[0.08] bg-slate-900/60 overflow-hidden shadow-2xl">
             {/* Top-left tag: You */}
@@ -618,12 +624,12 @@ export default function AIInterviewerRoom({
 
             {/* Video preview feed */}
             <div className="flex-1 relative bg-slate-950">
-              <video 
-                ref={cameraPreviewRef} 
-                autoPlay 
-                muted 
-                playsInline 
-                className={`absolute inset-0 w-full h-full object-cover transform -scale-x-100 transition-all duration-300 ${!cameraEnabled ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`} 
+              <video
+                ref={cameraPreviewRef}
+                autoPlay
+                muted
+                playsInline
+                className={`absolute inset-0 w-full h-full object-cover transform -scale-x-100 transition-all duration-300 ${!cameraEnabled ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
               />
 
               {/* Debug FaceMesh Overlay */}
@@ -708,7 +714,7 @@ export default function AIInterviewerRoom({
 
             {/* Video overlay controls */}
             <div className="absolute bottom-4 left-4 z-20 flex items-center gap-2">
-              <button 
+              <button
                 onClick={handleCameraToggleLocal}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                   cameraEnabled ? 'bg-white/10 border border-white/20 text-white hover:bg-white/20' : 'bg-red-600 border border-red-500 hover:bg-red-500 text-white'
@@ -717,7 +723,7 @@ export default function AIInterviewerRoom({
               >
                 {cameraEnabled ? <Camera className="w-4.5 h-4.5" /> : <CameraOff className="w-4.5 h-4.5" />}
               </button>
-              <button 
+              <button
                 onClick={handleMicToggleLocal}
                 className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                   micEnabled ? 'bg-white/10 border border-white/20 text-white hover:bg-white/20' : 'bg-red-600 border border-red-500 hover:bg-red-500 text-white'
@@ -778,11 +784,11 @@ export default function AIInterviewerRoom({
                         <Clock className="w-3 h-3 text-cyan-400" />
                         <span>{formatTime(elapsedSeconds)}</span>
                       </div>
-                      <button 
+                      <button
                         onClick={() => onShowTypingFallbackChange?.(!showTypingFallback)}
                         className={`px-2.5 py-1 rounded-xl border text-[10px] font-bold transition-all flex items-center gap-1 ${
-                          showTypingFallback 
-                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300' 
+                          showTypingFallback
+                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
                             : 'border-white/10 text-gray-400 hover:text-white hover:bg-white/[0.04]'
                         }`}
                         title="Type Answer fallback"
@@ -790,7 +796,7 @@ export default function AIInterviewerRoom({
                         <Keyboard className="w-3 h-3" />
                         <span>Type</span>
                       </button>
-                      <button 
+                      <button
                         onClick={onSkipQuestion}
                         className="px-2.5 py-1 rounded-xl border border-white/10 text-[10px] font-bold text-gray-400 hover:text-white hover:bg-white/[0.04] transition-colors"
                       >
@@ -828,121 +834,111 @@ export default function AIInterviewerRoom({
         </div>
       </div>
 
-                      {/* ━━━ AI LIVE BEHAVIORAL ANALYSIS PANEL ━━━ */}
-          <div className="w-full lg:w-72 bg-slate-900/85 border border-white/[0.08] rounded-3xl p-5 flex flex-col gap-4 shadow-2xl backdrop-blur-md shrink-0">
-            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <h3 className="text-sm font-bold text-white tracking-wide">AI Live Analysis</h3>
-              </div>
-              <span className="px-2 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/15 text-[9px] font-black uppercase">Live signals</span>
+      {/* ━━━ AI LIVE BEHAVIORAL ANALYSIS PANEL ━━━ */}
+      {showLiveAnalysis && (
+        <div className="w-full lg:w-72 bg-slate-900/85 border border-white/[0.08] rounded-3xl p-5 flex flex-col gap-4 shadow-2xl backdrop-blur-md shrink-0">
+          <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <h3 className="text-sm font-bold text-white tracking-wide">AI Live Analysis</h3>
             </div>
-
-            {/* Metrics list */}
-            <div className="flex-1 flex flex-col gap-3.5 overflow-y-auto pr-1 text-xs select-none scrollbar-thin">
-              
-              {/* Confidence */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-gray-400 font-bold">
-                  <span className="text-gray-300">Confidence</span>
-                  <span className="text-violet-400 font-mono">{liveConfidence}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden flex">
-                  <div className="h-full bg-gradient-to-r from-violet-500 to-indigo-500" style={{ width: `${liveConfidence}%` }} />
-                </div>
-              </div>
-
-              {/* Speaking Pace */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-gray-400 font-bold">
-                  <span className="text-gray-300">Speaking Pace</span>
-                  <span className="text-cyan-400 font-mono">{liveSpeakingPace}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
-                  <div className="h-full bg-cyan-400" style={{ width: `${liveSpeakingPace}%` }} />
-                </div>
-              </div>
-
-              {/* Energy */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-gray-450 font-bold">
-                  <span className="text-gray-300">Energy</span>
-                  <span className="text-emerald-400 font-mono">{liveEnergy}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-400" style={{ width: `${liveEnergy}%` }} />
-                </div>
-              </div>
-
-              {/* Smile */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-gray-455 font-bold">
-                  <span className="text-gray-300">Smile</span>
-                  <span className="text-amber-400 font-mono">{liveSmile}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
-                  <div className="h-full bg-amber-400" style={{ width: `${liveSmile}%` }} />
-                </div>
-              </div>
-
-              {/* Eye Contact */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-gray-455 font-bold">
-                  <span className="text-gray-300">Eye Contact</span>
-                  <span className="text-violet-400 font-mono">{liveEyeContact}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
-                  <div className="h-full bg-violet-400" style={{ width: `${liveEyeContact}%` }} />
-                </div>
-              </div>
-
-              {/* Textual Metrics */}
-              <div className="grid grid-cols-2 gap-3.5 pt-3 border-t border-white/[0.08]">
-                <div className="space-y-0.5">
-                  <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Body Language</span>
-                  <span className="text-xs font-extrabold text-white">{liveBodyLanguage}</span>
-                </div>
-                <div className="space-y-0.5">
-                  <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Voice Clarity</span>
-                  <span className="text-xs font-extrabold text-white">{liveVoiceClarity}</span>
-                </div>
-                <div className="space-y-0.5">
-                  <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Professional Tone</span>
-                  <span className="text-xs font-extrabold text-white">{liveProfessionalTone}</span>
-                </div>
-                <div className="space-y-0.5">
-                  <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Filler Words</span>
-                  <span className="text-xs font-extrabold text-amber-400">{liveFillerWords}</span>
-                </div>
-              </div>
-
-              {/* Trend */}
-              <div className="pt-3 border-t border-white/[0.08] flex items-center justify-between">
-                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Confidence Trend</span>
-                <span className={clsx(
-                  'text-xs font-black flex items-center gap-1',
-                  liveTrend === 'Increasing' ? 'text-emerald-400' : liveTrend === 'Decreasing' ? 'text-rose-400' : 'text-amber-400'
-                )}>
-                  {liveTrend === 'Increasing' ? '↑' : liveTrend === 'Decreasing' ? '↓' : '→'} {liveTrend}
-                </span>
-              </div>
-
-            </div>
-
-            {/* Recruiter Overrides Quick Action */}
-            <div className="pt-3 border-t border-white/[0.08] flex justify-between items-center gap-2">
-              <button 
-                onClick={onEndInterview}
-                className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-extrabold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-lg"
-              >
-                <span>Go to Results</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <span className="px-2 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/15 text-[9px] font-black uppercase">Live signals</span>
           </div>
 
+          {/* Metrics list */}
+          <div className="flex-1 flex flex-col gap-3.5 overflow-y-auto pr-1 text-xs select-none scrollbar-thin">
+
+            {/* Confidence */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px] text-gray-400 font-bold">
+                <span className="text-gray-300">Confidence</span>
+                <span className="text-violet-400 font-mono">{liveConfidence}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden flex">
+                <div className="h-full bg-gradient-to-r from-violet-500 to-indigo-500" style={{ width: `${liveConfidence}%` }} />
+              </div>
+            </div>
+
+            {/* Energy */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px] text-gray-400 font-bold">
+                <span className="text-gray-300">Energy</span>
+                <span className="text-cyan-400 font-mono">{liveEnergy}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden flex">
+                <div className="h-full bg-gradient-to-r from-cyan-500 to-teal-500" style={{ width: `${liveEnergy}%` }} />
+              </div>
+            </div>
+
+            {/* Smile */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px] text-gray-400 font-bold">
+                <span className="text-gray-300">Smile</span>
+                <span className="text-pink-400 font-mono">{liveSmile}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden flex">
+                <div className="h-full bg-gradient-to-r from-pink-500 to-rose-500" style={{ width: `${liveSmile}%` }} />
+              </div>
+            </div>
+
+            {/* Eye Contact */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px] text-gray-400 font-bold">
+                <span className="text-gray-300">Eye Contact</span>
+                <span className="text-emerald-400 font-mono">{liveEyeContact}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden flex">
+                <div className="h-full bg-gradient-to-r from-emerald-500 to-green-500" style={{ width: `${liveEyeContact}%` }} />
+              </div>
+            </div>
+
+            {/* Grid of details */}
+            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/[0.08]">
+              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 text-center">
+                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Speaking Pace</span>
+                <span className="text-xs font-extrabold text-cyan-400">{liveSpeakingPace}%</span>
+              </div>
+              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 text-center">
+                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Tone</span>
+                <span className="text-xs font-extrabold text-emerald-400">{liveProfessionalTone}</span>
+              </div>
+              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 text-center">
+                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Body Language</span>
+                <span className="text-xs font-extrabold text-indigo-400">{liveBodyLanguage}</span>
+              </div>
+              <div className="bg-slate-950/60 p-2.5 rounded-xl border border-white/5 text-center">
+                <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Filler Words</span>
+                <span className="text-xs font-extrabold text-amber-400">{liveFillerWords}</span>
+              </div>
+            </div>
+
+            {/* Trend */}
+            <div className="pt-3 border-t border-white/[0.08] flex items-center justify-between">
+              <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block">Confidence Trend</span>
+              <span className={clsx(
+                'text-xs font-black flex items-center gap-1',
+                liveTrend === 'Increasing' ? 'text-emerald-400' : liveTrend === 'Decreasing' ? 'text-rose-400' : 'text-amber-400'
+              )}>
+                {liveTrend === 'Increasing' ? '↑' : liveTrend === 'Decreasing' ? '↓' : '→'} {liveTrend}
+              </span>
+            </div>
+
+          </div>
+
+          {/* Recruiter Overrides Quick Action */}
+          <div className="pt-3 border-t border-white/[0.08] flex justify-between items-center gap-2">
+            <button
+              onClick={onEndInterview}
+              className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-extrabold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-lg"
+            >
+              <span>Go to Results</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       )}
+    </div>
+  )}
 
 
 
@@ -950,13 +946,13 @@ export default function AIInterviewerRoom({
       <AnimatePresence>
         {showSettings && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               className="w-full max-w-md interview-glass rounded-2xl p-6 shadow-2xl relative overflow-hidden"
             >
-              <button 
+              <button
                 onClick={() => setShowSettings(false)}
                 className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
               >
@@ -1032,8 +1028,8 @@ export default function AIInterviewerRoom({
 
       {/* ━━━ DEVELOPER OVERRIDES PANEL ━━━ */}
       <AnimatePresence>
-        {showDevPanel && (
-          <motion.div 
+        {devToolsEnabled && showDevPanel && (
+          <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
@@ -1042,7 +1038,7 @@ export default function AIInterviewerRoom({
             <div className="flex-1 flex flex-col overflow-y-auto pr-1 select-text">
               <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
                 <div className="flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-violet-400" />
+                  <Settings className="w-4 h-4 text-violet-400" />
                   <h3 className="text-sm font-bold text-white">Developer Overrides</h3>
                 </div>
                 <button onClick={() => setShowDevPanel(false)} className="text-gray-400 hover:text-white transition-colors">
@@ -1088,7 +1084,7 @@ export default function AIInterviewerRoom({
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
                     <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
-                      <Terminal className="w-3.5 h-3.5 text-cyan-400" /> Debug Diagnostics
+                      <Settings className="w-3.5 h-3.5 text-cyan-400" /> Debug Diagnostics
                     </span>
                     <span className="text-[9px] text-gray-500">Face-mesh wireframe and log feed</span>
                   </div>
@@ -1104,7 +1100,7 @@ export default function AIInterviewerRoom({
               {/* Telemetry Sliders */}
               <div className="space-y-4 mb-6">
                 <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-widest border-b border-white/5 pb-1">Telemetry</h4>
-                
+
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-400">Eye Contact</span>

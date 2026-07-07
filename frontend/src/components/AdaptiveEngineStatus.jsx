@@ -1,28 +1,13 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Cpu, Zap, Volume2, Shield, RefreshCw } from 'lucide-react'
 
 export default function AdaptiveEngineStatus() {
-  const [latency, setLatency] = useState(45)
-  const [activeProvider, setActiveProvider] = useState('Groq-Llama3-2027')
-  const [engineLoad, setEngineLoad] = useState(12)
+  const [latency] = useState(null)
+  const [activeProvider, setActiveProvider] = useState('Auto provider chain')
+  const [engineLoad] = useState(0)
   const [persona, setPersona] = useState('Tech Lead')
   const [pacingWpm, setPacingWpm] = useState(140)
-
-  // Simulate real-time 2027 telemetry changes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLatency(prev => {
-        const delta = Math.floor(Math.random() * 9) - 4
-        return Math.max(12, Math.min(85, prev + delta))
-      })
-      setEngineLoad(prev => {
-        const delta = Math.floor(Math.random() * 5) - 2
-        return Math.max(5, Math.min(28, prev + delta))
-      })
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [])
 
   return (
     <motion.div
@@ -42,8 +27,8 @@ export default function AdaptiveEngineStatus() {
               <Cpu className="h-5 w-5 animate-pulse" />
             </div>
             <div>
-              <h3 className="text-lg font-black tracking-wide text-white">2027 AI Cognitive & Streaming Hub</h3>
-              <p className="text-xs text-white/50">Real-time LLM telemetry & local audio diagnostic pipeline</p>
+              <h3 className="text-lg font-black tracking-wide text-white">AI Interview Engine Status</h3>
+              <p className="text-xs text-white/50">Provider routing, interviewer persona, and local speech settings</p>
             </div>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-center">
@@ -65,13 +50,13 @@ export default function AdaptiveEngineStatus() {
               <Zap className="h-4 w-4 text-amber-300" />
             </div>
             <div>
-              <div className="text-2xl font-black text-amber-200">{latency} <span className="text-xs font-medium text-white/50">ms</span></div>
+              <div className="text-2xl font-black text-amber-200">{latency ? `${latency} ms` : 'Ready'}</div>
               <div className="text-[11px] font-semibold text-white/70 mt-1">Active: <span className="text-indigo-300 font-bold">{activeProvider}</span></div>
             </div>
             <div className="mt-3 flex items-center justify-between text-[10px] text-white/40 border-t border-white/5 pt-2">
               <span>Failover chain: Active</span>
               <button 
-                onClick={() => setActiveProvider(prev => prev === 'Groq-Llama3-2027' ? 'Gemini-1.5-Pro' : 'Groq-Llama3-2027')}
+                onClick={() => setActiveProvider(prev => prev === 'Auto provider chain' ? 'Local fallback ready' : 'Auto provider chain')}
                 className="hover:text-indigo-300 transition-colors flex items-center gap-1 font-bold"
               >
                 <RefreshCw className="h-2.5 w-2.5" /> Cycle Provider
@@ -132,7 +117,7 @@ export default function AdaptiveEngineStatus() {
         <div className="mt-5 grid gap-4 md:grid-cols-2 bg-white/[0.02] border border-white/5 rounded-xl p-4">
           <div className="flex flex-col justify-between gap-2">
             <div className="flex items-center justify-between text-xs text-white/60">
-              <span className="font-bold uppercase tracking-wider">System Cognitive Load</span>
+              <span className="font-bold uppercase tracking-wider">Session Load</span>
               <span>{engineLoad}% active</span>
             </div>
             <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
@@ -142,7 +127,7 @@ export default function AdaptiveEngineStatus() {
                 transition={{ duration: 0.5 }}
               />
             </div>
-            <span className="text-[10px] text-white/40">Real-time neural token analysis pipeline load</span>
+            <span className="text-[10px] text-white/40">Updates from active interview sessions when available</span>
           </div>
 
           <div className="flex flex-col justify-between gap-2">

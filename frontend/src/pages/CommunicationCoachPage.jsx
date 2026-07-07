@@ -112,10 +112,10 @@ export default function CommunicationCoachPage() {
     pipeline: ["Learn Concept", "Watch Video", "Read Notes", "Practice Problems", "Take Quiz", "Explain Concept", "Mini Mock Interview"],
     progress_metrics: {
       topics_completed: "4/12 Topics",
-      est_readiness: "82%",
+      est_readiness: "0%",
       days_remaining: "14 Days",
       current_streak: "5 Days",
-      completion_pct: 66
+      completion_pct: 0
     }
   })
   const [roadmapLoading, setRoadmapLoading] = useState(false)
@@ -825,25 +825,25 @@ export default function CommunicationCoachPage() {
               <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 items-center">
                 <div className="lg:col-span-2 space-y-2">
                   <span className="text-[9px] text-violet-300 font-bold uppercase tracking-wider">Overall Roadmap Progress</span>
-                  <div className="text-2xl font-black">{roadmap?.progress_metrics?.topics_completed || '4/12'}</div>
+                  <div className="text-2xl font-black">{roadmap?.progress_metrics?.topics_completed || '0/12'}</div>
                   <div className="w-full bg-white/5 h-2.5 rounded-full overflow-hidden border border-white/5">
-                    <div className="bg-violet-600 h-full rounded-full" style={{ width: `${roadmap?.progress_metrics?.completion_pct || 66}%` }} />
+                    <div className="bg-violet-600 h-full rounded-full" style={{ width: `${roadmap?.progress_metrics?.completion_pct || 0}%` }} />
                   </div>
                 </div>
 
                 <div className="text-center md:text-left">
                   <span className="text-[9px] text-gray-400 uppercase block font-bold">Estimated Readiness</span>
-                  <span className="text-lg font-black text-emerald-400">{roadmap?.progress_metrics?.est_readiness || '82%'}</span>
+                  <span className="text-lg font-black text-emerald-400">{roadmap?.progress_metrics?.est_readiness || '0%'}</span>
                 </div>
 
                 <div className="text-center md:text-left">
                   <span className="text-[9px] text-gray-400 uppercase block font-bold">Days Remaining</span>
-                  <span className="text-lg font-black text-cyan-400">{roadmap?.progress_metrics?.days_remaining || '14 Days'}</span>
+                  <span className="text-lg font-black text-cyan-400">{roadmap?.progress_metrics?.days_remaining || 'Needs data'}</span>
                 </div>
 
                 <div className="text-center md:text-left">
                   <span className="text-[9px] text-gray-400 uppercase block font-bold">Current Streak</span>
-                  <span className="text-lg font-black text-violet-400">{roadmap?.progress_metrics?.current_streak || '5 Days'}</span>
+                  <span className="text-lg font-black text-violet-400">{roadmap?.progress_metrics?.current_streak || '0 Days'}</span>
                 </div>
               </div>
             </div>       </div>

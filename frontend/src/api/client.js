@@ -34,7 +34,7 @@ client.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    console.debug(`[API] ${config.method?.toUpperCase()} ${config.url}`)
+    if (import.meta.env.DEV) console.debug(`[API] ${config.method?.toUpperCase()} ${config.url}`)
     return config
   },
   error => Promise.reject(error)
@@ -49,7 +49,7 @@ client.interceptors.response.use(
     }
     const elapsed = Date.now() - (response.config.metadata?.startTime || Date.now())
     if (elapsed > 5000) {
-      console.info(`[API] ${response.config.method?.toUpperCase()} ${response.config.url} — ${elapsed}ms (slow)`)
+      if (import.meta.env.DEV) console.info(`[API] ${response.config.method?.toUpperCase()} ${response.config.url} - ${elapsed}ms (slow)`)
     }
     return response
   },
@@ -60,7 +60,7 @@ client.interceptors.response.use(
 
     // Catch 401 Unauthorized errors and force user logout/redirect
     if (error.response?.status === 401) {
-      console.warn('[API] Unauthorized (401) response received. Clearing credentials.')
+      if (import.meta.env.DEV) console.warn('[API] Unauthorized (401) response received. Clearing credentials.')
       const hasToken = !!localStorage.getItem('token')
       localStorage.removeItem('token')
       localStorage.removeItem('username')
@@ -77,14 +77,14 @@ client.interceptors.response.use(
     ) {
       config._retried = true
       const retryDelayMs = 1500
-      console.warn(`[API] Retrying ${config.method?.toUpperCase()} ${config.url} after ${retryDelayMs}ms (${msg})`)
+      if (import.meta.env.DEV) console.warn(`[API] Retrying ${config.method?.toUpperCase()} ${config.url} after ${retryDelayMs}ms (${msg})`)
       await new Promise(r => setTimeout(r, retryDelayMs))
       return client(config)
     }
 
     // Log error if not canceled
     if (error.code !== 'ERR_CANCELED') {
-      console.error('[API] Error:', {
+      if (import.meta.env.DEV) console.error('[API] Error:', {
         status: error.response?.status,
         message: msg,
         url: config.url,
@@ -150,6 +150,8 @@ export const injectMockSession = (type) =>
 
 // ─── Analytics ──────────────────────────────────────────────
 export const getAnalyticsSummary = () => cachedGet('/api/analytics/summary')
+
+export const getDashboardInsights = () => cachedGet('/api/analytics/dashboard-insights')
 
 export const getAnalyticsSessions = (limit = 20) =>
   client.get(`/api/analytics/sessions?limit=${limit}`)

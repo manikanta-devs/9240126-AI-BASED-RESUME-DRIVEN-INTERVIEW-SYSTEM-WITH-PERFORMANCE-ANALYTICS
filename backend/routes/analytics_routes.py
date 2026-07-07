@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 import logging
+import os
 
 from services.analytics_service import AnalyticsService
 from utils.auth_utils import token_required
@@ -9,6 +10,12 @@ logger = logging.getLogger(__name__)
 analytics_bp = Blueprint("analytics", __name__)
 analytics_service = AnalyticsService()
 gemini_service = GeminiService()
+
+
+
+def developer_tools_enabled() -> bool:
+    """Require an explicit opt-in for destructive/demo-only endpoints."""
+    return os.getenv("ENABLE_DEVELOPER_TOOLS", "false").lower() == "true"
 
 
 @analytics_bp.route("/analytics/summary", methods=["GET"])
@@ -60,6 +67,21 @@ def get_session(session_id):
             "message": str(e) if current_app.config.get("ENV") == "development" else "An error occurred"
         }), 500
 
+
+
+@analytics_bp.route("/analytics/dashboard-insights", methods=["GET"])
+@token_required
+def dashboard_insights():
+    """Get real dashboard insights derived from completed sessions."""
+    try:
+        insights = analytics_service.get_dashboard_insights(username=request.username)
+        return jsonify({"success": True, "insights": insights}), 200
+    except Exception as e:
+        logger.error(f"Dashboard insights error: {e}")
+        return jsonify({
+            "error": "Internal server error",
+            "message": str(e) if current_app.config.get("ENV") == "development" else "An error occurred"
+        }), 500
 
 @analytics_bp.route("/analytics/performance-trend", methods=["GET"])
 @token_required
@@ -140,8 +162,8 @@ def communication_coach():
 @token_required
 def clear_analytics():
     """Clear all analytics data"""
-    if current_app.config.get("ENV") == "production":
-        return jsonify({"error": "Developer tools are disabled in production"}), 403
+    if not developer_tools_enabled():
+        return jsonify({"error": "Developer tools are disabled"}), 403
     try:
         analytics_service.clear_all()
         return jsonify({"success": True, "message": "All analytics data cleared"}), 200
@@ -157,8 +179,8 @@ def clear_analytics():
 @token_required
 def mock_session():
     """Inject a pre-computed completed mock session for demos."""
-    if current_app.config.get("ENV") == "production":
-        return jsonify({"error": "Developer tools are disabled in production"}), 403
+    if not developer_tools_enabled():
+        return jsonify({"error": "Developer tools are disabled"}), 403
     try:
         import uuid
         from datetime import datetime, timezone
