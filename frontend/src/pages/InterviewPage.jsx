@@ -768,7 +768,7 @@ export default function InterviewPage() {
         window._heardHello = false
       }
       if (interviewFormat !== 'text') {
-        setZoomPhase(null)
+        setZoomPhase('connecting')
         setOnboardingQuestionText('')
         hasGreetedRef.current = false
         hasEncouragedRef.current = false
@@ -937,6 +937,10 @@ export default function InterviewPage() {
       return undefined
     }
 
+    if (zoomPhase === 'connecting') {
+      return undefined
+    }
+
     // If we are not in greeting phase and there is no question, return
     if (!zoomPhase && !currentQuestion?.text) {
       return undefined
@@ -1000,7 +1004,7 @@ export default function InterviewPage() {
     const handleSpeechEnd = () => {
       if (fallbackTimeout) clearTimeout(fallbackTimeout)
       setIsInterviewerSpeaking(false)
-      if (zoomPhase === 'explain_structure') {
+      if (zoomPhase === 'identity_confirm') {
         setZoomPhase(null)
       } else if (zoomPhase === 'closing') {
         handleFinish()
@@ -1928,7 +1932,7 @@ export default function InterviewPage() {
           window._heardHello = false
         }
         if (interviewFormat !== 'text') {
-          setZoomPhase(null)
+          setZoomPhase('connecting')
           setOnboardingQuestionText('')
           hasGreetedRef.current = false
           hasEncouragedRef.current = false
@@ -1995,7 +1999,7 @@ export default function InterviewPage() {
         setOnboardingQuestionText('')
       }
 
-      if (nextPhase) {
+      if (nextPhase !== undefined) {
         setZoomPhase(nextPhase)
       }
       setVoiceTranscript('')
