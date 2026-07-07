@@ -1212,6 +1212,45 @@ export default function InterviewPage() {
     return undefined
   }, [])
 
+  useEffect(() => {
+    if (interviewFormat === 'video' && activeMediaStream && cameraPreviewRef.current) {
+      const videoEl = cameraPreviewRef.current
+      if (videoEl.srcObject !== activeMediaStream) {
+        videoEl.srcObject = activeMediaStream
+        
+        stopEmotionSamplerRef.current?.()
+        emotionHistoryRef.current = []
+        setEmotionSnapshot(createEmotionSnapshot())
+        isTelemetryOverriddenRef.current = false
+        
+        const beginEmotionSampling = () => {
+          stopEmotionSamplerRef.current?.()
+          stopEmotionSamplerRef.current = startEmotionSampler({
+            video: videoEl,
+            onUpdate: snapshot => {
+              emotionHistoryRef.current = [...emotionHistoryRef.current.slice(-79), snapshot]
+              if (!isTelemetryOverriddenRef.current) {
+                setEmotionSnapshot(snapshot)
+              } else {
+                setEmotionSnapshot(prev => ({
+                  ...prev,
+                  raw_landmarks: snapshot.raw_landmarks,
+                  raw_stats: snapshot.raw_stats
+                }))
+              }
+            }
+          })
+        }
+        
+        if (videoEl.readyState >= 2) {
+          beginEmotionSampling()
+        } else {
+          videoEl.onloadedmetadata = beginEmotionSampling
+        }
+      }
+    }
+  }, [activeMediaStream, cameraPreviewRef.current, interviewFormat])
+
 
 
 
@@ -1602,40 +1641,8 @@ export default function InterviewPage() {
 
 
 
-      if (useVideo && cameraPreviewRef.current) {
-
-
-        cameraPreviewRef.current.srcObject = stream
-
-
+      if (useVideo) {
         setCameraReady(true)
-
-        stopEmotionSamplerRef.current?.()
-        emotionHistoryRef.current = []
-        setEmotionSnapshot(createEmotionSnapshot())
-        isTelemetryOverriddenRef.current = false
-        const beginEmotionSampling = () => {
-          stopEmotionSamplerRef.current?.()
-          stopEmotionSamplerRef.current = startEmotionSampler({
-            video: cameraPreviewRef.current,
-            onUpdate: snapshot => {
-              emotionHistoryRef.current = [...emotionHistoryRef.current.slice(-79), snapshot]
-              if (!isTelemetryOverriddenRef.current) {
-                setEmotionSnapshot(snapshot)
-              } else {
-                setEmotionSnapshot(prev => ({
-                  ...prev,
-                  raw_landmarks: snapshot.raw_landmarks,
-                  raw_stats: snapshot.raw_stats
-                }))
-              }
-            },
-          })
-        }
-        if (cameraPreviewRef.current.readyState >= 2) beginEmotionSampling()
-        else cameraPreviewRef.current.onloadedmetadata = beginEmotionSampling
-
-
       }
 
 
