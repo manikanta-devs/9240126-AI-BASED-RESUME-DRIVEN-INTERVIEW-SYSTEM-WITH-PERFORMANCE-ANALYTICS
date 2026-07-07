@@ -2147,9 +2147,46 @@ export default function InterviewPage() {
         setPhase(PHASE.EVALUATING)
       } else {
         setPhase(PHASE.INTERVIEWING)
-        setTimeout(() => {
-          handleNextQuestion()
-        }, 1200)
+        // Speak the AI HR's natural response to the answer, then advance
+        const hrReply = data.evaluation?.interviewer_response
+        if (hrReply && interviewerVoice && window.speechSynthesis) {
+          const synth = window.speechSynthesis
+          const hrVoiceProfile = panelMode
+            ? PANEL_VOICE_PROFILES[0] || VOICE_PROFILES.marcus
+            : VOICE_PROFILES[interviewerPersona] || VOICE_PROFILES.sarah
+          const hrSelectedVoice = chooseBrowserVoice(browserVoices.length ? browserVoices : synth.getVoices(), hrVoiceProfile)
+          synth.cancel()
+          const replyUtterance = new SpeechSynthesisUtterance(hrReply)
+          if (hrSelectedVoice) replyUtterance.voice = hrSelectedVoice
+          replyUtterance.lang = hrSelectedVoice?.lang || 'en-US'
+          replyUtterance.rate = 0.92
+          replyUtterance.pitch = 1.05
+          setIsInterviewerSpeaking(true)
+          if (mediaStreamRef.current) {
+            mediaStreamRef.current.getAudioTracks().forEach(t => { t.enabled = false })
+          }
+          replyUtterance.onend = () => {
+            setIsInterviewerSpeaking(false)
+            setTimeout(() => {
+              if (mediaStreamRef.current && micEnabled) {
+                mediaStreamRef.current.getAudioTracks().forEach(t => { t.enabled = true })
+              }
+              handleNextQuestion()
+            }, 500)
+          }
+          replyUtterance.onerror = () => {
+            setIsInterviewerSpeaking(false)
+            if (mediaStreamRef.current && micEnabled) {
+              mediaStreamRef.current.getAudioTracks().forEach(t => { t.enabled = true })
+            }
+            handleNextQuestion()
+          }
+          setTimeout(() => { synth.speak(replyUtterance) }, 300)
+        } else {
+          setTimeout(() => {
+            handleNextQuestion()
+          }, 1200)
+        }
       }
 
 

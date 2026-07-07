@@ -375,7 +375,8 @@ Return a JSON object with these exact fields:
   "posture_score": <0-100, based on posture quality, reading from the provided posture_score if present>,
   "posture_label": "<Good|Slouched|Leaning Left|Leaning Right>",
   "emotion_feedback": "<short constructive feedback on camera presence, eye contact, and posture>",
-  "sentiment": "positive" | "neutral" | "negative" (must be "positive" if overall_score >= 75, "neutral" if 45-74, "negative" if < 45)
+  "sentiment": "positive" | "neutral" | "negative" (must be "positive" if overall_score >= 75, "neutral" if 45-74, "negative" if < 45),
+  "interviewer_response": "<CRITICAL: A natural, spoken 1-2 sentence HR response you say OUT LOUD to the candidate after hearing their answer. Sound like a real experienced Indian/international HR manager on a video call. If answer was good, say something warm and specific like 'That is a great point about X, good depth there.' If it was weak, be encouraging but honest like 'I see, interesting perspective. Let us explore that further.' NEVER say generic phrases like Let us move on. Make it feel like a real conversation. Max 30 words.>"
 }}
 
 Be fair but honest. If the answer is very short or vague, score accordingly."""
