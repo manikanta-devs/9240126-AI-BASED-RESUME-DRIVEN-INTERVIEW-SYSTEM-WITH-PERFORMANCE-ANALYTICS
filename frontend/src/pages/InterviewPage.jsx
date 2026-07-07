@@ -1206,14 +1206,12 @@ export default function InterviewPage() {
     if (phase !== PHASE.INTERVIEWING || !zoomPhase || interviewFormat === 'text') return undefined
 
     if (zoomPhase === 'connecting') {
-      const timer = setTimeout(() => {
+      if (activeMediaStream && (interviewFormat !== 'video' || cameraReady)) {
         setZoomPhase('greet_mic')
-      }, 3500)
-      return () => clearTimeout(timer)
+      }
+      return undefined
     }
-
-
-  }, [voiceTranscript, zoomPhase, phase, interviewFormat])
+  }, [voiceTranscript, zoomPhase, phase, interviewFormat, activeMediaStream, cameraReady])
 
   useEffect(() => {
     // Silence timer and automatic skipping disabled to ensure the candidate has full manual control and isn't interrupted.
