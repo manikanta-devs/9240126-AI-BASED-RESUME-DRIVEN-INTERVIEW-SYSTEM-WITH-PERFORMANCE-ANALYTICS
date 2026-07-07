@@ -1200,12 +1200,18 @@ export default function InterviewPage() {
     if (phase !== PHASE.INTERVIEWING || !zoomPhase || interviewFormat === 'text') return undefined
 
     if (zoomPhase === 'connecting') {
-      if (activeMediaStream && (interviewFormat !== 'video' || cameraReady)) {
+      // Proactively request media so camera/mic turn on immediately — no deadlock
+      if (!activeMediaStream) {
+        startVoiceCapture().catch((err) => {
+          console.error('Media capture failed during connecting:', err)
+          setZoomPhase(null) // escape spinner if permissions denied
+        })
+      } else if (interviewFormat !== 'video' || cameraReady) {
         setZoomPhase('greet_mic')
       }
       return undefined
     }
-  }, [voiceTranscript, zoomPhase, phase, interviewFormat, activeMediaStream, cameraReady])
+  }, [zoomPhase, phase, interviewFormat, activeMediaStream, cameraReady])
 
   useEffect(() => {
     // Silence timer and automatic skipping disabled to ensure the candidate has full manual control and isn't interrupted.
@@ -2469,611 +2475,276 @@ export default function InterviewPage() {
 
 
   if (phase === PHASE.SETUP) {
-
-
     return (
+      <div className="space-y-0 animate-in">
 
-
-      <div className="max-w-3xl mx-auto space-y-5 animate-in pt-4">
-        <AdvancedToolPanel type="interview" />
-
-
-        <div className="card">
-
-
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Configure Your Interview</h2>
-
-
-          <p className="text-sm text-gray-500 mb-2">
-
-
-            {resumeData
-
-
-              ? <span className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-green-500 inline" /> Resume loaded - questions will be tailored to your skills.</span>
-
-
-              : <span className="flex items-center gap-2"><AlertCircle className="w-4 h-4 text-orange-400 inline" /> No resume uploaded - using generic role-based questions.</span>
-
-
-            }
-
-
-          </p>
-
-
-
-
-
-          {resumeData?.skills?.all?.length > 0 && (
-
-
-            <div className="flex flex-wrap gap-1.5 mb-4">
-
-
-              <span className="text-xs text-gray-400 mr-1">Detected skills:</span>
-
-
-              {resumeData.skills.all.slice(0, 8).map(skill => (
-
-
-                <span key={skill} className="px-2 py-0.5 rounded-full bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 text-xs font-medium border border-primary-200 dark:border-primary-800">{skill}</span>
-
-
-              ))}
-
-
-              {resumeData.skills.all.length > 8 && <span className="text-xs text-gray-400">+{resumeData.skills.all.length - 8} more</span>}
-
-
-            </div>
-
-
-          )}
-
-
-
-
-
-          {!resumeData && (
-
-
-            <button onClick={() => navigate('/dashboard/resume')} className="mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 text-sm font-medium border border-primary-200 dark:border-primary-800 hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors">
-
-
-              <BookOpen className="w-4 h-4" /> Upload your resume for personalized questions
-
-
-            </button>
-
-
-          )}
-
-
-
-
-
-          <div className="rounded-2xl border border-white/10 bg-slate-950 text-white p-4 mb-6 shadow-xl shadow-black/20">
-
-
-            <div className="flex items-center justify-between gap-3 mb-2">
-
-
+        {/* ━━━ HERO ENTRY CARD ━━━ */}
+        <div className="card bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950/70 border-none shadow-2xl p-6 rounded-3xl relative overflow-hidden text-white mb-6">
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.18),transparent_35%),radial-gradient(circle_at_85%_10%,rgba(34,197,94,0.1),transparent_26%)]" />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div className="flex items-center gap-4">
+              {aiInterviewerMode && (
+                <div className="relative shrink-0">
+                  <img
+                    src={interviewerPersona === 'marcus' ? '/interviewers/marcus_rodriguez.png' : '/interviewers/sarah_chen.png'}
+                    alt={interviewerName}
+                    className="w-16 h-16 rounded-2xl object-cover border-2 border-cyan-400/40 shadow-xl shadow-cyan-500/20"
+                  />
+                  <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-slate-950 animate-pulse" />
+                </div>
+              )}
               <div>
+                <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-[0.2em] block mb-1">
+                  AI Video Interview
+                </span>
+                <h1 className="text-2xl font-black leading-tight">
+                  {interviewerName} is ready to interview you
+                </h1>
+                <p className="text-sm text-white/55 mt-1">
+                  Camera and mic will turn on automatically when you start. Speak naturally — the AI listens, records, and responds like a real HR.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 shrink-0">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> AI Engine Active
+              </div>
+              {resumeData
+                ? <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/60 text-xs"><CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Resume loaded</div>
+                : <button onClick={() => navigate('/dashboard/resume')} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-amber-300 text-xs font-semibold hover:bg-white/10 transition-colors"><BookOpen className="w-3.5 h-3.5" /> Upload resume</button>
+              }
+            </div>
+          </div>
 
+          {/* Resume skill tags */}
+          {resumeData?.skills?.all?.length > 0 && (
+            <div className="relative z-10 mt-4 flex flex-wrap gap-1.5 border-t border-white/5 pt-4">
+              <span className="text-[10px] text-gray-500 mr-1 self-center">Your skills:</span>
+              {resumeData.skills.all.slice(0, 8).map(skill => (
+                <span key={skill} className="px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[10px] font-semibold">{skill}</span>
+              ))}
+              {resumeData.skills.all.length > 8 && <span className="text-[10px] text-white/35 self-center">+{resumeData.skills.all.length - 8} more</span>}
+            </div>
+          )}
+        </div>
 
-                <p className="text-xs uppercase tracking-[0.22em] text-cyan-300 mb-1">Interview room</p>
+        {/* ━━━ MAIN CONFIG GRID ━━━ */}
+        <div className="grid md:grid-cols-[1fr_290px] gap-5 items-start">
 
+          {/* LEFT col */}
+          <div className="space-y-4">
 
-                <h3 className="text-lg font-black">Pressure mode</h3>
+            {/* Role */}
+            <div className="card !p-5">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Target Role</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {ROLE_OPTIONS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => setSelectedRole(value)}
+                    className={clsx(
+                      'px-3 py-2.5 rounded-xl text-sm font-semibold text-left border-2 transition-all',
+                      selectedRole === value
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/25 text-indigo-700 dark:text-indigo-300'
+                        : 'border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 hover:border-indigo-400 hover:text-gray-900 dark:hover:text-white'
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-
+            {/* Difficulty + Mode in one row */}
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="card !p-5">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Difficulty</label>
+                <div className="flex flex-col gap-2">
+                  {DIFF_OPTIONS.map(({ value, label, desc }) => (
+                    <button
+                      key={value}
+                      onClick={() => setDifficulty(value)}
+                      className={clsx(
+                        'p-2.5 rounded-xl text-left border-2 transition-all',
+                        difficulty === value
+                          ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/25'
+                          : 'border-gray-200 dark:border-gray-700/70 hover:border-indigo-400'
+                      )}
+                    >
+                      <div className="font-bold text-sm text-gray-800 dark:text-gray-200">{label}</div>
+                      <div className="text-xs text-gray-400 mt-0.5">{desc}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
 
-
-              <div className="px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-xs font-semibold text-red-300">
-
-
-                Camera and mic preferred
-
-
+              <div className="card !p-5">
+                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Interview Mode</label>
+                <div className="flex flex-col gap-2">
+                  {FORMAT_OPTIONS.map(({ value, label, desc }) => (
+                    <button
+                      key={value}
+                      onClick={() => { if (phase === PHASE.SETUP) setInterviewFormat(value) }}
+                      className={clsx(
+                        'p-2.5 rounded-xl text-left border-2 transition-all',
+                        interviewFormat === value
+                          ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/25'
+                          : 'border-gray-200 dark:border-gray-700/70 hover:border-indigo-400'
+                      )}
+                    >
+                      <div className="font-semibold text-sm text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                        {value === 'text' ? <Type className="w-3.5 h-3.5" /> : value === 'voice' ? <Mic className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+                        {label}
+                        {interviewFormat === value && <span className="ml-auto text-[9px] bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.5 rounded-full">Selected</span>}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-0.5">{desc}</div>
+                    </button>
+                  ))}
+                </div>
+                {!hasSpeechSupport && (
+                  <p className="text-[10px] text-amber-500 mt-2">Voice/Video needs Chrome or Edge</p>
+                )}
               </div>
-
-
             </div>
 
-
-            <p className="text-sm text-gray-300 leading-relaxed">
-
-
-              Voice and video mode use free browser APIs and start capture automatically once the question appears. Keep your camera framed and answer like you are in front of a real hiring panel.
-
-
-            </p>
-
-
-          </div>
-
-
-
-
-
-          <div className="mb-5">
-
-
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Target Role</label>
-
-
-            <div className="grid grid-cols-2 gap-2">
-
-
-              {ROLE_OPTIONS.map(({ value, label }) => (
-
-
-                <button
-
-
-                  key={value}
-
-
-                  onClick={() => setSelectedRole(value)}
-
-
-                  className={clsx(
-
-
-                    'p-3 rounded-xl text-sm font-medium text-left border-2 transition-all',
-
-
-                    selectedRole === value
-
-
-                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
-
-
-                      : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-300'
-
-
-                  )}
-
-
-                >
-
-
-                  {label}
-
-
-                </button>
-
-
-              ))}
-
-
-            </div>
-
-
-          </div>
-
-
-
-
-
-          <div className="mb-5">
-
-
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Difficulty Level</label>
-
-
-            <div className="grid grid-cols-3 gap-3">
-
-
-              {DIFF_OPTIONS.map(({ value, label, desc }) => (
-
-
-                <button
-
-
-                  key={value}
-
-
-                  onClick={() => setDifficulty(value)}
-
-
-                  className={clsx(
-
-
-                    'p-3 rounded-xl text-left border-2 transition-all',
-
-
-                    difficulty === value
-
-
-                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-
-
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-
-
-                  )}
-
-
-                >
-
-
-                  <div className="font-semibold text-sm text-gray-800 dark:text-gray-200">{label}</div>
-
-
-                  <div className="text-xs text-gray-400 mt-0.5">{desc}</div>
-
-
-                </button>
-
-
-              ))}
-
-
-            </div>
-
-
-          </div>
-
-          <div className="mb-5">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Target Company</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-              {COMPANY_OPTIONS.map(({ value, label, desc }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => {
-                    setSelectedCompany(value)
-                    if (value === 'General') {
-                      setCompanyContext('')
-                    }
-                  }}
-                  className={clsx(
-                    'p-2.5 rounded-xl text-left border-2 transition-all flex flex-col justify-between',
-                    selectedCompany === value
-                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                  )}
-                >
-                  <div className="font-semibold text-xs text-gray-800 dark:text-gray-200">{label}</div>
-                  <div className="text-[10px] text-gray-400 mt-0.5 leading-snug">{desc}</div>
-                </button>
-              ))}
-            </div>
-            {selectedCompany !== 'General' && (
-              <div className="mt-3">
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                  Company Focus / Interview Context (e.g. &quot;AWS S3 team&quot;, &quot;System reliability role&quot;, specific business scenarios)
-                </label>
+            {/* Company */}
+            <div className="card !p-5">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">Target Company</label>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                {COMPANY_OPTIONS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => { setSelectedCompany(value); if (value === 'General') setCompanyContext('') }}
+                    className={clsx(
+                      'p-2 rounded-xl text-center border-2 transition-all text-xs font-semibold',
+                      selectedCompany === value
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/25 text-indigo-700 dark:text-indigo-300'
+                        : 'border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 hover:border-indigo-400'
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {selectedCompany !== 'General' && (
                 <textarea
                   value={companyContext}
                   onChange={(e) => setCompanyContext(e.target.value)}
-                  placeholder="Enter specific team, domain, or business challenges to tailor your questions..."
-                  className="w-full p-3 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  rows={3}
+                  placeholder="Optional: describe the team, role, or domain..."
+                  className="mt-3 w-full p-3 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  rows={2}
                 />
-              </div>
-            )}
+              )}
+            </div>
+
+            {/* Questions slider */}
+            <div className="card !p-5">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
+                Questions: <span className="text-indigo-500 normal-case font-black">{numQuestions}</span>
+              </label>
+              <input type="range" min={3} max={10} value={numQuestions} onChange={e => setNumQuestions(Number(e.target.value))} className="w-full accent-indigo-500" />
+              <div className="flex justify-between text-xs text-gray-400 mt-1"><span>3 — Quick</span><span>5 — Standard</span><span>10 — Thorough</span></div>
+            </div>
+
           </div>
 
+          {/* RIGHT col — settings + CTA */}
+          <div className="space-y-4 md:sticky md:top-4">
 
+            {/* Interviewer picker */}
+            <div className="card bg-gradient-to-br from-slate-950 to-slate-900 border border-white/10 !p-4 text-white">
+              <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">Your AI Interviewer</p>
+              <div className="flex gap-2">
+                {['sarah', 'marcus'].map(p => {
+                  const isSelected = interviewerPersona === p
+                  const name = p === 'sarah' ? 'Sarah Chen' : 'Marcus Rodriguez'
+                  const img = p === 'sarah' ? '/interviewers/sarah_chen.png' : '/interviewers/marcus_rodriguez.png'
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setInterviewerPersona(p)}
+                      className={clsx('flex-1 flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all', isSelected ? 'border-cyan-500 bg-cyan-500/10' : 'border-white/10 bg-white/5 hover:border-white/25')}
+                    >
+                      <div className="relative">
+                        <img src={img} alt={name} className="w-14 h-14 rounded-xl object-cover" />
+                        {isSelected && <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-cyan-400 border-2 border-slate-950" />}
+                      </div>
+                      <span className="text-xs font-bold text-white">{name.split(' ')[0]}</span>
+                      <span className="text-[9px] text-gray-500">HR Lead</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
 
+            {/* Toggles */}
+            <div className="card bg-gradient-to-br from-slate-950 to-slate-900 border border-white/10 !p-4 text-white space-y-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-1">Interview Settings</p>
 
-
-          <div className="mb-5">
-
-
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Interview Task</label>
-
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-
-
-              {FORMAT_OPTIONS.map(({ value, label, desc }) => (
-
-
-                <button
-
-
-                  key={value}
-
-
-                  onClick={() => setInterviewFormat(value)}
-
-
-                  className={clsx(
-
-
-                    'p-3 rounded-xl text-left border-2 transition-all',
-
-
-                    interviewFormat === value
-
-
-                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-
-
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-
-
-                  )}
-
-
-                >
-
-
-                  <div className="font-semibold text-sm text-gray-800 dark:text-gray-200 flex items-center justify-between w-full">
-
-                    <span className="flex items-center gap-2">
-                      {value === 'text' ? <Type className="w-4 h-4" /> : value === 'voice' ? <Mic className="w-4 h-4" /> : <Video className="w-4 h-4" />}
-                      {label}
-                    </span>
-
-                    {!hasSpeechSupport && value !== 'text' && (
-                      <span className="text-[10px] bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20 px-1.5 py-0.5 rounded-full font-normal">
-                        Unsupported
-                      </span>
-                    )}
-
+              {[
+                { label: 'AI Interviewer Room', desc: 'Live camera & emotion tracking', value: aiInterviewerMode, toggle: () => setAiInterviewerMode(!aiInterviewerMode), color: 'bg-cyan-600' },
+                { label: 'Spoken Questions', desc: 'AI reads questions aloud', value: interviewerVoice, toggle: () => setInterviewerVoice(!interviewerVoice), color: 'bg-amber-500' },
+                { label: 'Panel Mode', desc: '3 AI interviewers take turns', value: panelMode, toggle: () => setPanelMode(!panelMode), color: 'bg-violet-600' },
+              ].map(({ label, desc, value, toggle, color }) => (
+                <div key={label} className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold text-white">{label}</p>
+                    <p className="text-[10px] text-gray-500">{desc}</p>
                   </div>
-
-
-                  <div className="text-xs text-gray-400 mt-0.5">{desc}</div>
-
-
-                </button>
-
-
+                  <button onClick={toggle} className={clsx('relative w-11 h-6 rounded-full transition-colors shrink-0', value ? color : 'bg-gray-700')}>
+                    <span className={clsx('absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow', value ? 'translate-x-5' : 'translate-x-0')} />
+                  </button>
+                </div>
               ))}
 
-
-            </div>
-
-            {!hasSpeechSupport && (
-              <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-3 text-xs text-yellow-700 dark:text-yellow-200 mt-3 space-y-1">
-                <span className="font-semibold text-yellow-800 dark:text-yellow-300">⚠️ Browser Speech Support Warning:</span>
-                <p>Voice and Video modes require the browser Web Speech API, which is not supported by your current browser (like Firefox or sandboxed IDE preview panes). If you run the interview in these modes, live speech transcription will not work. We recommend selecting <strong>Text Mode</strong>, or running the application in <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>.</p>
-              </div>
-            )}
-
-
-          </div>
-
-
-
-
-
-          <div className="mb-6">
-
-
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-
-
-              Number of Questions: <span className="text-primary-600">{numQuestions}</span>
-
-
-            </label>
-
-
-            <input
-
-
-              type="range"
-
-
-              min={3}
-
-
-              max={10}
-
-
-              value={numQuestions}
-
-
-              onChange={e => setNumQuestions(Number(e.target.value))}
-
-
-              className="w-full accent-primary-600"
-
-
-            />
-
-
-            <div className="flex justify-between text-xs text-gray-400 mt-1">
-
-
-              <span>3 (Quick)</span><span>5 (Standard)</span><span>10 (Thorough)</span>
-
-
-            </div>
-
-
-          </div>
-
-
-
-
-
-          <div className="mb-6 grid md:grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-white/10 bg-slate-950 text-white p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-bold">AI Interviewer Room</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Photorealistic interviewer with live camera & emotion tracking</p>
-                </div>
-                <button
-                  onClick={() => setAiInterviewerMode(!aiInterviewerMode)}
-                  className={clsx('relative w-12 h-6 rounded-full transition-colors shrink-0', aiInterviewerMode ? 'bg-cyan-600' : 'bg-gray-700')}
-                >
-                  <span className={clsx('absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform', aiInterviewerMode ? 'translate-x-6' : 'translate-x-0')} />
-                </button>
-              </div>
-              {aiInterviewerMode && (
-                <div className="mt-3 flex gap-2">
-                  <button
-                    onClick={() => setInterviewerPersona('sarah')}
-                    className={clsx('flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all', interviewerPersona === 'sarah' ? 'bg-blue-500/15 border-blue-500/30 text-blue-300' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white')}
-                  >
-                    <img src="/interviewers/sarah_chen.png" className="w-6 h-6 rounded-full object-cover" alt="" />
-                    Sarah Chen
-                  </button>
-                  <button
-                    onClick={() => setInterviewerPersona('marcus')}
-                    className={clsx('flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all', interviewerPersona === 'marcus' ? 'bg-teal-500/15 border-teal-500/30 text-teal-300' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white')}
-                  >
-                    <img src="/interviewers/marcus_rodriguez.png" className="w-6 h-6 rounded-full object-cover" alt="" />
-                    Marcus Rodriguez
-                  </button>
+              {panelMode && (
+                <div className="pt-2 border-t border-white/5 space-y-2">
+                  {PANEL_MEMBERS.map(m => (
+                    <div key={m.id} className="flex items-center gap-2">
+                      <div className={`w-6 h-6 rounded-lg bg-gradient-to-br ${m.color} flex items-center justify-center text-[9px] font-black text-white shrink-0`}>{m.initials}</div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-white leading-tight">{m.name}</p>
+                        <p className="text-[9px] text-gray-600">{m.role}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-slate-950 text-white p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-bold">Spoken Questions</p>
-                  <p className="text-xs text-gray-400 mt-0.5">The interviewer reads each question aloud</p>
-                </div>
-                <button
-                  onClick={() => setInterviewerVoice(!interviewerVoice)}
-                  className={clsx('relative w-12 h-6 rounded-full transition-colors shrink-0', interviewerVoice ? 'bg-amber-500' : 'bg-gray-700')}
-                >
-                  <span className={clsx('absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform', interviewerVoice ? 'translate-x-6' : 'translate-x-0')} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-
-
-          {/* Panel Interview Toggle */}
-
-
-          <div className="mb-6 rounded-2xl border border-white/10 bg-slate-950 text-white p-4">
-
-
-            <div className="flex items-center justify-between">
-
-
-              <div>
-
-
-                <p className="text-sm font-bold">Panel Interview Mode</p>
-
-
-                <p className="text-xs text-gray-400 mt-0.5">3 AI interviewers with different personalities ask questions in rotation</p>
-
-
-              </div>
-
-
-              <button
-
-
-                onClick={() => setPanelMode(!panelMode)}
-
-
-                className={clsx(
-
-
-                  'relative w-12 h-6 rounded-full transition-colors shrink-0',
-
-
-                  panelMode ? 'bg-violet-600' : 'bg-gray-700'
-
-
-                )}
-
-
-              >
-
-
-                <span className={clsx(
-
-
-                  'absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform',
-
-
-                  panelMode ? 'translate-x-6' : 'translate-x-0'
-
-
-                )} />
-
-
-              </button>
-
-
-            </div>
-
-
-            {panelMode && (
-
-
-              <div className="mt-3 flex items-center gap-3">
-
-
-                {PANEL_MEMBERS.map(m => (
-
-
-                  <div key={m.id} className="flex items-center gap-2">
-
-
-                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${m.color} flex items-center justify-center text-[10px] font-black text-white`}>{m.initials}</div>
-
-
-                    <div>
-
-
-                      <p className="text-xs font-semibold text-white">{m.name}</p>
-
-
-                      <p className="text-[10px] text-gray-500">{m.role}</p>
-
-
-                    </div>
-
-
+            {/* How it works */}
+            <div className="card bg-gradient-to-br from-slate-950 to-slate-900 border border-white/10 !p-4 text-white">
+              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-3">How it works</p>
+              <div className="space-y-2.5">
+                {[
+                  { step: '1', text: 'Click Start → browser asks for camera & mic', color: 'bg-cyan-500' },
+                  { step: '2', text: 'AI HR greets you and asks questions aloud', color: 'bg-indigo-500' },
+                  { step: '3', text: 'You speak → AI records and transcribes live', color: 'bg-violet-500' },
+                  { step: '4', text: 'AI analyzes your answer and responds instantly', color: 'bg-emerald-500' },
+                ].map(({ step, text, color }) => (
+                  <div key={step} className="flex items-start gap-2.5">
+                    <div className={`w-5 h-5 rounded-full ${color} flex items-center justify-center text-[9px] font-black text-white shrink-0 mt-0.5`}>{step}</div>
+                    <p className="text-[10px] text-gray-400 leading-relaxed">{text}</p>
                   </div>
-
-
                 ))}
-
-
               </div>
+            </div>
 
-
-            )}
-
+            {/* START CTA */}
+            <button
+              onClick={handleGenerate}
+              className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-black text-base shadow-2xl shadow-indigo-500/25 transition-all hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Video className="w-5 h-5" />
+              Start Interview
+            </button>
 
           </div>
-
-
-
-
-
-          <button onClick={handleGenerate} className="btn-primary w-full justify-center py-3 text-base">
-
-
-            <Play className="w-5 h-5" /> Start Interview
-
-
-          </button>
-
-
         </div>
-
-
       </div>
-
-
     )
-
-
   }
-
-
 
 
 
