@@ -1217,7 +1217,7 @@ export default function InterviewPage() {
     voiceInterimRef.current = voiceInterim
   }, [voiceInterim])
 
-  const handleSubmitAnswerRef = useRef(handleSubmitAnswer)
+  const handleSubmitAnswerRef = useRef(null)
   useEffect(() => {
     handleSubmitAnswerRef.current = handleSubmitAnswer
   }, [handleSubmitAnswer])
