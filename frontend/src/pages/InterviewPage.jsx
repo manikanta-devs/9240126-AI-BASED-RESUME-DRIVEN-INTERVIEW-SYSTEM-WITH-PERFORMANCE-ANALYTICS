@@ -630,6 +630,17 @@ export default function InterviewPage() {
   const [emotionSnapshot, setEmotionSnapshot] = useState(createEmotionSnapshot())
 
   const [zoomPhase, setZoomPhase] = useState(null)
+  
+  useEffect(() => {
+    if (phase === 'interviewing') {
+      document.body.classList.add('interview-active')
+    } else {
+      document.body.classList.remove('interview-active')
+    }
+    return () => {
+      document.body.classList.remove('interview-active')
+    }
+  }, [phase])
   const [encouragementText, setEncouragementText] = useState('')
   const [onboardingQuestionText, setOnboardingQuestionText] = useState('')
   const hasEncouragedRef = useRef(false)
@@ -1191,18 +1202,38 @@ export default function InterviewPage() {
   // Live coaching tip updates
 
 
+  const elapsedSecondsRef = useRef(elapsedSeconds)
   useEffect(() => {
-    if (phase !== PHASE.INTERVIEWING || !isListening) {
+    elapsedSecondsRef.current = elapsedSeconds
+  }, [elapsedSeconds])
+
+  const currentQuestionRef = useRef(currentQuestion)
+  useEffect(() => {
+    currentQuestionRef.current = currentQuestion
+  }, [currentQuestion])
+
+  const voiceInterimRef = useRef(voiceInterim)
+  useEffect(() => {
+    voiceInterimRef.current = voiceInterim
+  }, [voiceInterim])
+
+  const handleSubmitAnswerRef = useRef(handleSubmitAnswer)
+  useEffect(() => {
+    handleSubmitAnswerRef.current = handleSubmitAnswer
+  }, [handleSubmitAnswer])
+
+  useEffect(() => {
+    if (phase !== 'interviewing' || !isListening) {
       return
     }
 
     const interval = setInterval(() => {
-      const transcript = `${finalTranscriptRef.current} ${voiceInterim}`.trim()
+      const transcript = `${finalTranscriptRef.current} ${voiceInterimRef.current || ''}`.trim()
       const fillerCount = countFillers(transcript)
       const tips = generateLiveCoachingTips(
         transcript,
-        elapsedSeconds,
-        currentQuestion?.type || 'technical',
+        elapsedSecondsRef.current,
+        currentQuestionRef.current?.type || 'technical',
         fillerCount
       )
       setCoachingTips(tips)
@@ -1215,18 +1246,18 @@ export default function InterviewPage() {
           setEncouragementText('')
         } else {
           const timeSinceLastSpeech = Date.now() - lastSpeechTimeRef.current
-          const threshold = zoomPhase ? 2800 : 3800
+          const threshold = 3800
           if (timeSinceLastSpeech > threshold) {
             console.log(`Silence threshold of ${threshold}ms reached. Automatically submitting response...`);
             lastTranscriptLengthRef.current = 0
-            handleSubmitAnswer()
+            handleSubmitAnswerRef.current?.()
           }
         }
       }
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [phase, isListening, elapsedSeconds, voiceInterim, currentQuestion, zoomPhase, answer])
+  }, [phase, isListening])
 
 
 

@@ -471,3 +471,19 @@
     radial-gradient(circle at 72% 30%, rgba(148, 163, 184, 0.24), transparent 18%);
   background-color: #111827;
 }
+
+/* Active interview full page layout modifier */
+body.interview-active aside,
+body.interview-active header {
+  display: none !important;
+}
+
+body.interview-active main {
+  padding: 0 !important;
+  margin: 0 !important;
+  max-width: 100vw !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background-color: #020617 !important; /* bg-slate-950 */
+}
+
