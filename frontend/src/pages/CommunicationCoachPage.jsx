@@ -583,7 +583,7 @@ export default function CommunicationCoachPage() {
 
               <div className="mt-5 pt-4 border-t border-white/5 text-xs text-gray-300 font-normal leading-relaxed relative z-10 flex items-center gap-3">
                 <Sparkles className="w-5 h-5 text-violet-400 shrink-0" />
-                <p>"{roadmap?.summary || 'Roadmap loading...'}"</p>
+                <p>&quot;{roadmap?.summary || 'Roadmap loading...'}&quot;</p>
               </div>
             </div>
 

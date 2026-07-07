@@ -1553,7 +1553,7 @@ export default function InterviewPage() {
       
       if (!hasActiveTracks) {
         if (stream) {
-          try { stream.getTracks().forEach(t => t.stop()) } catch(e) {}
+          try { stream.getTracks().forEach(t => t.stop()) } catch(e) { console.warn('Failed to stop existing media stream:', e) }
         }
         const mediaPromise = navigator.mediaDevices.getUserMedia({
           audio: audioConstraints,
@@ -1730,7 +1730,7 @@ export default function InterviewPage() {
 
 
       if (recognitionRef.current) {
-        try { recognitionRef.current.abort() } catch (err) {}
+        try { recognitionRef.current.abort() } catch (err) { console.warn('Failed to abort speech recognition:', err) }
         recognitionRef.current = null
       }
 

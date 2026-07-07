@@ -430,7 +430,7 @@ export default function AnalyticsPage() {
 
             {/* Checklist */}
             <div className="space-y-2">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Today's Action Items</span>
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Today&apos;s Action Items</span>
               <div className="space-y-2 text-xs">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-bold">✓</div>
@@ -541,7 +541,7 @@ export default function AnalyticsPage() {
             </span>
             <div>
               <p className="font-bold text-gray-700 dark:text-gray-300">No mock sessions completed yet</p>
-              <p className="text-[11px] text-gray-400 mt-0.5">Click "Seed Demo AI Data" at the top to simulate mock data or take an interview.</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Click &quot;Seed Demo AI Data&quot; at the top to simulate mock data or take an interview.</p>
             </div>
           </div>
         )}

@@ -151,7 +151,7 @@ export default function DashboardOverview() {
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1.3fr_0.7fr] gap-6">
           <div className="space-y-5">
             <div>
-              <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-[0.2em] block mb-1">Today's AI Command Center</span>
+              <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-[0.2em] block mb-1">Today&apos;s AI Command Center</span>
               <h2 className="text-2xl lg:text-3xl font-black">Interactive Practice Pathway</h2>
             </div>
 
@@ -184,7 +184,7 @@ export default function DashboardOverview() {
             {/* Dynamic recommendation */}
             <div className="bg-white/[0.03] border border-white/5 p-4 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div>
-                <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest block mb-0.5">Today's Recommendation</span>
+                <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest block mb-0.5">Today&apos;s Recommendation</span>
                 <h4 className="text-sm font-bold text-white mb-0.5">{recommendation.title}</h4>
                 <p className="text-xs text-gray-300 font-normal leading-normal">{recommendation.text}</p>
               </div>

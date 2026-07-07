@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import clsx from 'clsx'
 import { 
   Camera, CameraOff, Mic, MicOff, PhoneOff, Maximize, Minimize, 
   Settings, Sparkles, UserRound, Wifi, Keyboard, Send, Eye, 
@@ -97,6 +98,9 @@ export default function AIInterviewerRoom({
   const micEnabled = propMicEnabled !== undefined ? propMicEnabled : localMicEnabled
 
   const [audioLevel, setAudioLevel] = useState(0)
+  let eyeContact = 0
+  let posture = 0
+  let postureLabel = 'Waiting...'
 
   useEffect(() => {
     if (!activeMediaStream || !micEnabled) {
@@ -144,7 +148,9 @@ export default function AIInterviewerRoom({
         microphone?.disconnect()
         analyser?.disconnect()
         audioContext?.close()
-      } catch (err) {}
+      } catch (err) {
+        console.warn('Failed to clean up audio visualizer:', err)
+      }
     }
   }, [activeMediaStream, micEnabled])
 
@@ -277,7 +283,7 @@ export default function AIInterviewerRoom({
   // Toggle fullscreen
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {})
+      document.documentElement.requestFullscreen().catch((err) => console.warn('Failed to enter fullscreen:', err))
       setIsFullscreen(true)
     } else {
       document.exitFullscreen()
@@ -354,7 +360,9 @@ export default function AIInterviewerRoom({
       try {
         const cleanCtx = canvas.getContext('2d')
         cleanCtx?.clearRect(0, 0, canvas.width, canvas.height)
-      } catch (err) {}
+      } catch (err) {
+        console.warn('Failed to clean up audio visualizer:', err)
+      }
     }
   }, [emotionSnapshot, debugModeActive])
 
@@ -449,11 +457,11 @@ export default function AIInterviewerRoom({
   }
 
   // 3. Eye Contact status
+  eyeContact = cameraActive ? Math.max(0, Math.min(100, Math.round(emotionSnapshot?.eye_contact_score || 0))) : 0
   let eyeContactLabel = 'Waiting...'
   let eyeContactColor = 'text-gray-500 font-medium'
   if (cameraActive && emotionSnapshot) {
-    const score = emotionSnapshot.eye_contact_score || 0
-    if (score >= 50) {
+    if (eyeContact >= 50) {
       eyeContactLabel = 'Good'
       eyeContactColor = 'text-emerald-400 font-bold'
     } else {
@@ -463,12 +471,13 @@ export default function AIInterviewerRoom({
   }
 
   // 4. Posture status
+  posture = cameraActive ? Math.max(0, Math.min(100, Math.round(emotionSnapshot?.posture_score || 0))) : 0
+  postureLabel = emotionSnapshot?.posture_label || 'Good'
   let postureLabelReal = 'Waiting...'
   let postureColor = 'text-gray-500 font-medium'
   if (cameraActive && emotionSnapshot) {
-    const label = emotionSnapshot.posture_label || 'Good'
-    postureLabelReal = label
-    if (label === 'Good') {
+    postureLabelReal = postureLabel
+    if (postureLabel === 'Good') {
       postureColor = 'text-emerald-400 font-bold'
     } else {
       postureColor = 'text-amber-400 font-bold'
