@@ -27,6 +27,7 @@ export function createEmotionSnapshot(history = [], xCenter = 47.5, yCenter = 26
       lighting_score: 0,
       posture_score: 0,
       posture_label: 'Good',
+      smile_score: 0,
       sample_count: 0,
       summary: 'Camera emotion signals were not captured.',
     }
@@ -65,6 +66,8 @@ export function createEmotionSnapshot(history = [], xCenter = 47.5, yCenter = 26
   else if (movementLevel > 38 && eyeContactScore > 55) primaryEmotion = 'energetic'
   else if (engagementScore > 74 && movementLevel < 24) primaryEmotion = 'calm'
 
+  const latestSmile = history.length ? (history[history.length - 1].smileScore || 0) : 0
+
   return {
     primary_emotion: primaryEmotion,
     emotion_label: EMOTION_LABELS[primaryEmotion],
@@ -75,6 +78,7 @@ export function createEmotionSnapshot(history = [], xCenter = 47.5, yCenter = 26
     lighting_score: lightingScore,
     posture_score: postureScore,
     posture_label: postureLabel,
+    smile_score: latestSmile,
     sample_count: history.length,
     summary: `${EMOTION_LABELS[primaryEmotion]} presence with ${engagementScore}/100 engagement. Posture is ${postureLabel.toLowerCase()}.`,
   }
@@ -124,7 +128,37 @@ export function startEmotionSampler({ video, onUpdate, intervalMs = 2000 }) {
   let previousFacePos = null
 
   // Dynamically load MediaPipe FaceMesh if enabled
-  const enableFaceMesh = localStorage.getItem('enable_facemesh') === 'true'
+  const enableFaceMesh = localStorage.getItem('enable_facemesh') !== 'false'
+  
+  const runNoFaceSnapshot = () => {
+    const snapshot = {
+      primary_emotion: 'disengaged',
+      emotion_label: 'No Face Detected',
+      confidence: 0,
+      engagement_score: 0,
+      eye_contact_score: 0,
+      movement_level: 0,
+      lighting_score: 0,
+      posture_score: 0,
+      posture_label: 'No Face Detected',
+      sample_count: history.length,
+      summary: 'No face detected in the frame.',
+      raw_landmarks: null,
+      raw_stats: {
+        brightness: 0,
+        motion: 0,
+        centerBias: 0,
+        xCentroid: 0,
+        yCentroid: 0,
+        leftDist: 0,
+        rightDist: 0,
+        ratio: 0.5,
+        usingLandmarks: true
+      }
+    }
+    onUpdate?.(snapshot)
+  }
+
   if (enableFaceMesh) {
     loadMediaPipe().then((FaceMesh) => {
       if (stopped) return
@@ -143,7 +177,7 @@ export function startEmotionSampler({ video, onUpdate, intervalMs = 2000 }) {
           const landmarks = results.multiFaceLandmarks[0]
           processLandmarks(landmarks)
         } else {
-          runCentroidFallback()
+          runNoFaceSnapshot()
         }
       })
       usingLandmarksActive = true
@@ -178,6 +212,13 @@ export function startEmotionSampler({ video, onUpdate, intervalMs = 2000 }) {
     const gazeDeviation = Math.abs(ratio - 0.5)
     const eyeContact = Math.max(0, Math.min(1, 1 - gazeDeviation * 4))
 
+    const mouthLeft = landmarks[61]
+    const mouthRight = landmarks[291]
+    const mouthWidth = Math.sqrt(Math.pow(mouthLeft.x - mouthRight.x, 2) + Math.pow(mouthLeft.y - mouthRight.y, 2))
+    const faceWidth = Math.sqrt(Math.pow(leftEye.x - rightEye.x, 2) + Math.pow(leftEye.y - rightEye.y, 2))
+    const smileRatio = faceWidth > 0 ? (mouthWidth / faceWidth) : 0.5
+    const smileScore = Math.max(0, Math.min(100, Math.round((smileRatio - 0.42) / 0.16 * 100)))
+
     let motion = 0
     if (previousFacePos) {
       const dx = faceX - previousFacePos.x
@@ -193,7 +234,7 @@ export function startEmotionSampler({ video, onUpdate, intervalMs = 2000 }) {
     const brightness = getAverageBrightness(frame)
     const centerBias = eyeContact
 
-    history.push({ brightness, centerBias, motion, xCentroid, yCentroid, captured_at: Date.now() })
+    history.push({ brightness, centerBias, motion, xCentroid, yCentroid, smileScore, captured_at: Date.now() })
     if (history.length > 80) history.shift()
 
     if (calibration.samples.length < 4) {
@@ -267,7 +308,7 @@ export function startEmotionSampler({ video, onUpdate, intervalMs = 2000 }) {
     const yCentroid = brightnessSum > 0 ? (yWeightedBrightnessSum / brightnessSum) : yCenterDefault
 
     previousFrame = new Uint8ClampedArray(frame)
-    history.push({ brightness, centerBias, motion, xCentroid, yCentroid, captured_at: Date.now() })
+    history.push({ brightness, centerBias, motion, xCentroid, yCentroid, smileScore: 0, captured_at: Date.now() })
     if (history.length > 80) history.shift()
 
     if (calibration.samples.length < 4) {

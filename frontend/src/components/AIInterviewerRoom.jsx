@@ -184,15 +184,16 @@ export default function AIInterviewerRoom({
   const interviewerState = isSpeaking ? 'speaking' : isListening ? 'listening' : 'thinking'
 
   // Sync state values
+  const cameraActive = cameraReady && cameraEnabled
   const emotionLabel = emotionSnapshot?.emotion_label || 'Focused'
   
   // 1. Dynamic Speaking Pace (WPM)
   const totalWords = voiceTranscript?.split(/\s+/).filter(Boolean).length || 0
   const elapsedMinutes = elapsedSeconds / 60
   const liveWpm = elapsedMinutes > 0.05 ? Math.round(totalWords / elapsedMinutes) : 0
-  const liveSpeakingPace = liveWpm > 0 
-    ? Math.min(100, Math.round((liveWpm / 130) * 100)) 
-    : (voiceTranscript ? 78 : 0)
+  const liveSpeakingPace = voiceMetrics?.speaking_pace_wpm 
+    ? Math.max(0, Math.min(100, Math.round((voiceMetrics.speaking_pace_wpm / 150) * 100))) 
+    : 0
 
   // 2. Dynamic Filler Words count
   const fillers = ['um', 'uh', 'like', 'basically', 'actually', 'literally', 'so', 'you know', 'i mean']
@@ -201,21 +202,16 @@ export default function AIInterviewerRoom({
     : 0
 
   // 3. Dynamic Energy based on real audio Level
-  const baseEnergy = micEnabled ? (60 + Math.round(audioLevel * 0.4) + Math.round(Math.sin(elapsedSeconds * 0.5) * 3)) : 0
-  const liveEnergy = Math.max(0, Math.min(100, baseEnergy))
+  const liveEnergy = micEnabled ? Math.max(0, Math.min(100, Math.round(audioLevel * 1.5))) : 0
 
-  // 4. Dynamic Smile & Eye Contact (fluctuate slightly so they feel alive, and respond to camera state)
-  const liveEyeContact = cameraEnabled 
-    ? Math.max(85, Math.min(99, 94 + Math.round(Math.sin(elapsedSeconds * 0.3) * 3))) 
-    : 0
-  const liveSmile = cameraEnabled 
-    ? Math.max(20, Math.min(95, 45 + Math.round(Math.cos(elapsedSeconds * 0.4) * 8))) 
-    : 0
+  // 4. Dynamic Smile & Eye Contact bound to real camera emotion state
+  const liveEyeContact = cameraActive ? (emotionSnapshot?.eye_contact_score || 0) : 0
+  const liveSmile = cameraActive ? (emotionSnapshot?.smile_score || 0) : 0
 
-  // 5. Dynamic Confidence
-  const liveConfidence = micEnabled
-    ? Math.max(50, Math.min(99, 92 - (liveFillerWords * 3) + (audioLevel > 5 ? 2 : -1) + Math.round(Math.sin(elapsedSeconds * 0.2) * 2)))
-    : 0
+  // 5. Dynamic Confidence based on camera posture/emotions and filler words
+  const liveConfidence = cameraActive 
+    ? (emotionSnapshot?.confidence || 0) 
+    : (micEnabled ? Math.max(50, Math.min(99, 92 - (liveFillerWords * 3))) : 0)
 
   // 6. Dynamic Voice Clarity based on audio Level
   let liveVoiceClarity = "Excellent"
@@ -416,7 +412,6 @@ export default function AIInterviewerRoom({
   ]
 
   // Dynamic analytic metrics (using strictly live data if available, fallback to 0 instead of fake static values if not calibrated)
-  const cameraActive = cameraReady && cameraEnabled
   
   const overallVal = cameraActive ? (emotionSnapshot?.engagement_score || 0) : 0
   const commVal = cameraActive ? (emotionSnapshot?.confidence || 0) : 0
@@ -1011,16 +1006,16 @@ export default function AIInterviewerRoom({
                   </div>
                   <button
                     onClick={() => {
-                      const current = localStorage.getItem('enable_facemesh') === 'true'
+                      const current = localStorage.getItem('enable_facemesh') !== 'false'
                       localStorage.setItem('enable_facemesh', current ? 'false' : 'true')
                       window.location.reload()
                     }}
                     className={`relative w-10 h-5.5 rounded-full transition-colors shrink-0 ${
-                      localStorage.getItem('enable_facemesh') !== 'true' ? 'bg-cyan-600' : 'bg-slate-800 border border-white/10'
+                      localStorage.getItem('enable_facemesh') === 'false' ? 'bg-cyan-600' : 'bg-slate-800 border border-white/10'
                     }`}
                   >
                     <span className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 rounded-full bg-white transition-transform ${
-                      localStorage.getItem('enable_facemesh') !== 'true' ? 'translate-x-4.5' : 'translate-x-0'
+                      localStorage.getItem('enable_facemesh') === 'false' ? 'translate-x-4.5' : 'translate-x-0'
                     }`} />
                   </button>
                 </div>
