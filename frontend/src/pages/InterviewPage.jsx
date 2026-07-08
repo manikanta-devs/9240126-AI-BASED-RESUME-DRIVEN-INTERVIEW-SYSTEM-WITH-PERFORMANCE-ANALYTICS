@@ -2286,7 +2286,9 @@ export default function InterviewPage() {
             mediaStreamRef.current.getAudioTracks().forEach(t => { t.enabled = false })
           }
           let replyDone = false
+          let hrReplyFallbackTimeout = null
           const doNext = () => {
+            if (hrReplyFallbackTimeout) clearTimeout(hrReplyFallbackTimeout)
             if (replyDone) return
             replyDone = true
             setIsInterviewerSpeaking(false)
@@ -2297,11 +2299,18 @@ export default function InterviewPage() {
           }
           replyUtterance.onend = () => doNext()
           replyUtterance.onerror = () => doNext()
+          
+          const durationEstimate = (hrReply.length * 80) + 4000
           setTimeout(() => {
             if (document.hidden) {
               doNext()
             } else {
               synth.speak(replyUtterance)
+              hrReplyFallbackTimeout = setTimeout(() => {
+                console.warn('HR Reply SpeechSynthesis onend failed to fire. Force advancing.')
+                synth.cancel()
+                doNext()
+              }, durationEstimate)
             }
           }, 300)
         } else {
