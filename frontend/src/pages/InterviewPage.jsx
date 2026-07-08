@@ -207,14 +207,59 @@ const PANEL_VOICE_PROFILES = {
 }
 
 function chooseBrowserVoice(voices = [], profile = VOICE_PROFILES.sarah) {
-  const englishVoices = voices.filter(voice => voice.lang?.toLowerCase().startsWith('en'))
+  const englishVoices = voices.filter(voice => {
+    const lang = (voice.lang || '').toLowerCase()
+    return lang.startsWith('en-us') || lang.startsWith('en-gb') || lang.startsWith('en')
+  })
   const candidates = englishVoices.length ? englishVoices : voices
-  const preferredTerms = profile.preferredNames || []
 
-  return candidates.find(voice => {
+  // 1. First priority: High-quality natural online voices matching the gender profile
+  // E.g., "Microsoft Aria Online (Natural)", "Microsoft Jenny Online (Natural)", "Microsoft Guy Online (Natural)"
+  const onlineNaturalMatch = candidates.find(voice => {
+    const name = voice.name.toLowerCase()
+    const isOnline = name.includes('online') || name.includes('natural') || name.includes('google') || name.includes('neural')
+    if (!isOnline) return false
+
+    if (profile.gender === 'female') {
+      return name.includes('aria') || name.includes('jenny') || name.includes('female') || name.includes('zira') || name.includes('samantha')
+    } else {
+      return name.includes('guy') || name.includes('male') || name.includes('david') || name.includes('mark')
+    }
+  })
+  if (onlineNaturalMatch) return onlineNaturalMatch
+
+  // 2. Second priority: Standard high-quality offline voices (Samantha on Mac, Siri, etc.)
+  const highQualityOfflineMatch = candidates.find(voice => {
+    const name = voice.name.toLowerCase()
+    if (profile.gender === 'female') {
+      return name.includes('samantha') || name.includes('siri') || name.includes('victoria') || name.includes('sara')
+    } else {
+      return name.includes('daniel') || name.includes('alex') || name.includes('fred') || name.includes('oliver')
+    }
+  })
+  if (highQualityOfflineMatch) return highQualityOfflineMatch
+
+  // 3. Third priority: Any voice matching the preferred terms list
+  const preferredTerms = profile.preferredNames || []
+  const preferredMatch = candidates.find(voice => {
     const haystack = `${voice.name} ${voice.voiceURI} ${voice.lang}`.toLowerCase()
     return preferredTerms.some(term => haystack.includes(term))
-  }) || candidates[0] || null
+  })
+  if (preferredMatch) return preferredMatch
+
+  // 4. Fourth priority: Fallback to gender match in offline local voices (e.g. Zira, David)
+  const localGenderMatch = candidates.find(voice => {
+    const name = voice.name.toLowerCase()
+    if (profile.gender === 'female') {
+      return name.includes('female') || name.includes('woman') || name.includes('zira') || name.includes('susan') || name.includes('hazel')
+    } else {
+      return name.includes('male') || name.includes('man') || name.includes('david') || name.includes('george') || name.includes('ravi')
+    }
+  })
+  if (localGenderMatch) return localGenderMatch
+
+  // 5. Ultimate fallback
+  return candidates[0] || null
 }
 
 
