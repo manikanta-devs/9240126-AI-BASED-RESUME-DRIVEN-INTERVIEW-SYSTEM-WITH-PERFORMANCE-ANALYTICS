@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 import os
 import time
 import logging
-
 import json
+import hashlib
 
 load_dotenv()
 
@@ -151,7 +151,6 @@ def create_app():
     app.register_blueprint(coach_bp, url_prefix="/api")
 
     # ─── Auth endpoints ─────────────────────────────────────
-    import hashlib
     from services.database import create_user, get_user
     from werkzeug.security import generate_password_hash, check_password_hash
 

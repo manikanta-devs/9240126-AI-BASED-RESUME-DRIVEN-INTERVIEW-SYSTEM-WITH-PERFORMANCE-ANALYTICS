@@ -708,6 +708,7 @@ export default function InterviewPage() {
   const activeUtteranceRef = useRef(null)
   const emotionHistoryRef = useRef([])
   const isStartingCaptureRef = useRef(false)
+  const isSubmittingRef = useRef(false)
 
 
 
@@ -1037,6 +1038,11 @@ export default function InterviewPage() {
 
     const durationEstimate = (textToSpeak.length * 80) + 4000
     const timer = window.setTimeout(() => {
+      // Don't speak if the tab is hidden — it wastes TTS quota and the mic would capture silence
+      if (document.hidden) {
+        handleSpeechEnd()
+        return
+      }
       synth.speak(utterance)
       fallbackTimeout = setTimeout(() => {
         console.warn('SpeechSynthesis onend failed to fire within estimate. Force triggering end handler.')
@@ -1182,6 +1188,12 @@ export default function InterviewPage() {
       lastSpeechTimeRef.current = Date.now()
     }
 
+    if (document.hidden) {
+      setIsInterviewerSpeaking(false)
+      startVoiceCapture().catch(() => {})
+      lastSpeechTimeRef.current = Date.now()
+      return
+    }
     synth.speak(utterance)
   }
 
@@ -1232,6 +1244,14 @@ export default function InterviewPage() {
       handleSkip()
     }
 
+    if (document.hidden) {
+      setIsInterviewerSpeaking(false)
+      if (mediaStreamRef.current && micEnabled) {
+        mediaStreamRef.current.getAudioTracks().forEach(t => { t.enabled = true })
+      }
+      handleSkip()
+      return
+    }
     synth.speak(utterance)
   }
 
@@ -2027,6 +2047,10 @@ export default function InterviewPage() {
 
 
   const handleSubmitAnswer = async () => {
+    // Guard against double-fire (double-click or rapid re-invocation during API latency)
+    if (isSubmittingRef.current) return
+    isSubmittingRef.current = true
+
     if (zoomPhase) {
       const finalAnswer = (answer.trim() || `${finalTranscriptRef.current} ${voiceInterim}`.trim() || "[No verbal response captured]").trim()
       const nextPhaseMap = {
@@ -2062,6 +2086,7 @@ export default function InterviewPage() {
       setVoiceInterim('')
       setAnswer('')
       lastTranscriptLengthRef.current = 0
+      isSubmittingRef.current = false
       return
     }
 
@@ -2069,6 +2094,7 @@ export default function InterviewPage() {
 
     if (!draftAnswer && interviewFormat === 'text') {
       toast.error('Please write an answer before submitting.')
+      isSubmittingRef.current = false
       return
     }
 
@@ -2203,7 +2229,13 @@ export default function InterviewPage() {
           }
           replyUtterance.onend = () => doNext()
           replyUtterance.onerror = () => doNext()
-          setTimeout(() => { synth.speak(replyUtterance) }, 300)
+          setTimeout(() => {
+            if (document.hidden) {
+              doNext()
+            } else {
+              synth.speak(replyUtterance)
+            }
+          }, 300)
         } else {
           setTimeout(() => {
             handleNextQuestion()
@@ -2216,11 +2248,8 @@ export default function InterviewPage() {
 
 
       toast.error('Evaluation failed')
-
-
       setPhase(PHASE.INTERVIEWING)
-
-
+      isSubmittingRef.current = false
     }
 
 

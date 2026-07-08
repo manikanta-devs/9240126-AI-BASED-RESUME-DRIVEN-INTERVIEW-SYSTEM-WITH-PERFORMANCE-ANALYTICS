@@ -1,13 +1,29 @@
+# Core web framework
 flask==3.0.2
 flask-cors==4.0.0
 flask-limiter==3.5.0
+Werkzeug==3.0.1
+
+# Environment & config
 python-dotenv==1.0.1
+
+# Authentication — PyJWT replaces hand-rolled HMAC JWT
+PyJWT==2.13.0
+
+# AI providers
 google-generativeai==0.8.3
+requests==2.31.0
+
+# NLP & resume parsing
 spacy==3.7.4
 PyPDF2==3.0.1
 python-docx==1.1.0
+
+# Data validation
 pydantic==2.5.0
+
+# Production WSGI server
 gunicorn==21.2.0
-Werkzeug==3.0.1
-requests==2.31.0
+
+# Utilities
 wikipedia==1.4.0

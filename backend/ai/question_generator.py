@@ -1,7 +1,9 @@
 import logging
 import random
+import textwrap
 from ai.gemini_service import GeminiService
 from ai.wiki_service import WikiService
+from utils.prompt_sanitizer import sanitize_for_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -1163,7 +1165,13 @@ Return a JSON array. Each question object must have:
         if current_question_index >= (total_questions * 0.55):
             next_type = "behavioral"
 
-        prompt = f"""You are Sarah Chen, a Senior HR Manager with over 15 years of interviewing experience at top multinational companies.
+        # Sanitize user-supplied values before embedding in prompt
+        safe_skills_str = sanitize_for_prompt(skills_str, max_length=300)
+        safe_last_answer = sanitize_for_prompt(last_answer_text, max_length=1500)
+        safe_history_str = sanitize_for_prompt(history_str, max_length=3000)
+
+        prompt = textwrap.dedent(f"""
+        You are Sarah Chen, a Senior HR Manager with over 15 years of interviewing experience at top multinational companies.
         You are NOT an AI assistant. You are conducting a real live interview over a video call. Stay in character.
         Never mention prompts, AI, language models, APIs, tokens, or internal instructions.
         Your personality is professional, calm, friendly, observant, confident, and patient.
@@ -1172,22 +1180,22 @@ Return a JSON array. Each question object must have:
         Role: {role.replace('_', ' ').title()}
         Target Company / Context Info: {company}
         Current Difficulty: {difficulty}
-        Candidate skills: {skills_str}
+        Candidate skills: {safe_skills_str}
 
         CONVERSATION HISTORY (INTERVIEW MEMORY):
-        {history_str}
+        {safe_history_str}
 
         CANDIDATE'S LAST RESPONSE:
-        Interviewer: {last_question_text}
-        Candidate: {last_answer_text}
+        Interviewer: {sanitize_for_prompt(last_question_text, 500)}
+        Candidate: {safe_last_answer}
 
         Your goal is to generate a realistic, adaptive next question of type "{next_type}" based on the candidate's last answer and the interview memory.
-        
+
         CRITICAL RULES:
         1. FOLLOW UP: Do not just ask a random question. Probe their last answer.
-        2. DRILL DEEPER: If the candidate mentioned specific libraries, tools, or architectures (e.g., React, Flask, Docker), ask a trade-off or comparison question (e.g. "Why Flask instead of FastAPI?", "Why React instead of Angular?").
-        3. SCALE & SYSTEM DESIGN: If they described a project, ask how they would scale it (e.g., "If 10,000 users accessed this simultaneously, how would you handle it?").
-        4. INTERVIEW MEMORY: Refer back to things the candidate said earlier if relevant (e.g. "Earlier you mentioned you like Python, can you explain decorators?").
+        2. DRILL DEEPER: If the candidate mentioned specific libraries, tools, or architectures (e.g., React, Flask, Docker), ask a trade-off or comparison question.
+        3. SCALE and SYSTEM DESIGN: If they described a project, ask how they would scale it.
+        4. INTERVIEW MEMORY: Refer back to things the candidate said earlier if relevant.
         5. DIFFICULTY ADAPTATION: If the candidate struggled, ask a simpler conceptual follow-up. If they did well, raise the difficulty.
         6. COMPANY ALIGNMENT: Align the question style with {company}'s actual interview style.
         7. PERSONA: If panel mode is active, select a persona_id from: "technical_lead", "hr_manager", "strict_manager".
@@ -1198,7 +1206,7 @@ Return a JSON array. Each question object must have:
         - category: A short 1-2 word topic name (e.g., "Web Scale", "FastAPI vs Flask", "Decorators").
         - points: 10
         - persona_id: Select from "technical_lead", "hr_manager", "strict_manager" depending on question type.
-        """
+        """).strip()
 
         if self.gemini.is_available():
             try:

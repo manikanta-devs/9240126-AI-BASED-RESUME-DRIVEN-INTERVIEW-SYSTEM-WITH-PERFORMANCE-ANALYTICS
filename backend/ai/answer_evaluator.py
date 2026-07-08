@@ -3,6 +3,7 @@ import random
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from ai.gemini_service import GeminiService
+from utils.prompt_sanitizer import sanitize_answer
 
 logger = logging.getLogger(__name__)
 
@@ -147,9 +148,12 @@ class AnswerEvaluator:
                 "posture_score": emotion_metrics.get("posture_score", 50) if emotion_metrics else 50,
                 "posture_label": emotion_metrics.get("posture_label", "Good") if emotion_metrics else "Good",
                 "emotion_feedback": emotion_metrics.get("emotion_feedback", "N/A") if emotion_metrics else "N/A",
-                "sentiment": "Neutral",
+                "sentiment": "neutral",
                 "interviewer_response": "I need a more complete answer before I can assess that properly. Let us try the next prompt carefully.",
             }
+
+        # Sanitize answer before sending to AI to prevent prompt injection
+        answer = sanitize_answer(answer)
 
         if self.gemini.is_available():
             result = self._evaluate_with_gemini(
