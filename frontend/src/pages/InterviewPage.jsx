@@ -975,7 +975,8 @@ export default function InterviewPage() {
     } else {
       textToSpeak = currentQuestion.text
       if (currentIndex === 0 && !hasGreetedRef.current) {
-        textToSpeak = "Let's start with something simple. Could you tell me a little about yourself?"
+        // After onboarding already covered self-introduction, transition naturally to Q1
+        textToSpeak = "Thank you for the introduction. That's a great background. Now, let's move into the interview questions. " + currentQuestion.text
         hasGreetedRef.current = true
       } else {
         const connectors = [

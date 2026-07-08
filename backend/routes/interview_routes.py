@@ -182,65 +182,17 @@ def submit_answer():
         interview_service.add_answer(session_id, new_answer)
         session.setdefault("answers", []).append(new_answer)
 
-        # Determine next question
+
+        # Determine next question — use pre-generated questions directly for speed
+        # (Adaptive regeneration removed: was adding 6-14s of extra AI calls per answer)
         next_index = question_index + 1
         total = len(session["questions"])
         is_complete = next_index >= total
 
-        difficulty_adjustment = evaluation.get("difficulty_adjustment", "maintain")
-        if not is_complete and difficulty_adjustment != "maintain":
-            diff_levels = ["easy", "medium", "hard"]
-            current_diff = session.get("difficulty", "medium")
-            try:
-                curr_idx = diff_levels.index(current_diff)
-                new_idx = (
-                    curr_idx + 1
-                    if difficulty_adjustment == "increase"
-                    else curr_idx - 1
-                )
-                new_idx = max(0, min(2, new_idx))
-                new_diff = diff_levels[new_idx]
-
-                if new_diff != current_diff:
-                    remaining_count = total - next_index
-                    new_questions = question_generator.generate(
-                        resume_data=session.get("resume_data", {}),
-                        role=session.get("role", "software_engineer"),
-                        difficulty=new_diff,
-                        num_questions=remaining_count,
-                        panel_mode=session.get("panel_mode", False),
-                    )
-                    if new_questions:
-                        for i, nq in enumerate(new_questions):
-                            nq["id"] = next_index + i + 1
-                        session["questions"][next_index:] = new_questions
-                        session["difficulty"] = new_diff
-                        interview_service.save_session(session_id, session)
-            except Exception as e:
-                logger.error(f"Adaptive regeneration failed: {e}")
-
         next_question = None
         if not is_complete:
-            try:
-                from ai.question_generator import QuestionGenerator
-                qg = QuestionGenerator()
-                adaptive_q = qg.generate_next_adaptive_question(
-                    session=session,
-                    current_question_index=next_index,
-                    last_question_text=current_question["text"],
-                    last_answer_text=answer,
-                    difficulty=session.get("difficulty", "medium"),
-                    panel_mode=session.get("panel_mode", False),
-                    company=session.get("company", "General"),
-                    company_context=session.get("company_context", ""),
-                )
-                if adaptive_q:
-                    adaptive_q["id"] = next_index + 1
-                    session["questions"][next_index] = adaptive_q
-                    interview_service.save_session(session_id, session)
-            except Exception as e:
-                logger.error(f"Failed to generate adaptive next question: {e}")
             next_question = session["questions"][next_index]
+
 
         return (
             jsonify(
@@ -253,11 +205,6 @@ def submit_answer():
                     "progress": round((next_index / total) * 100),
                     "difficulty_adjustment": evaluation.get(
                         "difficulty_adjustment", "maintain"
-                    ),
-                    "updated_questions": (
-                        session["questions"]
-                        if (not is_complete and difficulty_adjustment != "maintain")
-                        else None
                     ),
                 }
             ),
@@ -289,14 +236,14 @@ def generate_onboarding_response():
         if not session:
             return jsonify({"error": "Session not found"}), 404
 
-        candidate_name = session.get("resume_data", {}).get("personal", {}).get("name", "Candidate")
-        
-        response_text = answer_evaluator.generate_onboarding_response(
-            current_phase=current_phase,
-            answer=answer,
-            candidate_name=candidate_name,
-            resume_data=session.get("resume_data", {}),
-        )
+        # Use instant responses for onboarding phases — no AI call needed
+        # (AI call was adding 3-7s per phase transition, making onboarding feel laggy)
+        instant_responses = {
+            "greet_mic": "Wonderful, glad the connection is working well. How has your day been so far?",
+            "small_talk": "That's great to hear. Before we begin, could you please introduce yourself and tell me about your background?",
+            "identity_confirm": "Thank you for sharing that. I'm excited to interview you today. Let's get started with the core questions.",
+        }
+        response_text = instant_responses.get(current_phase, "Perfect. Let's move forward.")
 
         return jsonify({
             "success": True,
