@@ -56,10 +56,11 @@ def test_initialize_providers_order(clean_env):
     service = GeminiService()
     
     provider_ids = [p.provider_id for p in service.providers]
-    assert provider_ids == ["gemini_1", "hf_1", "groq_1", "openrouter_1", "mistral_1", "gemini_2", "hf_2"]
+    # Groq first (fastest), then OpenRouter, Mistral, Gemini, HF
+    assert provider_ids == ["groq_1", "openrouter_1", "mistral_1", "gemini_1", "hf_1", "gemini_2", "hf_2"]
     
-    assert service.providers[0].api_key == "gemini_key_a"
-    assert service.providers[1].api_key == "hf_key_a"
+    assert service.providers[0].api_key == "groq_key_a"
+    assert service.providers[3].api_key == "gemini_key_a"
     assert service.providers[5].api_key == "gemini_key_b"
     assert service.providers[6].api_key == "hf_key_b"
 

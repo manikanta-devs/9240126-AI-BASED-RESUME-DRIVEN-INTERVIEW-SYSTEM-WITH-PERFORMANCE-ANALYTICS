@@ -283,12 +283,13 @@ class GeminiService:
             logger.warning(f"Could not load LOCAL_LLM_ENABLED config: {e}")
 
         # 2. Check and alternate keys (index 1 to 10)
+        # Order: Groq first (fastest free tier), then OpenRouter, Mistral, Gemini, HF last
         provider_types = [
-            ("gemini", GeminiProvider, ["GEMINI_API_KEY", "GEMINI_API_KEY_1"]),
-            ("hf", HFProvider, ["HUGGINGFACE_API_KEY", "HUGGINGFACE_API_KEY_1"]),
             ("groq", GroqProvider, ["GROQ_API_KEY", "GROQ_API_KEY_1"]),
             ("openrouter", OpenRouterProvider, ["OPENROUTER_API_KEY", "OPENROUTER_API_KEY_1"]),
             ("mistral", MistralProvider, ["MISTRAL_API_KEY", "MISTRAL_API_KEY_1"]),
+            ("gemini", GeminiProvider, ["GEMINI_API_KEY", "GEMINI_API_KEY_1"]),
+            ("hf", HFProvider, ["HUGGINGFACE_API_KEY", "HUGGINGFACE_API_KEY_1"]),
         ]
 
         added_keys = set()
