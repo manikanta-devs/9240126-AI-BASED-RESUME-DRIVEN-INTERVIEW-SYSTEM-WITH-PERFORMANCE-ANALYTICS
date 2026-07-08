@@ -1202,14 +1202,9 @@ Return a JSON array. Each question object must have:
 
         if self.gemini.is_available():
             try:
-                raw_response = self.gemini.generate_content(prompt)
-                if raw_response:
-                    from routes.coach_routes import clean_llm_json
-                    cleaned = clean_llm_json(raw_response)
-                    import json
-                    parsed = json.loads(cleaned)
-                    if parsed and parsed.get("text"):
-                        return parsed
+                result = self.gemini.generate_json(prompt)
+                if result and isinstance(result, dict) and result.get("text"):
+                    return result
             except Exception as e:
                 logger.error(f"Failed to generate adaptive next question: {e}")
 

@@ -2182,6 +2182,7 @@ export default function InterviewPage() {
           const hrSelectedVoice = chooseBrowserVoice(browserVoices.length ? browserVoices : synth.getVoices(), hrVoiceProfile)
           synth.cancel()
           const replyUtterance = new SpeechSynthesisUtterance(hrReply)
+          activeUtteranceRef.current = replyUtterance
           if (hrSelectedVoice) replyUtterance.voice = hrSelectedVoice
           replyUtterance.lang = hrSelectedVoice?.lang || 'en-US'
           replyUtterance.rate = 0.92
@@ -2190,22 +2191,18 @@ export default function InterviewPage() {
           if (mediaStreamRef.current) {
             mediaStreamRef.current.getAudioTracks().forEach(t => { t.enabled = false })
           }
-          replyUtterance.onend = () => {
-            setIsInterviewerSpeaking(false)
-            setTimeout(() => {
-              if (mediaStreamRef.current && micEnabled) {
-                mediaStreamRef.current.getAudioTracks().forEach(t => { t.enabled = true })
-              }
-              handleNextQuestion()
-            }, 500)
-          }
-          replyUtterance.onerror = () => {
+          let replyDone = false
+          const doNext = () => {
+            if (replyDone) return
+            replyDone = true
             setIsInterviewerSpeaking(false)
             if (mediaStreamRef.current && micEnabled) {
               mediaStreamRef.current.getAudioTracks().forEach(t => { t.enabled = true })
             }
-            handleNextQuestion()
+            setTimeout(() => { handleNextQuestion() }, 400)
           }
+          replyUtterance.onend = () => doNext()
+          replyUtterance.onerror = () => doNext()
           setTimeout(() => { synth.speak(replyUtterance) }, 300)
         } else {
           setTimeout(() => {

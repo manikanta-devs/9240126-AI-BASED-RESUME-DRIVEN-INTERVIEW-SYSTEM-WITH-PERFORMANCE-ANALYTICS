@@ -112,7 +112,7 @@ class AnswerEvaluator:
         cleaned_answer = answer.strip().lower().replace(".", "").replace("!", "").replace("?", "")
         words = cleaned_answer.split()
         
-        is_greeting = cleaned_answer in ["hello", "hi", "hey", "good morning", "good afternoon", "good evening", "yo", "sup", "testing", "test"]
+        is_greeting = cleaned_answer in ["hello", "hi", "hey", "good morning", "good afternoon", "good evening", "yo", "sup"]
         is_too_short = len(words) < 3
         
         if is_greeting or is_too_short:

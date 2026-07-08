@@ -439,8 +439,8 @@ Just the raw JSON object or array."""
         except json.JSONDecodeError:
             pass
 
-        # Strategy 3: Regex extract JSON object or array
-        json_match = re.search(r"(\{[\s\S]*\}|\[[\s\S]*\])", cleaned)
+        # Strategy 3: Regex extract JSON object or array (DOTALL to capture multi-line JSON)
+        json_match = re.search(r"(\{[\s\S]*\}|\[[\s\S]*\])", cleaned, re.DOTALL)
         if json_match:
             try:
                 return json.loads(json_match.group(1))
