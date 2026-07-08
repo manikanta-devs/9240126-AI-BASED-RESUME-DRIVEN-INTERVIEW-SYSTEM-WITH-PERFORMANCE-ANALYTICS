@@ -1072,9 +1072,7 @@ export default function InterviewPage() {
         finalTranscriptRef.current = ''
         setVoiceTranscript('')
         setVoiceInterim('')
-        if (zoomPhase === 'identity_confirm') {
-          setZoomPhase(null)
-        } else if (zoomPhase === 'closing') {
+        if (zoomPhase === 'closing') {
           handleFinish()
         }
         startVoiceCapture().catch(() => {})
