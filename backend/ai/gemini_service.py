@@ -129,7 +129,9 @@ class GroqProvider(BaseAIProvider):
     """Groq API Provider (OpenAI Compatible)"""
 
     API_URL = "https://api.groq.com/openai/v1/chat/completions"
-    MODEL_NAME = "llama-3.1-8b-instant"
+    # llama-3.3-70b-versatile has much higher TPM limits than llama-3.1-8b-instant
+    # 8b-instant has 6000 TPM on free tier — hits limit on long eval prompts
+    MODEL_NAME = "llama-3.3-70b-versatile"
 
     def generate_content(self, prompt: str, temperature: float = 0.7) -> Optional[str]:
         headers = {
@@ -147,17 +149,23 @@ class GroqProvider(BaseAIProvider):
                 self.API_URL,
                 headers=headers,
                 json=payload,
-                timeout=5,
+                timeout=10,
             )
             if response.status_code == 200:
                 result = response.json()
                 return result["choices"][0]["message"]["content"].strip()
             elif response.status_code == 429:
                 logger.warning(f"Groq provider {self.provider_id} rate limited (429)")
+            elif response.status_code == 413:
+                # Token limit exceeded for this model — flag as size error, not rate error
+                logger.warning(f"Groq provider {self.provider_id} token limit exceeded (413) — prompt too large, skipping")
+                raise ValueError("PROMPT_TOO_LARGE")
             else:
                 logger.error(
                     f"Groq API error {response.status_code}: {response.text[:200]}"
                 )
+        except ValueError:
+            raise  # Re-raise PROMPT_TOO_LARGE so caller can skip cooldown
         except Exception as e:
             logger.error(f"Groq API call failed for {self.provider_id}: {e}")
         return None
@@ -187,7 +195,7 @@ class OpenRouterProvider(BaseAIProvider):
                 self.API_URL,
                 headers=headers,
                 json=payload,
-                timeout=5,
+                timeout=15,  # OpenRouter free tier is slow, needs >5s
             )
             if response.status_code == 200:
                 result = response.json()
@@ -227,7 +235,7 @@ class MistralProvider(BaseAIProvider):
                 self.API_URL,
                 headers=headers,
                 json=payload,
-                timeout=5,
+                timeout=15,  # Mistral free tier is slow, needs >5s
             )
             if response.status_code == 200:
                 result = response.json()
@@ -393,6 +401,13 @@ class GeminiService:
                 )
                 self.cooldowns[provider.provider_id] = time.time() + 15
 
+            except ValueError as ve:
+                if str(ve) == "PROMPT_TOO_LARGE":
+                    # Don't cooldown on prompt-size errors — the provider is fine, just the prompt is big
+                    logger.warning(f"Provider {provider.provider_id} skipped (prompt too large) — no cooldown")
+                else:
+                    logger.error(f"Provider {provider.provider_id} failed with ValueError: {ve}. Triggering cooldown.")
+                    self.cooldowns[provider.provider_id] = time.time() + 15
             except Exception as e:
                 logger.error(
                     f"Provider {provider.provider_id} failed with error: {e}. Triggering cooldown."
