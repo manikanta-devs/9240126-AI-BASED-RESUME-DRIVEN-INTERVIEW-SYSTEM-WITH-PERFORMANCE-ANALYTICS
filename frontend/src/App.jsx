@@ -12,6 +12,7 @@ const DashboardOverview = lazy(() => import('./pages/DashboardOverview'))
 const CommunicationCoachPage = lazy(() => import('./pages/CommunicationCoachPage'))
 const ResumePage = lazy(() => import('./pages/ResumePage'))
 const InterviewPage = lazy(() => import('./pages/InterviewPage'))
+const VideoInterviewPage = lazy(() => import('./features/video-interview/VideoInterviewPage'))
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'))
 const ResultsPage = lazy(() => import('./pages/ResultsPage'))
 const QuizPage = lazy(() => import('./pages/QuizPage'))
@@ -31,6 +32,7 @@ function AnimatedRoutes() {
             <Route path="coach" element={<CommunicationCoachPage />} />
             <Route path="resume" element={<ResumePage />} />
             <Route path="interview" element={<InterviewPage />} />
+            <Route path="video-interview" element={<VideoInterviewPage />} />
             <Route path="quiz" element={<QuizPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="results/:sessionId" element={<ResultsPage />} />

@@ -147,12 +147,14 @@ def create_app():
     from routes.analytics_routes import analytics_bp
     from routes.quiz_routes import quiz_bp
     from routes.coach_routes import coach_bp
+    from routes.video_interview import video_interview_bp
 
     app.register_blueprint(resume_bp, url_prefix="/api")
     app.register_blueprint(interview_bp, url_prefix="/api")
     app.register_blueprint(analytics_bp, url_prefix="/api")
     app.register_blueprint(quiz_bp, url_prefix="/api")
     app.register_blueprint(coach_bp, url_prefix="/api")
+    app.register_blueprint(video_interview_bp, url_prefix="/api")
 
     # ─── Auth endpoints ─────────────────────────────────────
     from services.database import create_user, get_user

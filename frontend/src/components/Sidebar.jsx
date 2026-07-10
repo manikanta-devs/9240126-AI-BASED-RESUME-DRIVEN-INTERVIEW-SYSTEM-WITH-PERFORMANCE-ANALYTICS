@@ -4,7 +4,7 @@ import { clsx } from 'clsx'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText, Mic, BarChart2, Home, ChevronLeft, Brain,
-  ChevronRight, LogOut, Sun, Moon, Briefcase
+  ChevronRight, LogOut, Sun, Moon, Briefcase, Video
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import AppLogo from './AppLogo'
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { to: '/dashboard',           icon: Home,      label: 'Dashboard',       badge: null },
   { to: '/dashboard/resume',    icon: FileText,  label: 'Resume Analysis', badge: null },
   { to: '/dashboard/interview', icon: Briefcase, label: 'Interview',       badge: null },
+  { to: '/dashboard/video-interview', icon: Video,     label: '3D Interview',    badge: '3D' },
   { to: '/dashboard/coach',     icon: Mic,       label: 'Coach',           badge: 'New' },
   { to: '/dashboard/quiz',      icon: Brain,     label: 'Quiz Practice',   badge: 'New' },
   { to: '/dashboard/analytics', icon: BarChart2, label: 'Analytics',       badge: null },
