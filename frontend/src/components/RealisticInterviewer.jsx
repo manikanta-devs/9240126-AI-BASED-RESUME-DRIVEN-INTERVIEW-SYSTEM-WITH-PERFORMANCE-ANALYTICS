@@ -7,7 +7,7 @@ const PERSONAS = {
   sarah: {
     name: 'Sarah Chen',
     title: 'Senior HR Director',
-    company: 'AstraPrep AI',
+    company: 'TalentForge AI',
     image: '/interviewers/sarah_chen.png',
     accentColor: 'from-blue-500 to-indigo-600',
     ringColor: 'ring-blue-500/40',
@@ -15,7 +15,7 @@ const PERSONAS = {
   marcus: {
     name: 'Marcus Rodriguez',
     title: 'Technical Lead',
-    company: 'AstraPrep AI',
+    company: 'TalentForge AI',
     image: '/interviewers/marcus_rodriguez.png',
     accentColor: 'from-teal-500 to-emerald-600',
     ringColor: 'ring-teal-500/40',

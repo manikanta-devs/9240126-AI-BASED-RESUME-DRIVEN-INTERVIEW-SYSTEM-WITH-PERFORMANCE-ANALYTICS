@@ -229,7 +229,7 @@ def create_app():
         return jsonify(
             {
                 "status": "ok",
-                "message": "AstraPrep AI Backend API",
+                "message": "TalentForge AI Backend API",
                 "version": "3.1.0",
                 "ai_available": gemini.is_available(),
                 "ai_model": provider["active_provider"],
@@ -308,5 +308,5 @@ if __name__ == "__main__":
     debug = False
     if env_mode == "development":
         debug = os.getenv("DEBUG", os.getenv("FLASK_DEBUG", "false")).lower() == "true"
-    logger.info(f"Starting AstraPrep AI Backend on port {port} (debug={debug})")
+    logger.info(f"Starting TalentForge AI Backend on port {port} (debug={debug})")
     app.run(debug=debug, port=port, host="0.0.0.0", use_reloader=False)

@@ -63,7 +63,7 @@ export default function App() {
             error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
           }}
         />
-        <Suspense fallback={<FullPageLoader text="Loading AstraPrep AI..." />}>
+        <Suspense fallback={<FullPageLoader text="Loading TalentForge AI..." />}>
           <AnimatedRoutes />
         </Suspense>
       </BrowserRouter>

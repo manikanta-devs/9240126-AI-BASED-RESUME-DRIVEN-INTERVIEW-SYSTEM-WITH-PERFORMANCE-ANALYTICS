@@ -62,7 +62,7 @@ export default function LandingPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#070b13]">
-        <LoadingSpinner size="lg" text="Powering up AstraPrep chambers..." />
+        <LoadingSpinner size="lg" text="Powering up TalentForge chambers..." />
       </div>
     )
   }
@@ -100,7 +100,7 @@ export default function LandingPage() {
             </motion.div>
 
             <motion.h1 variants={fadeUp} className="text-4xl sm:text-5xl md:text-7xl font-black leading-[1.03] tracking-normal mb-6">
-              AstraPrep
+              TalentForge
               <span className="block brand-text">turns practice into proof.</span>
             </motion.h1>
 
@@ -238,7 +238,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between text-xs text-white/35">
           <div className="flex items-center gap-2">
             <AppLogo size={20} showText={false} />
-            <span>AstraPrep - AI Interview Preparation System</span>
+            <span>TalentForge - AI Interview Preparation System</span>
           </div>
           <span>{version && `v${version}`}</span>
         </div>

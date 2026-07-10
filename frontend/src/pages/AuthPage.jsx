@@ -85,8 +85,8 @@ export default function AuthPage() {
           <div className="mb-4">
             <AppLogo size={48} showText={false} />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-teal-200 via-cyan-300 to-amber-200 bg-clip-text text-transparent">
-            AstraPrep AI
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-violet-200 via-cyan-300 to-emerald-200 bg-clip-text text-transparent">
+            TalentForge AI
           </h1>
           <p className="text-sm text-gray-400 mt-2">
             Elevate your career with real-time AI interview coaching

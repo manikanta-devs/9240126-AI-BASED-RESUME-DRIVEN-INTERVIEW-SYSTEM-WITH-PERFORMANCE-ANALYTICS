@@ -574,7 +574,7 @@ export default function AIInterviewerRoom({
             </div>
             <div>
               <h1 className="text-sm font-black tracking-tight text-white flex items-center gap-2">
-                AstraPrep AI <span className="text-[10px] font-normal text-gray-400">AI Voice Interview Session</span>
+                TalentForge AI <span className="text-[10px] font-normal text-gray-400">AI Voice Interview Session</span>
               </h1>
             </div>
           </div>
@@ -834,7 +834,7 @@ export default function AIInterviewerRoom({
           </div>
           <div>
             <h1 className="text-sm font-black tracking-tight text-white flex items-center gap-2">
-              AstraPrep AI <span className="text-[10px] font-normal text-gray-400">AI-Powered Interview Session</span>
+              TalentForge AI <span className="text-[10px] font-normal text-gray-400">AI-Powered Interview Session</span>
             </h1>
           </div>
         </div>

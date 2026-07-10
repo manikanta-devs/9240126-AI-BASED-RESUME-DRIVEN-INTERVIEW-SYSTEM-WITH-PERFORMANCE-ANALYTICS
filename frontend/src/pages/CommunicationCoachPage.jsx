@@ -106,7 +106,7 @@ export default function CommunicationCoachPage() {
         importance: "Critical",
         resources: [
           { name: "LeetCode Database problems", type: "Practice", url: "https://leetcode.com/problemset/database/" },
-          { name: "AstraPrep SQL Practice Room", type: "Quiz", url: "/dashboard/quiz" }
+          { name: "TalentForge SQL Practice Room", type: "Quiz", url: "/dashboard/quiz" }
         ]
       }
     ],
