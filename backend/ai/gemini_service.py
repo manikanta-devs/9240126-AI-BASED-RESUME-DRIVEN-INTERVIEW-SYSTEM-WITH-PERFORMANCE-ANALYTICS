@@ -530,3 +530,55 @@ Just the raw JSON object or array."""
             f"All JSON parse strategies failed. Response preview: {response[:300]}"
         )
         return None
+
+    def generate_json_with_system(self, system_prompt: str, user_prompt: str,
+                                   temperature: float = 0.4, max_tokens: int = 2048) -> Optional[dict]:
+        """Generate structured JSON using system+user prompt separation.
+        Uses DeepSeek's native JSON mode when available."""
+
+        # Try DeepSeek providers first (they support native JSON mode)
+        for provider in self.providers:
+            if isinstance(provider, DeepSeekProvider):
+                pid = provider.provider_id
+                if time.time() < self.cooldowns.get(pid, 0):
+                    continue
+                try:
+                    headers = {
+                        "Authorization": f"Bearer {provider.api_key}",
+                        "Content-Type": "application/json",
+                    }
+                    payload = {
+                        "model": provider.MODEL_NAME,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        "temperature": temperature,
+                        "max_tokens": max_tokens,
+                        "response_format": {"type": "json_object"}
+                    }
+                    response = requests.post(
+                        provider.API_URL, headers=headers, json=payload, timeout=15
+                    )
+                    if response.status_code == 200:
+                        content = response.json()["choices"][0]["message"]["content"].strip()
+                        try:
+                            return json.loads(content)
+                        except json.JSONDecodeError:
+                            # Try regex extraction
+                            json_match = re.search(r'(\{[\s\S]*\})', content, re.DOTALL)
+                            if json_match:
+                                return json.loads(json_match.group(1))
+                    elif response.status_code == 429:
+                        logger.warning(f"DeepSeek {pid} rate limited for coaching")
+                        self.cooldowns[pid] = time.time() + 60
+                    else:
+                        logger.error(f"DeepSeek coaching error {response.status_code}: {response.text[:200]}")
+                        self.cooldowns[pid] = time.time() + 60
+                except Exception as e:
+                    logger.error(f"DeepSeek coaching call failed for {pid}: {e}")
+                    self.cooldowns[pid] = time.time() + 60
+
+        # Fallback: concatenate prompts and use regular generate_json
+        combined = f"{system_prompt}\n\n{user_prompt}"
+        return self.generate_json(combined)

@@ -5,6 +5,7 @@ import uuid
 from services.interview_service import InterviewService
 from ai.question_generator import QuestionGenerator
 from ai.answer_evaluator import AnswerEvaluator
+from ai.interview_coach import InterviewCoach
 from utils.auth_utils import token_required
 
 logger = logging.getLogger(__name__)
@@ -12,6 +13,7 @@ interview_bp = Blueprint("interview", __name__)
 interview_service = InterviewService()
 question_generator = QuestionGenerator()
 answer_evaluator = AnswerEvaluator()
+interview_coach = InterviewCoach()
 
 
 def safe_int(value, default=0):
@@ -435,3 +437,55 @@ def delete_session(session_id):
     except Exception as e:
         logger.error(f"Delete session error: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@interview_bp.route("/interview/coach", methods=["POST"])
+@token_required
+def get_coaching():
+    """Get AI coaching feedback for a candidate's answer"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Request body required"}), 400
+
+        question = data.get("question", {})
+        answer_text = data.get("answer", "")
+        session_id = data.get("session_id")
+        evaluation_scores = data.get("evaluation_scores", {})
+
+        if not answer_text or not question:
+            return jsonify({"error": "Question and answer are required"}), 400
+
+        # Get session context if available
+        resume_summary = ""
+        role = "software_engineer"
+        company = "General"
+        experience_level = "entry"
+
+        if session_id:
+            session = interview_service.get_session(session_id)
+            if session:
+                role = session.get("role", role)
+                resume_data = session.get("resume_data", {})
+                if resume_data:
+                    resume_summary = resume_data.get("summary", "")
+                    experience_level = resume_data.get("experience_level", "entry")
+                    company = session.get("company", "General") or "General"
+
+        question_text = question.get("text", question) if isinstance(question, dict) else str(question)
+
+        coaching = interview_coach.get_coaching(
+            question=question_text,
+            answer=answer_text,
+            role=role,
+            resume_summary=resume_summary,
+            company=company,
+            experience_level=experience_level,
+            evaluation_scores=evaluation_scores
+        )
+
+        return jsonify({"success": True, "coaching": coaching}), 200
+
+    except Exception as e:
+        logger.error(f"Coaching endpoint error: {e}")
+        return jsonify({"error": "Coaching generation failed", "details": str(e)}), 500

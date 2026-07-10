@@ -145,6 +145,9 @@ export const deleteSession = (id) => client.delete(`/api/interview/session/${id}
 export const submitFollowUp = (data) =>
   client.post('/api/interview/follow-up', data)
 
+export const getInterviewCoaching = (data) =>
+  client.post('/api/interview/coach', data)
+
 export const injectMockSession = (type) =>
   client.post('/api/developer/mock-session', { type })
 

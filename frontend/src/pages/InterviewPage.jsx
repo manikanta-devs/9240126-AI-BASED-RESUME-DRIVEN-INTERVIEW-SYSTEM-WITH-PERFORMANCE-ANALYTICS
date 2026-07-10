@@ -70,7 +70,7 @@ import {
 import clsx from 'clsx'
 
 
-import { generateQuestions, startInterview, submitAnswer, completeInterview, submitFollowUp, submitOnboardingResponse } from '../api/client'
+import { generateQuestions, startInterview, submitAnswer, completeInterview, submitFollowUp, submitOnboardingResponse, getInterviewCoaching } from '../api/client'
 
 
 import { useApp } from '../context/AppContext'
@@ -98,6 +98,7 @@ import InterviewStatsBar from '../components/InterviewStatsBar'
 import PanelAvatar, { PanelRoster } from '../components/PanelAvatar'
 import AIInterviewerRoom from '../components/AIInterviewerRoom'
 import VoiceCaptureStudio from '../components/VoiceCaptureStudio'
+import InterviewCoachPanel from '../components/InterviewCoachPanel'
 import AdvancedToolPanel from '../components/AdvancedToolPanel'
 
 
@@ -539,6 +540,8 @@ export default function InterviewPage() {
 
 
   const [previousScore, setPreviousScore] = useState(null)
+  const [coaching, setCoaching] = useState(null)
+  const [coachingLoading, setCoachingLoading] = useState(false)
 
 
   const [totalElapsed, setTotalElapsed] = useState(0)
@@ -2125,6 +2128,26 @@ export default function InterviewPage() {
       // Auto-advance loop: Only auto-advance in voice/video modes, leave text mode on evaluation feedback
       if (interviewFormat === 'text') {
         setPhase(PHASE.EVALUATING)
+        // Fire AI coaching request (non-blocking, loads async below evaluation)
+        setCoachingLoading(true)
+        setCoaching(null)
+        const currentQ = questions[currentIndex]
+        getInterviewCoaching({
+          session_id: sessionId,
+          question_index: currentIndex,
+          question: currentQ,
+          answer: finalAnswer,
+          evaluation_scores: {
+            overall: data.evaluation?.overall_score || 0,
+            technical: data.evaluation?.technical_score || 0,
+            clarity: data.evaluation?.clarity_score || 0,
+            relevance: data.evaluation?.relevance_score || 0,
+          }
+        }).then(res => {
+          setCoaching(res.data.coaching)
+        }).catch(err => {
+          console.warn('Coaching request failed:', err)
+        }).finally(() => setCoachingLoading(false))
       } else {
         setPhase(PHASE.INTERVIEWING)
         // Speak the AI HR's natural response to the answer, then advance
@@ -2230,6 +2253,8 @@ export default function InterviewPage() {
 
 
     setEvaluation(null)
+    setCoaching(null)
+    setCoachingLoading(false)
 
 
     setShowHint(false)
@@ -4105,6 +4130,15 @@ export default function InterviewPage() {
 
 
           )}
+
+          {/* AI Interview Coach Panel */}
+          <InterviewCoachPanel
+            coaching={coaching}
+            loading={coachingLoading}
+            onRetry={handleRetryAnswer}
+            onNext={handleNextQuestion}
+            isLastQuestion={currentIndex + 1 >= questions.length}
+          />
 
 
         </div>
