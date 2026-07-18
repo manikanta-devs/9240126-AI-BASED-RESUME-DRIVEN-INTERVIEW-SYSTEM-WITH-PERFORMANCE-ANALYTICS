@@ -4113,6 +4113,38 @@ function MetricChip({ label, value, status = 'idle' }) {
 
 }
 
+function AmbientParticles() {
+  const [particles, setParticles] = useState([])
+  useEffect(() => {
+    const items = Array.from({ length: 20 }).map((_, i) => ({
+      id: i,
+      top: `${Math.random() * 100}%`,
+      left: `${Math.random() * 100}%`,
+      delay: `${Math.random() * 8}s`,
+      scale: Math.random() * 1.5 + 0.5,
+    }))
+    setParticles(items)
+  }, [])
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+      {particles.map(p => (
+        <div
+          key={p.id}
+          className="ambient-particle"
+          style={{
+            top: p.top,
+            left: p.left,
+            animationDelay: p.delay,
+            transform: `scale(${p.scale})`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+
 
 
 
