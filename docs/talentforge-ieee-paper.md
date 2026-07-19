@@ -116,10 +116,10 @@ The weights are configured symmetrically to sum to 1.0 ($w_1 = w_2 = w_3 = w_4 =
 ---
 
 ## V. EXPERIMENTAL RESULTS AND PERFORMANCE EVALUATION
-To validate the architecture and performance of TalentForge, we conducted automated stress testing and latency benchmarking. Rather than relying solely on qualitative feedback, we measured system performance under varying concurrency loads to evaluate database transaction delays and fallback routing efficiency.
+To validate the architecture and performance of TalentForge under varying scales, we conducted an automated system simulation and concurrency stress-testing study. We simulated provider latency distributions based on typical published API benchmarks to model fallback routing behavior, evaluate database write transaction delays, and test failover resilience. This modeling approach enables the establishment of system performance baselines prior to physical multi-user deployment.
 
 ### A. Individual AI Provider Benchmarks
-We executed $N = 250$ test transactions across each configured API endpoint to document response latencies and success rates under normal operational conditions. Table I outlines the comparative metrics.
+We simulated $N = 250$ query transactions per configured API endpoint using normal distributions parameterized around typical production latency benchmarks. Table I outlines the comparative metrics.
 
 **Table I: Performance and Latency Metrics Across Configured AI Providers ($N = 250$)**
 | AI Provider | Success Rate (%) | Avg Latency (s) | 95th Percentile Latency (s) | Timeouts | Rate Limits |

@@ -1,6 +1,6 @@
 # 📊 System Performance & Stress-Testing Evaluation Report
 
-This report documents the automated system evaluation of the **TalentForge AI** interview platform. The dataset simulates high-concurrency API performance, SQLite database transaction overheads, and adaptive fallback routing efficiency under load.
+This report documents the automated system performance simulation of the **TalentForge AI** interview platform. The dataset represents simulated high-concurrency API latency distributions (modeled from typical published benchmarks), SQLite database transaction overheads, and adaptive fallback routing efficiency under load.
 
 ---
 
