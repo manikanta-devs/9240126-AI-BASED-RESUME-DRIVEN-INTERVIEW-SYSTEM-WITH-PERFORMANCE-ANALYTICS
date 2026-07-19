@@ -5,6 +5,35 @@ from services.resume_keywords import SKILL_KEYWORDS, EDUCATION_KEYWORDS, EXPERIE
 
 logger = logging.getLogger(__name__)
 
+# ── Lazy spaCy singleton ──────────────────────────────────────────────────────
+# spaCy en_core_web_sm uses ~80 MB. Loading it at every gunicorn worker
+# startup wastes memory. Instead we load it ONCE, on the first resume parse,
+# and cache the result at the class level (shared across all instances).
+_spacy_nlp = None
+_spacy_load_attempted = False
+
+
+def _get_spacy_nlp():
+    """Return the cached spaCy nlp object, loading it on first call."""
+    global _spacy_nlp, _spacy_load_attempted
+    if _spacy_load_attempted:
+        return _spacy_nlp
+    _spacy_load_attempted = True
+    try:
+        import spacy
+        _spacy_nlp = spacy.load("en_core_web_sm")
+        logger.info("spaCy en_core_web_sm loaded successfully.")
+    except OSError:
+        logger.warning(
+            "spaCy model 'en_core_web_sm' not found — falling back to regex. "
+            "Fix: python -m spacy download en_core_web_sm"
+        )
+        _spacy_nlp = None
+    except Exception as exc:
+        logger.warning("spaCy unavailable, using regex fallback: %s", exc)
+        _spacy_nlp = None
+    return _spacy_nlp
+
 
 class ResumeService:
     """Service for extracting and analyzing resume content"""
@@ -14,43 +43,15 @@ class ResumeService:
     EXPERIENCE_PATTERNS = EXPERIENCE_PATTERNS
 
     def __init__(self):
-        self.nlp = self._load_spacy()
+        # nlp is NOT loaded here — loaded lazily on first parse call
+        pass
 
-    def _load_spacy(self):
-        """Load spaCy model with fallback"""
-        try:
-            import spacy
+    @property
+    def nlp(self):
+        """Lazy-loaded spaCy model — loaded on first access only."""
+        return _get_spacy_nlp()
 
-            try:
-                return spacy.load("en_core_web_sm")
-            except OSError:
-                banner = (
-                    "\n"
-                    "================================================================================\n"
-                    "[WARNING]: spaCy model 'en_core_web_sm' was not found!\n"
-                    "   Resume parsing accuracy will be degraded (falling back to regex matches).\n"
-                    "   Fix this by downloading the model: python -m spacy download en_core_web_sm\n"
-                    "================================================================================\n"
-                )
-                print(banner)
-                logger.warning(
-                    "spaCy model not found. Run: python -m spacy download en_core_web_sm"
-                )
-                return None
-        except Exception as exc:
-            banner = (
-                "\n"
-                "================================================================================\n"
-                "[WARNING]: spaCy library is not available!\n"
-                "   Resume parsing will use basic regex fallback routines.\n"
-                f"   Error: {exc}\n"
-                "================================================================================\n"
-            )
-            print(banner)
-            logger.warning(
-                "spaCy unavailable, falling back to regex extraction: %s", exc
-            )
-            return None
+
 
     def extract_text_from_pdf(self, filepath: str) -> str:
         """Extract text from PDF file"""

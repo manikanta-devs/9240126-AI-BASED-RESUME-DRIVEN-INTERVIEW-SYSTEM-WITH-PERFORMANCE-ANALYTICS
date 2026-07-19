@@ -1,0 +1,74 @@
+# render.yaml — Render.com deployment configuration
+# Deploys the Flask backend as a Web Service on the free tier.
+#
+# Free tier limits:
+#   RAM: 512 MB   CPU: 0.1   Disk: ephemeral
+#
+# Memory optimisations applied:
+#   - GUNICORN_WORKERS=1   (1 process, not auto-detected CPU count)
+#   - GUNICORN_THREADS=2   (async I/O for Gemini waits)
+#   - preload_app=True     (share memory across workers via fork CoW)
+#   - max_requests=500     (recycle workers to prevent leak accumulation)
+
+services:
+  - type: web
+    name: mca-final-project
+    runtime: python
+    region: singapore            # closest to India (ap-south-1 equivalent)
+    plan: free
+
+    # Build settings
+    rootDir: backend
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      python -m spacy download en_core_web_sm
+
+    # Start command — uses our memory-optimised gunicorn.conf.py
+    startCommand: gunicorn --config gunicorn.conf.py app:app
+
+    # Health check — Render uses this to know when the service is ready
+    healthCheckPath: /health
+
+    # Auto-deploy when main branch is pushed
+    autoDeploy: true
+    branch: main
+
+    # Environment variables
+    # GEMINI_API_KEY must be set in the Render dashboard (not here — never commit secrets)
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+
+      # Memory-critical Gunicorn settings
+      - key: GUNICORN_WORKERS
+        value: "1"
+      - key: GUNICORN_THREADS
+        value: "2"
+      - key: GUNICORN_TIMEOUT
+        value: "120"
+      - key: GUNICORN_MAX_REQUESTS
+        value: "500"
+
+      # Rate limiting (uses in-memory by default — no Redis needed on free tier)
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
+
+      # CORS — set to your Vercel/Netlify frontend URL after deployment
+      # e.g.  https://your-app.vercel.app
+      - key: ALLOWED_ORIGINS
+        value: "*"
+
+      # Optional: set these in the Render dashboard, NOT here
+      # - key: GEMINI_API_KEY
+      #   value: "YOUR_KEY_HERE"   ← DO NOT COMMIT
+      # - key: SECRET_KEY
+      #   value: "YOUR_SECRET"     ← DO NOT COMMIT
+      # - key: JWT_SECRET
+      #   value: "YOUR_JWT"        ← DO NOT COMMIT

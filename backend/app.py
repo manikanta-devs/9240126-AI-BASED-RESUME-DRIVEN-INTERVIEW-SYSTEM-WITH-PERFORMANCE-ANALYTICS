@@ -310,8 +310,10 @@ def create_app():
     return app
 
 
+app = create_app()
+
+
 if __name__ == "__main__":
-    app = create_app()
     port = int(os.getenv("PORT", 5000))
     env_mode = os.getenv("FLASK_ENV", "development")
     debug = False
@@ -319,3 +321,4 @@ if __name__ == "__main__":
         debug = os.getenv("DEBUG", os.getenv("FLASK_DEBUG", "false")).lower() == "true"
     logger.info(f"Starting TalentForge AI Backend on port {port} (debug={debug})")
     app.run(debug=debug, port=port, host="0.0.0.0", use_reloader=False)
+
