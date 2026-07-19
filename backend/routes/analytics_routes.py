@@ -341,3 +341,76 @@ def mock_session():
             "error": "Internal server error",
             "message": str(e) if current_app.config.get("ENV") == "development" else "An error occurred"
         }), 500
+
+
+@analytics_bp.route("/analytics/export-research-data", methods=["GET"])
+@token_required
+def export_research_data():
+    """Export all user interview sessions to a research-friendly CSV file for statistical analysis (SPSS/R)"""
+    import io
+    import csv
+    from flask import Response
+
+    try:
+        # Retrieve all sessions for current user (up to 100)
+        sessions = analytics_service.get_all_sessions(limit=100, username=request.username)
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write CSV Header
+        writer.writerow([
+            "Session_ID", "Role", "Difficulty", "Panel_Mode", "Status",
+            "Overall_Score", "Technical_Score", "Clarity_Score", "Completeness_Score",
+            "Pacing_WPM", "Filler_Word_Count", "Eye_Contact_Score", "Posture_Score", 
+            "Primary_Emotion", "Duration_Minutes", "Started_At", "Completed_At"
+        ])
+        
+        for s in sessions:
+            sid = s.get("id", "")
+            role = s.get("role", "")
+            diff = s.get("difficulty", "")
+            panel = s.get("panel_mode", False)
+            status = s.get("status", "")
+            
+            # Fetch results
+            res = s.get("results", {})
+            scores = res.get("scores", {})
+            overall = scores.get("overall", 0)
+            tech = scores.get("technical", 0)
+            clarity = scores.get("clarity", 0)
+            completeness = scores.get("completeness", 0)
+            
+            voice = res.get("voice", {})
+            wpm = voice.get("speaking_pace_wpm", 0)
+            fillers = voice.get("filler_word_count", 0)
+            
+            video = res.get("video", {})
+            eye = video.get("eye_contact_score", 0)
+            posture = video.get("posture_score", 0)
+            emotion = video.get("primary_emotion", "unknown")
+            
+            dur = s.get("duration_minutes", 0)
+            started = s.get("started_at", "")
+            completed = s.get("completed_at", "")
+            
+            writer.writerow([
+                sid, role, diff, panel, status,
+                overall, tech, clarity, completeness,
+                wpm, fillers, eye, posture, emotion, dur,
+                started, completed
+            ])
+            
+        # Return CSV response
+        response_data = output.getvalue()
+        output.close()
+        
+        return Response(
+            response_data,
+            mimetype="text/csv",
+            headers={"Content-disposition": "attachment; filename=talentforge_research_data.csv"}
+        )
+    except Exception as e:
+        logger.error(f"Error exporting research data: {e}")
+        return jsonify({"error": "Failed to export data", "details": str(e)}), 500
+
