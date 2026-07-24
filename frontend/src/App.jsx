@@ -16,6 +16,8 @@ const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'))
 const ResultsPage = lazy(() => import('./pages/ResultsPage'))
 const QuizPage = lazy(() => import('./pages/QuizPage'))
 const VideoInterviewPage = lazy(() => import('./features/video-interview/VideoInterviewPage'))
+const ProfilePage = lazy(() => import('./pages/ProfilePage'))
+const SystemDesignPage = lazy(() => import('./pages/SystemDesignPage'))
 import ProtectedRoute from './components/ProtectedRoute'
 
 function AnimatedRoutes() {
@@ -34,7 +36,9 @@ function AnimatedRoutes() {
             <Route path="interview" element={<InterviewPage />} />
             <Route path="video-interview" element={<VideoInterviewPage />} />
             <Route path="quiz" element={<QuizPage />} />
+            <Route path="system-design" element={<SystemDesignPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
+            <Route path="profile" element={<ProfilePage />} />
             <Route path="results/:sessionId" element={<ResultsPage />} />
           </Route>
         </Route>

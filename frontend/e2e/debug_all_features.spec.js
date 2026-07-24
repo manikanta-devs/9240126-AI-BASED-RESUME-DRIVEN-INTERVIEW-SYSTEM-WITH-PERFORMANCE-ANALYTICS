@@ -213,7 +213,7 @@ test('B3 — Register & Login via UI', async ({ page }) => {
   await page.goto(`${BASE}/auth`)
   await page.waitForLoadState('networkidle')
   await page.waitForTimeout(500)
-  await page.click('text=Create Account')
+  await page.click('text=Register')
   await page.waitForTimeout(300)
   await page.fill('#auth-username', `uireg_${ts2}`)
   await page.fill('#auth-password', 'TestPass123!')
@@ -347,7 +347,7 @@ test('D1 — Text Interview Flow', async ({ page, request }) => {
   const slider = page.locator('input[type="range"]').first()
   if (await slider.isVisible()) await slider.fill('3')
 
-  await page.locator('button:has-text("Start Interview")').first().click()
+  await page.locator('button:has-text("Start")').first().click()
   console.log('  → Started interview')
   await page.waitForTimeout(2000)
 

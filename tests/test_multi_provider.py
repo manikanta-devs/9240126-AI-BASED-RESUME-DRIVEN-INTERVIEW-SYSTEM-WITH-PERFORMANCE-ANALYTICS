@@ -140,3 +140,16 @@ def test_cooldown_skips_provider(mock_post, clean_env):
     res = service.generate_content("Hi")
     assert res is None
     assert mock_post.call_count == 0
+
+
+def test_zero_api_key_fallback_mode(clean_env):
+    """Test that GeminiService initializes safely when NO API keys are set (Zero API Key Fallback Mode)."""
+    # Environment has no keys due to clean_env fixture
+    service = GeminiService()
+    assert service is not None
+    assert len(service.providers) == 0  # No live network providers loaded
+    
+    # Requesting content should return None cleanly without raising an exception
+    res = service.generate_content("Tell me a joke")
+    assert res is None
+

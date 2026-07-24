@@ -127,9 +127,26 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY,
             password_hash TEXT NOT NULL,
+            full_name TEXT DEFAULT '',
+            phone TEXT DEFAULT '',
+            college TEXT DEFAULT '',
+            bio TEXT DEFAULT '',
+            avatar_url TEXT DEFAULT '',
             created_at TEXT
         )
     """)
+    
+    # Safe migration: add missing columns to existing users table if any
+    try:
+        if DB_TYPE != "postgresql":
+            cursor = conn.execute("PRAGMA table_info(users)")
+            existing_cols = [c[1] for c in cursor.fetchall()]
+            for col, col_type in [("full_name", "TEXT"), ("phone", "TEXT"), ("college", "TEXT"), ("bio", "TEXT"), ("avatar_url", "TEXT")]:
+                if col not in existing_cols:
+                    conn.execute(f"ALTER TABLE users ADD COLUMN {col} {col_type} DEFAULT ''")
+            conn.commit()
+    except Exception as e:
+        logger.debug(f"User columns migration skipped: {e}")
 
     # 1. Main sessions table
     conn.execute("""
@@ -414,15 +431,29 @@ def get_user(username: str) -> dict | None:
     return None
 
 
-def get_all_users_count() -> int:
-    """Return total number of registered users."""
+def update_user_profile(username: str, data: dict) -> bool:
+    """Update profile fields for a registered user."""
     conn = _get_conn()
     try:
-        row = conn.execute("SELECT COUNT(*) FROM users").fetchone()
-        return row[0] if row else 0
+        conn.execute(
+            """UPDATE users SET
+               full_name = ?, phone = ?, college = ?, bio = ?, avatar_url = ?
+               WHERE username = ?""",
+            (
+                data.get("full_name", ""),
+                data.get("phone", ""),
+                data.get("college", ""),
+                data.get("bio", ""),
+                data.get("avatar_url", ""),
+                username
+            )
+        )
+        conn.commit()
+        return True
     except Exception as e:
-        logger.error(f"Failed to count users: {e}")
-        return 0
+        conn.rollback()
+        logger.error(f"Failed to update profile for user {username}: {e}")
+        return False
 
 
 # Auto-initialize on import

@@ -173,7 +173,7 @@ class InterviewService:
 
         skill_gaps = []
         for topic, scores in topic_scores.items():
-            avg = round(sum(scores) / len(scores), 1)
+            avg = round(sum(scores) / len(scores), 1) if scores else 0.0
             recommendation = (
                 "Strong"
                 if avg >= 70

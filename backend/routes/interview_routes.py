@@ -6,6 +6,9 @@ from services.interview_service import InterviewService
 from ai.question_generator import QuestionGenerator
 from ai.answer_evaluator import AnswerEvaluator
 from ai.interview_coach import InterviewCoach
+from ai.star_analyzer import StarAnalyzer
+from ai.company_presets import CompanyPresetEngine
+from ai.system_design_evaluator import SystemDesignEvaluator
 from utils.auth_utils import token_required, verify_ownership
 from utils.limiter import limiter
 from validators import InterviewRequest, QuestionRequest, AnswerEvaluationRequest
@@ -17,6 +20,10 @@ interview_service = InterviewService()
 question_generator = QuestionGenerator()
 answer_evaluator = AnswerEvaluator()
 interview_coach = InterviewCoach()
+star_analyzer = StarAnalyzer()
+company_preset_engine = CompanyPresetEngine()
+system_design_evaluator = SystemDesignEvaluator()
+
 
 
 def safe_int(value, default=0):
@@ -738,9 +745,6 @@ def analyze_live():
             company=company,
         )
 
-        if not next_q or not next_q.get("text"):
-            return jsonify({"success": False, "error": "Could not generate next question"}), 500
-
         logger.info(
             f"[analyze-live] stage={stage} session={session_id[:8]} "
             f"generated: {next_q.get('text', '')[:80]}"
@@ -750,3 +754,219 @@ def analyze_live():
     except Exception as e:
         logger.error(f"analyze-live error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@interview_bp.route("/interview/session/<session_id>/pdf", methods=["GET"])
+def export_pdf_report(session_id):
+    """Generate and download a nicely formatted PDF report for an interview session."""
+    from flask import send_file
+    import io
+    from reportlab.lib.pagesizes import letter
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+
+    session = interview_service.get_session(session_id)
+    if not session:
+        return jsonify({"error": "Session not found"}), 404
+
+    results = session.get("results") or {}
+    candidate_name = session.get("candidate_name", "Candidate")
+    role = session.get("role", "software_engineer").replace("_", " ").title()
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        'DocTitle',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=20,
+        leading=24,
+        textColor=colors.HexColor('#6366F1')
+    )
+    
+    sub_style = ParagraphStyle(
+        'DocSubTitle',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=11,
+        textColor=colors.HexColor('#64748B')
+    )
+
+    heading_style = ParagraphStyle(
+        'SectionHeading',
+        parent=styles['Heading2'],
+        fontName='Helvetica-Bold',
+        fontSize=14,
+        leading=18,
+        textColor=colors.HexColor('#0F172A')
+    )
+
+    body_style = ParagraphStyle(
+        'BodyTextCustom',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=10,
+        leading=14,
+        textColor=colors.HexColor('#334155')
+    )
+
+    elements = []
+    elements.append(Paragraph("TalentForge.AI — Executive Interview Report", title_style))
+    elements.append(Paragraph(f"Candidate: {candidate_name} | Role: {role} | Date: {session.get('completed_at', 'Recent')[:10]}", sub_style))
+    elements.append(Spacer(1, 15))
+
+    # Overall Summary Table
+    overall = results.get("overall_score", 0)
+    tech = results.get("avg_technical", 0)
+    clarity = results.get("avg_clarity", 0)
+
+    summary_data = [
+        ["Metric", "Score"],
+        ["Overall Readiness", f"{overall}%"],
+        ["Technical Competence", f"{tech}%"],
+        ["Communication Clarity", f"{clarity}%"],
+    ]
+
+    summary_table = Table(summary_data, colWidths=[200, 100])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#6366F1')),
+        ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E1')),
+    ]))
+    elements.append(summary_table)
+    elements.append(Spacer(1, 20))
+
+    # Detailed Q&A Section
+    elements.append(Paragraph("Question & Answer Evaluation", heading_style))
+    elements.append(Spacer(1, 8))
+
+    answers = session.get("answers", [])
+    for idx, ans in enumerate(answers, 1):
+        q_text = ans.get("question_text", "Question")
+        a_text = ans.get("answer_text", "No response recorded.")
+        eval_data = ans.get("evaluation", {}) or {}
+
+        elements.append(Paragraph(f"<b>Q{idx}: {q_text}</b>", body_style))
+        elements.append(Spacer(1, 4))
+        elements.append(Paragraph(f"<i>Answer:</i> {a_text}", body_style))
+        elements.append(Spacer(1, 4))
+
+        if isinstance(eval_data, dict):
+            feedback = eval_data.get("feedback", "N/A")
+            score = eval_data.get("score", 0)
+            elements.append(Paragraph(f"<b>Evaluation Score:</b> {score}% | <b>Feedback:</b> {feedback}", body_style))
+
+        elements.append(Spacer(1, 12))
+
+    doc.build(elements)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"TalentForge_Report_{session_id[:8]}.pdf",
+        mimetype="application/pdf"
+    )
+
+
+# ==========================================
+# FEATURE 2: STAR METHOD ANALYZER ENDPOINT
+# ==========================================
+@interview_bp.route("/interview/evaluate-star", methods=["POST"])
+@token_required
+@limiter.limit("20 per minute")
+def evaluate_star_method():
+    """Perform sentence-by-sentence STAR breakdown and metric analysis"""
+    try:
+        data = request.get_json(silent=True) or {}
+        question = data.get("question", "Tell me about a challenging situation you handled.")
+        answer = data.get("answer", "")
+
+        if not answer.strip():
+            return jsonify({"error": "Answer text is required for STAR analysis"}), 400
+
+        res = star_analyzer.analyze(question=question, answer=answer)
+        return jsonify({"success": True, "analysis": res}), 200
+
+    except Exception as e:
+        logger.error(f"STAR Method analysis error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ==========================================
+# FEATURE 3: COMPANY PRESET & CULTURE FIT ENDPOINTS
+# ==========================================
+@interview_bp.route("/interview/companies", methods=["GET"])
+def get_company_presets():
+    """Get list of supported company interview presets and principles"""
+    try:
+        companies = company_preset_engine.get_companies()
+        return jsonify({"success": True, "companies": companies}), 200
+    except Exception as e:
+        logger.error(f"Error fetching company presets: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@interview_bp.route("/interview/company-questions", methods=["POST"])
+@token_required
+@limiter.limit("15 per minute")
+def generate_company_questions():
+    """Generate questions aligned with specific company principles"""
+    try:
+        data = request.get_json(silent=True) or {}
+        company_id = data.get("company_id", "amazon")
+        role = data.get("role", "Software Engineer")
+        num_questions = safe_int(data.get("num_questions", 5), 5)
+
+        questions = company_preset_engine.generate_company_questions(
+            company_id=company_id,
+            role=role,
+            num_questions=num_questions
+        )
+        return jsonify({"success": True, "company_id": company_id, "questions": questions}), 200
+
+    except Exception as e:
+        logger.error(f"Error generating company questions: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ==========================================
+# FEATURE 4: SYSTEM DESIGN EVALUATION ENDPOINTS
+# ==========================================
+@interview_bp.route("/interview/system-design/prompts", methods=["GET"])
+def get_system_design_prompts():
+    """Get list of system design interview scenarios"""
+    try:
+        prompts = system_design_evaluator.get_prompts()
+        return jsonify({"success": True, "prompts": prompts}), 200
+    except Exception as e:
+        logger.error(f"Error fetching system design prompts: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@interview_bp.route("/interview/system-design/evaluate", methods=["POST"])
+@token_required
+@limiter.limit("10 per minute")
+def evaluate_system_design():
+    """Evaluate candidate's system design solution against SPOFs, scalability & trade-offs"""
+    try:
+        data = request.get_json(silent=True) or {}
+        problem_id = data.get("problem_id", "rate-limiter")
+        solution = data.get("solution", "")
+
+        if not solution.strip():
+            return jsonify({"error": "Solution description is required for system design evaluation"}), 400
+
+        result = system_design_evaluator.evaluate(problem_id=problem_id, candidate_solution=solution)
+        return jsonify({"success": True, "problem_id": problem_id, "evaluation": result}), 200
+
+    except Exception as e:
+        logger.error(f"System design evaluation error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+

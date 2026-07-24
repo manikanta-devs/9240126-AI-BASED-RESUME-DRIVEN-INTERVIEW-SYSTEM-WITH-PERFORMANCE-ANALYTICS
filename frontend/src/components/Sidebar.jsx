@@ -4,7 +4,7 @@ import { clsx } from 'clsx'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText, Mic, BarChart2, Home, ChevronLeft, Brain,
-  ChevronRight, LogOut, Sun, Moon, Briefcase, Video
+  ChevronRight, LogOut, Sun, Moon, Briefcase, Video, User, Cpu
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import AppLogo from './AppLogo'
@@ -15,8 +15,10 @@ const NAV_ITEMS = [
   { to: '/dashboard/interview', icon: Briefcase, label: 'Interview',       badge: null },
   { to: '/dashboard/video-interview', icon: Video, label: '3D Interview', badge: '3D' },
   { to: '/dashboard/coach',     icon: Mic,       label: 'Coach',           badge: 'New' },
-  { to: '/dashboard/quiz',      icon: Brain,     label: 'Quiz Practice',   badge: 'New' },
+  { to: '/dashboard/quiz',      icon: Brain,     label: 'Quiz Practice',   badge: null },
+  { to: '/dashboard/system-design', icon: Cpu,   label: 'System Design',   badge: 'New' },
   { to: '/dashboard/analytics', icon: BarChart2, label: 'Analytics',       badge: null },
+  { to: '/dashboard/profile',   icon: User,      label: 'Profile',         badge: null },
 ]
 
 export default function Sidebar() {

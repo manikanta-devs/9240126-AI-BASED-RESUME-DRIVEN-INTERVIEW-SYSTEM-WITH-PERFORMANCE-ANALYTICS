@@ -71,6 +71,7 @@ client.interceptors.response.use(
 
     // Retry logic: retry on network errors and 5xx (not on cancellation or 4xx)
     if (
+      config &&
       !config._retried &&
       !error.response?.status?.toString().startsWith('4') &&
       error.code !== 'ERR_CANCELED'
@@ -87,8 +88,8 @@ client.interceptors.response.use(
       if (import.meta.env.DEV) console.error('[API] Error:', {
         status: error.response?.status,
         message: msg,
-        url: config.url,
-        method: config.method?.toUpperCase()
+        url: config?.url,
+        method: config?.method?.toUpperCase()
       })
     }
 

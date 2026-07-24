@@ -9,9 +9,10 @@ import {
 } from 'lucide-react'
 import { getAnalyticsSummary, getAnalyticsSessions, getQuizSessions, getDashboardInsights } from '../api/client'
 import { useApp } from '../context/AppContext'
-import LoadingSpinner from '../components/LoadingSpinner'
+import { FullPageLoader } from '../components/LoadingSpinner'
 import AdvancedToolPanel from '../components/AdvancedToolPanel'
 import AdaptiveEngineStatus from '../components/AdaptiveEngineStatus'
+import { SpotlightCard, GlassPanel, NumberTicker, GradientText, ShimmerButton } from '../components/ui'
 import { clsx } from 'clsx'
 
 const stagger = {
@@ -47,11 +48,7 @@ export default function DashboardOverview() {
   }, [])
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 space-y-4">
-        <LoadingSpinner size="lg" text="Loading dashboard command center..." />
-      </div>
-    )
+    return <FullPageLoader text="Initializing preparation control center..." />
   }
 
   const hasData = summary && summary.total_sessions > 0
@@ -230,47 +227,47 @@ export default function DashboardOverview() {
         </div>
       </motion.div>
 
-      {/* --- STANDALONE 4 METRIC CARDS WITH COLORED BORDERS --- */}
+      {/* --- STANDALONE 4 METRIC CARDS WITH SPOTLIGHT & TICKER --- */}
       <motion.div variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card p-4 metric-card-cyan hover-lift flex flex-col justify-between h-24">
-          <div className="flex justify-between items-center text-slate-400 dark:text-gray-500">
+        <SpotlightCard className="p-4 rounded-xl border border-cyan-500/20 bg-slate-900/40 backdrop-blur-md flex flex-col justify-between h-24">
+          <div className="flex justify-between items-center text-slate-400">
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider">Resume ATS</span>
             <FileText className="w-4 h-4 text-cyan-400" />
           </div>
-          <div className="text-2xl font-black score-gradient-cyan mt-1">
-            {resumeData?.score || 0}%
+          <div className="text-2xl font-black text-cyan-400 font-display mt-1">
+            <NumberTicker value={resumeData?.score || 0} suffix="%" />
           </div>
-        </div>
+        </SpotlightCard>
 
-        <div className="card p-4 metric-card-violet hover-lift flex flex-col justify-between h-24">
-          <div className="flex justify-between items-center text-slate-400 dark:text-gray-500">
+        <SpotlightCard className="p-4 rounded-xl border border-indigo-500/20 bg-slate-900/40 backdrop-blur-md flex flex-col justify-between h-24">
+          <div className="flex justify-between items-center text-slate-400">
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider">Ready Index</span>
-            <Target className="w-4 h-4 text-violet-400" />
+            <Target className="w-4 h-4 text-indigo-400" />
           </div>
-          <div className="text-2xl font-black score-gradient-violet mt-1">
-            {overallReadiness}%
+          <div className="text-2xl font-black text-indigo-400 font-display mt-1">
+            <NumberTicker value={overallReadiness} suffix="%" />
           </div>
-        </div>
+        </SpotlightCard>
 
-        <div className="card p-4 metric-card-amber hover-lift flex flex-col justify-between h-24">
-          <div className="flex justify-between items-center text-slate-450 dark:text-gray-500">
+        <SpotlightCard className="p-4 rounded-xl border border-amber-500/20 bg-slate-900/40 backdrop-blur-md flex flex-col justify-between h-24">
+          <div className="flex justify-between items-center text-slate-400">
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider">Practice Time</span>
             <Clock className="w-4 h-4 text-amber-400" />
           </div>
-          <div className="text-2xl font-black score-gradient-amber mt-1">
-            {practiceTime}m
+          <div className="text-2xl font-black text-amber-400 font-display mt-1">
+            <NumberTicker value={practiceTime} suffix="m" />
           </div>
-        </div>
+        </SpotlightCard>
 
-        <div className="card p-4 metric-card-emerald hover-lift flex flex-col justify-between h-24">
-          <div className="flex justify-between items-center text-slate-450 dark:text-gray-500">
+        <SpotlightCard className="p-4 rounded-xl border border-emerald-500/20 bg-slate-900/40 backdrop-blur-md flex flex-col justify-between h-24">
+          <div className="flex justify-between items-center text-slate-400">
             <span className="text-[10px] font-mono font-bold uppercase tracking-wider">Active Streak</span>
             <Flame className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl font-black score-gradient-emerald mt-1">
-            {streakDays}d
+          <div className="text-2xl font-black text-emerald-400 font-display mt-1">
+            <NumberTicker value={streakDays} suffix="d" />
           </div>
-        </div>
+        </SpotlightCard>
       </motion.div>
 
 

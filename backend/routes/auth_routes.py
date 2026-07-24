@@ -94,3 +94,48 @@ def login():
         "token": token,
         "user": {"username": username},
     }), 200
+
+
+@auth_bp.route("/auth/profile", methods=["GET"])
+def get_profile():
+    from utils.auth_utils import token_required
+    from services.database import get_user
+    
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.replace("Bearer ", "").strip() if auth_header else ""
+    from utils.auth_utils import verify_token
+    payload = verify_token(token)
+    if not payload:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    username = payload.get("username", "")
+    user = get_user(username)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+        
+    user.pop("password_hash", None)
+    return jsonify({"profile": user}), 200
+
+
+@auth_bp.route("/auth/profile", methods=["PUT"])
+def update_profile():
+    from utils.auth_utils import verify_token
+    from services.database import update_user_profile, get_user
+    
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.replace("Bearer ", "").strip() if auth_header else ""
+    payload = verify_token(token)
+    if not payload:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    username = payload.get("username", "")
+    data = request.get_json() or {}
+    success = update_user_profile(username, data)
+    if not success:
+        return jsonify({"error": "Failed to update profile"}), 500
+        
+    user = get_user(username)
+    if user:
+        user.pop("password_hash", None)
+    return jsonify({"message": "Profile updated successfully", "profile": user}), 200
+

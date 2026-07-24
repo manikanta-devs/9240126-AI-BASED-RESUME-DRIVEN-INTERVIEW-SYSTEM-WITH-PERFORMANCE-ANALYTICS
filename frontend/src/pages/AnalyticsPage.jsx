@@ -286,12 +286,20 @@ export default function AnalyticsPage() {
               <span className="text-[9px] font-mono tracking-widest text-rose-600 dark:text-rose-455 uppercase block">Areas to Improve</span>
               <div className="grid grid-cols-2 gap-3 text-xs">
                 {[
-                  { name: 'System Design', stars: 2 },
-                  { name: 'OS & Networking', stars: 2 },
-                  { name: 'Speaking Pacing', stars: 2 }
+                  { name: 'System Design', topic: 'system_design', stars: 2 },
+                  { name: 'OS & Networking', topic: 'os', stars: 2 },
+                  { name: 'Speaking Pacing', topic: 'behavioral', stars: 2 }
                 ].map(skill => (
                   <div key={skill.name} className="p-3 rounded-2xl bg-black/[0.02] dark:bg-slate-950/40 border border-black/5 dark:border-white/5 flex items-center justify-between">
-                    <span className="font-semibold text-slate-700 dark:text-gray-200">{skill.name}</span>
+                    <div>
+                      <span className="font-semibold text-slate-700 dark:text-gray-200 block">{skill.name}</span>
+                      <button
+                        onClick={() => navigate(`/dashboard/quiz?topic=${skill.topic}`)}
+                        className="mt-1 inline-flex items-center gap-1 text-[9px] font-mono font-bold text-indigo-400 hover:text-indigo-300 uppercase tracking-wider"
+                      >
+                        <Play className="w-2.5 h-2.5 fill-indigo-400" /> Micro-Drill
+                      </button>
+                    </div>
                     <div className="flex gap-0.5 text-amber-500">
                       {Array.from({ length: skill.stars }).map((_, i) => (
                         <Star key={i} className="w-3 h-3 fill-amber-500 text-amber-500" />

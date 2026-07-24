@@ -254,7 +254,7 @@ class AnalyticsService:
             breakdown.append(
                 {
                     "skill": skill,
-                    "avg_score": round(sum(scores) / len(scores), 1),
+                    "avg_score": round(sum(scores) / len(scores), 1) if scores else 0.0,
                     "attempts": len(scores),
                 }
             )

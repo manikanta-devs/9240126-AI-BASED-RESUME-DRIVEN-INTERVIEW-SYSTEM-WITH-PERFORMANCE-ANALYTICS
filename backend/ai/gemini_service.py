@@ -496,9 +496,10 @@ class GeminiService:
         logger.error("All available AI providers in the chain failed to generate content.")
         return None
 
-    def generate_json(self, prompt: str) -> Optional[dict]:
+    def generate_json(self, prompt: str, schema=None, system_instruction=None, **kwargs) -> Optional[dict]:
         """Generate JSON response from fallback provider with multi-strategy parsing"""
-        json_prompt = f"""{prompt}
+        sys_inst = f"{system_instruction}\n\n" if system_instruction else ""
+        json_prompt = f"""{sys_inst}{prompt}
 
 IMPORTANT: Respond ONLY with valid JSON. No markdown, no backticks, no explanation.
 Just the raw JSON object or array."""

@@ -26,6 +26,7 @@ export default function ResumePage() {
   const [jobDescription, setJobDescription] = useState('')
   const [jobMatch, setJobMatch] = useState(null)
   const [matchLoading, setMatchLoading] = useState(false)
+  const [prevResumeData, setPrevResumeData] = useState(null)
   const [subTab, setSubTab] = useState('coach')
   const [selectedSection, setSelectedSection] = useState('projects')
   
@@ -62,6 +63,9 @@ export default function ResumePage() {
       }
       const { data } = await uploadResume(formData)
       if (data.success) {
+        if (resumeData) {
+          setPrevResumeData(resumeData)
+        }
         setResumeData(data.analysis)
         setFileName(file.name)
         setJobMatch(data.job_match || null)

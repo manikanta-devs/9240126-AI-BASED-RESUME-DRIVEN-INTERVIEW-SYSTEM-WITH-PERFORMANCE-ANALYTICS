@@ -84,12 +84,12 @@ test('Video Interview Full Flow E2E Debugger', async ({ page, request, context }
   await expect(avatarVisualizer).toBeVisible()
   
   // Verify HUD Timer is visible
-  const timerHud = page.locator('text="Video Interview"').first()
+  const timerHud = page.locator('text="TalentForge Careers"').first()
   await expect(timerHud).toBeVisible()
   
   console.log('Step 5: Simulating a response by typing in fallback text field...')
   // Locate input field in transcript bubble or fallback text area
-  const responseInput = page.locator('input[placeholder="Type your response..."]').first()
+  const responseInput = page.locator('input[placeholder="Type response here if voice recognition fails..."]').first()
   if (await responseInput.isVisible()) {
     const mockResponse = "In my last project, my task was to migrate the user database. I implemented a partitioned pipeline, which improved database response times by 35%."
     await responseInput.fill(mockResponse)

@@ -6,15 +6,15 @@ test('Authentication Flow Test (Register, Login, Redirect, Logout)', async ({ pa
 
   // Expect redirection to /auth
   await expect(page).toHaveURL(/\/auth/);
-  await expect(page.locator('h1')).toContainText(/AstraPrep AI|TalentForge AI/);
+  await expect(page.locator('h1')).toContainText(/Master Every Interview/);
   await expect(page.getByRole('button', { name: 'Sign In', exact: true }).first()).toBeVisible();
 
   // Generate a unique username
   const uniqueUsername = `testuser_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
   const password = 'securepassword123';
 
-  // 2. Click "Create Account" tab
-  await page.click('text=Create Account');
+  // 2. Click "Register" tab
+  await page.click('text=Register');
 
   // Fill in registration form
   await page.fill('#auth-username', uniqueUsername);

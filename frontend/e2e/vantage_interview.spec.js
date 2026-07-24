@@ -9,6 +9,7 @@ if (!fs.existsSync(screenshotDir)) {
 
 test('Take Vantage Emma Vance Session Screenshots', async ({ page }) => {
   test.setTimeout(240000);
+  page.on('console', msg => console.log('[BROWSER]:', msg.text()));
   await page.setViewportSize({ width: 1280, height: 800 });
 
   // 1. Register a test user
@@ -39,8 +40,8 @@ test('Take Vantage Emma Vance Session Screenshots', async ({ page }) => {
   await videoBtn.click();
   await page.waitForTimeout(500);
 
-  // Configure setup: Select Emma (labeled "Emma" / "AI Recruiter")
-  const emmaCard = page.locator('button:has-text("Emma")');
+  // Configure setup: Select Sarah (labeled "Sarah" / "AI Recruiter")
+  const emmaCard = page.locator('button:has-text("Sarah")');
   await emmaCard.click();
   await page.waitForTimeout(500);
   
@@ -68,27 +69,28 @@ test('Take Vantage Emma Vance Session Screenshots', async ({ page }) => {
   // Gaze calibrating screenshot
   await page.screenshot({ path: path.join(screenshotDir, '02_interview_started.png') });
 
-  // Wait for Emma Vance to load in the virtual room
-  await expect(page.locator('text=Emma Vance').first()).toBeVisible({ timeout: 35000 });
+  // Wait for Sarah Chen to load in the virtual room
+  await expect(page.locator('text=Sarah Chen').first()).toBeVisible({ timeout: 35000 });
   await page.screenshot({ path: path.join(screenshotDir, '03_first_question.png') });
 
   // Wait for Emma to finish speaking and candidate's turn to start (mic and input open)
   // Headless browser speech synthesis fallback timeout is ~25s, so we wait up to 55s
-  await expect(page.locator('text=Recording your response').first()).toBeVisible({ timeout: 55000 });
+  await expect(page.locator('text=Recording response').first()).toBeVisible({ timeout: 55000 });
 
   // Wait for fallback input to become visible and fill it
   const inputEl = page.locator('input[placeholder="Type response here if voice recognition fails..."]');
   await inputEl.waitFor({ state: 'visible', timeout: 15000 });
-  await inputEl.fill('Hello Emma, I am a senior software engineer. I build high-performance React applications, optimize state management, and coordinate system architectures with Node backends.');
+  await inputEl.fill('Hello Sarah, I am a senior software engineer. I build high-performance React applications, optimize state management, and coordinate system architectures with Node backends.');
   await page.screenshot({ path: path.join(screenshotDir, '04_typed_response.png') });
   await page.click('button:has-text("Send")');
 
-  // Wait for evaluation processing to complete and Emma to start asking Question 2 (up to 85s due to Gemini API response latency)
-  await expect(page.locator('text=Emma is speaking').first()).toBeVisible({ timeout: 85000 });
+  // Wait for evaluation processing to complete and Sarah to start asking Question 2 (up to 85s due to Gemini API response latency)
+  await expect(page.locator('text=Sarah is speaking').first()).toBeVisible({ timeout: 85000 });
   await page.screenshot({ path: path.join(screenshotDir, '05_sidebar_evaluating.png') });
 
   // Finish session by clicking End button
-  const endCallBtn = page.locator('button:has-text("End")').first();
+  const endCallBtn = page.locator('button[aria-label="End interview session"]').first();
+  await endCallBtn.waitFor({ state: 'visible', timeout: 10000 });
   await endCallBtn.click();
 
   // Wait for results redirect

@@ -1,7 +1,6 @@
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
-
 // Mock localStorage for tests
 const localStorageMock = {
   getItem: vi.fn(() => null),
@@ -10,3 +9,10 @@ const localStorageMock = {
   clear: vi.fn(),
 }
 Object.defineProperty(window, 'localStorage', { value: localStorageMock })
+
+// Mock ResizeObserver for Recharts / ResponsiveContainer
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts'
-import { ArrowLeft, Trophy, CheckCircle, XCircle, ChevronDown, ChevronUp, Download, RotateCcw, MessageSquare, Printer, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Trophy, CheckCircle, XCircle, ChevronDown, ChevronUp, Download, RotateCcw, MessageSquare, Printer, ChevronRight, Award } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { clsx } from 'clsx'
 import toast from 'react-hot-toast'
@@ -12,6 +12,7 @@ import { GradeBadge, MiniScoreRow } from '../components/ScoreCard'
 import SkillGapReport from '../components/SkillGapReport'
 import ConfidenceTracker from '../components/ConfidenceTracker'
 import { saveSessionScore } from '../utils/adaptiveEngine'
+import ReadinessCertificate from '../components/ui/ReadinessCertificate'
 
 const formatHighlightedAnswer = (text) => {
   if (!text || text === '[SKIPPED]') return <span className="text-gray-500 italic">Skipped</span>;
@@ -70,6 +71,7 @@ export default function ResultsPage() {
   const [results, setResults] = useState(interviewResults)
   const [loading, setLoading] = useState(!interviewResults)
   const [expandedQ, setExpandedQ] = useState(null)
+  const [showCert, setShowCert] = useState(false)
   const { darkMode } = useApp()
 
   useEffect(() => {
@@ -193,8 +195,17 @@ export default function ResultsPage() {
   }
 
   const handlePrintPDF = () => {
-    window.print()
-    toast.success('PDF generated!')
+    const token = localStorage.getItem('token') || ''
+    const pdfUrl = `/api/interview/session/${sessionId}/pdf`
+    
+    // Trigger direct PDF download from backend API
+    const link = document.createElement('a')
+    link.href = pdfUrl
+    link.download = `TalentForge_Report_${sessionId?.slice(0, 8)}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success('Downloading PDF Report!')
   }
 
   return (
@@ -219,6 +230,15 @@ export default function ResultsPage() {
           >
             <Printer className="w-3.5 h-3.5" /> PDF
           </button>
+
+          {results.scores.overall >= 70 && (
+            <button 
+              onClick={() => setShowCert(true)} 
+              className="px-3.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-[10px] font-mono text-amber-400 font-bold transition-colors flex items-center gap-1.5"
+            >
+              <Award className="w-3.5 h-3.5" /> Certificate
+            </button>
+          )}
           <button 
             onClick={handleExport} 
             className="px-3.5 py-1.5 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.08] dark:hover:bg-white/[0.08] border border-black/10 dark:border-white/10 text-[10px] font-mono text-slate-650 dark:text-gray-300 transition-colors flex items-center gap-1.5"
@@ -462,6 +482,15 @@ export default function ResultsPage() {
         </div>
       </div>
 
+      {showCert && (
+        <ReadinessCertificate
+          candidateName={results.candidate_name || 'Candidate'}
+          role={results.role?.replace(/_/g, ' ').toUpperCase() || 'SOFTWARE ENGINEER'}
+          overallScore={results.scores?.overall || 88}
+          date={new Date(results.completed_at || Date.now()).toLocaleDateString()}
+          onClose={() => setShowCert(false)}
+        />
+      )}
     </motion.div>
   )
 }

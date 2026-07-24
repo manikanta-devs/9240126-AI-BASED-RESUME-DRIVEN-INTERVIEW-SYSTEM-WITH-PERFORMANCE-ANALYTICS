@@ -29,6 +29,8 @@ import HRVideoPlayer from './HRVideoPlayer'
 import useInterviewStageEngine, { HR_CLIPS } from '../hooks/useInterviewStageEngine'
 import useBackgroundAnalysis from '../hooks/useBackgroundAnalysis'
 import useSoundDesign from '../hooks/useSoundDesign'
+import STARCoachOverlay from './ui/STARCoachOverlay'
+import CanvasAudioWave from './ui/CanvasAudioWave'
 
 // ─── Only preload clips that the stage engine actually uses ─────────────────
 // This avoids loading 38 files when only ~22 are needed
