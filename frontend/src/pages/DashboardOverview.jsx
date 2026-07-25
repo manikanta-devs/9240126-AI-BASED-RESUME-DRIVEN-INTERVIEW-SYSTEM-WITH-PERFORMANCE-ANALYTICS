@@ -12,7 +12,9 @@ import { useApp } from '../context/AppContext'
 import { FullPageLoader } from '../components/LoadingSpinner'
 import AdvancedToolPanel from '../components/AdvancedToolPanel'
 import AdaptiveEngineStatus from '../components/AdaptiveEngineStatus'
+import MarqueeTicker from '../components/MarqueeTicker'
 import { SpotlightCard, GlassPanel, NumberTicker, GradientText, ShimmerButton } from '../components/ui'
+
 import { clsx } from 'clsx'
 
 const stagger = {
@@ -144,6 +146,8 @@ export default function DashboardOverview() {
       initial="hidden" 
       animate="visible"
     >
+      <MarqueeTicker />
+
       {/* --- COMMAND HUB PANEL --- */}
       <motion.div 
         variants={fadeUp} 

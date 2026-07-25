@@ -4,6 +4,20 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-33.333%); }
+}
+
+.marquee-track {
+  animation: marquee 25s linear infinite;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+
 @layer base {
   :root {
     /* Base Colors */
