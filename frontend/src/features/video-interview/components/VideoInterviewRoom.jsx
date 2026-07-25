@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trophy, RotateCcw, ArrowLeft, CheckCircle, Star, MessageSquare } from 'lucide-react'
+import { Trophy, MessageSquare, FileText, Subtitles, Volume2, VolumeX, Mic, MicOff, Camera, CameraOff, PhoneOff, Sidebar } from 'lucide-react'
 
 import HRAvatar from './HRAvatar'
 import CandidateWebcam from './CandidateWebcam'
 import InterviewTranscript from './InterviewTranscript'
-import InterviewControls from './InterviewControls'
 import InterviewAnalytics from './InterviewAnalytics'
 import InterviewHUD from './InterviewHUD'
 
@@ -30,109 +29,8 @@ function countWords(text) {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
 
-const styles = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-    width: '100%',
-    background: 'linear-gradient(135deg, #0a0e1a 0%, #0f172a 50%, #0a0e1a 100%)',
-    borderRadius: '16px',
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  mainArea: {
-    display: 'flex',
-    flex: 1,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  avatarSection: {
-    flex: '0 0 70%',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  analyticsSection: {
-    flex: '0 0 30%',
-    background: 'rgba(15,23,42,0.6)',
-    borderLeft: '1px solid rgba(255,255,255,0.06)',
-    overflow: 'hidden',
-  },
-  bottomSection: {
-    borderTop: '1px solid rgba(255,255,255,0.06)',
-    background: 'rgba(15,23,42,0.8)',
-    backdropFilter: 'blur(12px)',
-  },
-  resultsContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    padding: '40px',
-    textAlign: 'center',
-    background: 'linear-gradient(135deg, #0a0e1a 0%, #0f172a 50%, #0a0e1a 100%)',
-    borderRadius: '16px',
-    overflow: 'auto',
-  },
-  resultsTitle: {
-    fontSize: '28px',
-    fontWeight: '800',
-    color: '#e2e8f0',
-    marginBottom: '8px',
-  },
-  resultsSubtitle: {
-    fontSize: '14px',
-    color: '#94a3b8',
-    marginBottom: '32px',
-  },
-  qaList: {
-    width: '100%',
-    maxWidth: '700px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
-    marginBottom: '32px',
-    textAlign: 'left',
-  },
-  qaCard: {
-    background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '12px',
-    padding: '16px',
-  },
-  qaQuestion: {
-    fontSize: '13px',
-    fontWeight: '600',
-    color: '#8B5CF6',
-    marginBottom: '8px',
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '8px',
-  },
-  qaAnswer: {
-    fontSize: '13px',
-    color: '#cbd5e1',
-    lineHeight: '1.5',
-    paddingLeft: '24px',
-  },
-  qaCategory: {
-    display: 'inline-block',
-    fontSize: '10px',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    padding: '2px 8px',
-    borderRadius: '4px',
-    background: 'rgba(139,92,246,0.15)',
-    color: '#A78BFA',
-    marginLeft: 'auto',
-    flexShrink: 0,
-  },
-}
-
 export default function VideoInterviewRoom({
-  persona = 'sarah',
+  persona = 'nagma_hr',
   difficulty = 'Medium',
   numQuestions = 5,
   onExit = () => {},
@@ -153,7 +51,6 @@ export default function VideoInterviewRoom({
     submitAnswer,
     onSpeakComplete,
     endInterview,
-    resetSession,
   } = session
 
   const tts = useTextToSpeech()
@@ -162,19 +59,19 @@ export default function VideoInterviewRoom({
   const [isCameraOn, setIsCameraOn] = useState(true)
   const [isMicOn, setIsMicOn] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
+  const [showSubtitles, setShowSubtitles] = useState(true)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [messages, setMessages] = useState([])
   const [totalCandidateWords, setTotalCandidateWords] = useState(0)
   const [totalFillerWords, setTotalFillerWords] = useState(0)
   const [speakingStartTime, setSpeakingStartTime] = useState(null)
   
-  // Pressure timer state (60s countdown)
   const [pressureTimerSeconds, setPressureTimerSeconds] = useState(60)
-  
+
   const containerRef = useRef(null)
   const hasStartedRef = useRef(false)
   const hasStartedSpeakingRef = useRef(false)
 
-  // Start session on mount
   useEffect(() => {
     if (!hasStartedRef.current) {
       hasStartedRef.current = true
@@ -182,10 +79,10 @@ export default function VideoInterviewRoom({
     }
   }, [startInterview])
 
-  // Handle Question Arrival & Speech Trigger
+  // Handle Question Arrival & Video Speech Trigger
   useEffect(() => {
     if (phase === SESSION_PHASES.ASKING && currentQuestion?.question) {
-      hasStartedSpeakingRef.current = false;
+      hasStartedSpeakingRef.current = false
       setPressureTimerSeconds(60)
 
       setMessages(prev => [
@@ -206,14 +103,13 @@ export default function VideoInterviewRoom({
     }
   }, [phase, currentQuestion])
 
-  // Track when TTS actually starts speaking
   useEffect(() => {
     if (tts.isSpeaking) {
       hasStartedSpeakingRef.current = true
     }
   }, [tts.isSpeaking])
 
-  // Transition from SPEAKING -> LISTENING ONLY after TTS has started AND completed
+  // Stage 2: When video audio finishes speaking, HR seamlessly pauses and listens for response
   useEffect(() => {
     if (hasStartedSpeakingRef.current && !tts.isSpeaking && avatarState === AVATAR_STATES.SPEAKING && phase === SESSION_PHASES.ASKING) {
       hasStartedSpeakingRef.current = false
@@ -221,7 +117,7 @@ export default function VideoInterviewRoom({
     }
   }, [tts.isSpeaking, avatarState, phase, onSpeakComplete])
 
-  // Auto-start microphone when LISTENING phase begins
+  // Auto-start Candidate Mic in Stage 2
   useEffect(() => {
     if (avatarState === AVATAR_STATES.LISTENING && stt.isSupported && !isMicOn) {
       setIsMicOn(true)
@@ -230,7 +126,7 @@ export default function VideoInterviewRoom({
     }
   }, [avatarState])
 
-  // 60-Second Pressure Countdown Timer (Pressure Mode Only)
+  // 60s Pressure Timer (Bar-Raiser Modes Only)
   useEffect(() => {
     let interval = null
     if (isPressureMode && avatarState === AVATAR_STATES.LISTENING) {
@@ -250,7 +146,7 @@ export default function VideoInterviewRoom({
     }
   }, [avatarState, isPressureMode, stt.transcript])
 
-  // Handle answer submission
+  // Handle Answer Submission & Gemini AI Evaluation
   const handleSubmitAnswer = useCallback((text) => {
     const answerText = text || stt.transcript || ''
     
@@ -303,34 +199,21 @@ export default function VideoInterviewRoom({
 
   if (phase === SESSION_PHASES.COMPLETE) {
     return (
-      <motion.div style={styles.resultsContainer} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <Trophy style={{ width: '56px', height: '56px', color: '#8B5CF6', marginBottom: '16px' }} />
-        <h2 style={styles.resultsTitle}>Interview Complete!</h2>
-        <p style={styles.resultsSubtitle}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '40px', background: '#090d16', color: '#f8fafc' }}>
+        <Trophy style={{ width: '64px', height: '64px', color: '#10b981', marginBottom: '16px' }} />
+        <h2 style={{ fontSize: '28px', fontWeight: '800', marginBottom: '8px' }}>Interview Complete!</h2>
+        <p style={{ color: '#94a3b8', marginBottom: '32px' }}>
           You answered {qaHistory.length} questions in {Math.floor(elapsedTime / 60)}m {elapsedTime % 60}s
         </p>
-
-        <div style={styles.qaList}>
-          {qaHistory.map((qa, idx) => (
-            <div key={idx} style={styles.qaCard}>
-              <div style={styles.qaQuestion}>
-                <MessageSquare style={{ width: '14px', height: '14px' }} />
-                <span>Q{idx + 1}: {qa.question}</span>
-              </div>
-              <div style={styles.qaAnswer}>{qa.answer || '(No answer recorded)'}</div>
-            </div>
-          ))}
-        </div>
-
-        <button onClick={onExit} style={{ padding: '12px 24px', borderRadius: '12px', background: '#8B5CF6', color: '#fff', fontWeight: 'bold' }}>
+        <button onClick={onExit} style={{ padding: '14px 28px', borderRadius: '12px', background: '#10b981', color: '#fff', fontWeight: '800', border: 'none', cursor: 'pointer' }}>
           Back to Dashboard
         </button>
-      </motion.div>
+      </div>
     )
   }
 
   return (
-    <div ref={containerRef} style={styles.container}>
+    <div ref={containerRef} style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: '#090d16', position: 'relative', overflow: 'hidden' }}>
       <InterviewHUD
         persona={persona}
         difficulty={difficulty}
@@ -342,45 +225,114 @@ export default function VideoInterviewRoom({
         onEndInterview={handleEndInterview}
       />
 
-      <div style={styles.mainArea}>
-        <div style={styles.avatarSection}>
-          <HRAvatar
-            persona={persona}
-            state={avatarState}
-            amplitude={tts.amplitude}
-            speechText={currentQuestion?.question}
-            questionCategory={currentQuestion?.category}
-            isPressureMode={isPressureMode}
-          />
+      {/* Main Full-Screen 16:9 HD Video Stage Area */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        <HRAvatar
+          persona={persona}
+          state={avatarState}
+          amplitude={tts.amplitude}
+          speechText={currentQuestion?.question}
+          questionCategory={currentQuestion?.category}
+          isPressureMode={isPressureMode}
+          showSubtitles={showSubtitles}
+          onVideoEnd={() => {
+            if (avatarState === AVATAR_STATES.SPEAKING) {
+              onSpeakComplete()
+            }
+          }}
+        />
 
-          <CandidateWebcam enabled={isCameraOn} onToggle={() => setIsCameraOn(p => !p)} />
-        </div>
+        {/* Candidate PIP Video Box (Top-Right) */}
+        <CandidateWebcam enabled={isCameraOn} isSpeaking={isMicOn && !!stt.transcript} onToggle={() => setIsCameraOn(p => !p)} />
 
-        <div style={styles.analyticsSection}>
-          <InterviewAnalytics
-            avatarState={avatarState}
-            isMicActive={isMicOn}
-            currentCategory={currentQuestion?.category}
-            currentDifficulty={difficulty}
-            totalWords={totalCandidateWords}
-            totalFillers={totalFillerWords}
-          />
-        </div>
+        {/* Slide-Out Transcript Side Drawer */}
+        <AnimatePresence>
+          {isDrawerOpen && (
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: '360px',
+                background: 'rgba(15, 23, 42, 0.95)',
+                borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(20px)',
+                zIndex: 60,
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <InterviewTranscript messages={messages} isAsking={phase === SESSION_PHASES.ASKING} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      <div style={styles.bottomSection}>
-        <InterviewTranscript messages={messages} isAsking={phase === SESSION_PHASES.ASKING} />
-        <InterviewControls
-          isMicOn={isMicOn}
-          isCameraOn={isCameraOn}
-          isMuted={isMuted}
-          state={avatarState}
-          transcriptText={stt.transcript}
-          onToggleMic={handleToggleMic}
-          onToggleCamera={() => setIsCameraOn(p => !p)}
-          onToggleMute={() => setIsMuted(p => !p)}
-          onSubmitAnswer={handleSubmitAnswer}
-        />
+      {/* Floating Google Meet / Zoom Style Glass Toolbar (Bottom Center) */}
+      <div style={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 70, display: 'flex', alignItems: 'center', gap: 14, padding: '10px 20px', borderRadius: 30, background: 'rgba(15, 23, 42, 0.88)', border: '1px solid rgba(255, 255, 255, 0.12)', backdropFilter: 'blur(16px)', boxShadow: '0 12px 36px rgba(0,0,0,0.6)' }}>
+        {/* Toggle Mic */}
+        <button
+          onClick={handleToggleMic}
+          disabled={avatarState === AVATAR_STATES.SPEAKING}
+          style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: isMicOn ? '#10b981' : 'rgba(239, 68, 68, 0.2)', color: isMicOn ? '#fff' : '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+        >
+          {isMicOn ? <Mic style={{ width: 20, height: 20 }} /> : <MicOff style={{ width: 20, height: 20 }} />}
+        </button>
+
+        {/* Toggle Camera */}
+        <button
+          onClick={() => setIsCameraOn(p => !p)}
+          style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: isCameraOn ? 'rgba(255,255,255,0.1)' : 'rgba(239, 68, 68, 0.2)', color: isCameraOn ? '#f8fafc' : '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+        >
+          {isCameraOn ? <Camera style={{ width: 20, height: 20 }} /> : <CameraOff style={{ width: 20, height: 20 }} />}
+        </button>
+
+        {/* Toggle Mute HR Audio */}
+        <button
+          onClick={() => setIsMuted(p => !p)}
+          style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: isMuted ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.1)', color: isMuted ? '#fbbf24' : '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+        >
+          {isMuted ? <VolumeX style={{ width: 20, height: 20 }} /> : <Volume2 style={{ width: 20, height: 20 }} />}
+        </button>
+
+        {/* Toggle CC Subtitles */}
+        <button
+          onClick={() => setShowSubtitles(p => !p)}
+          style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: showSubtitles ? 'rgba(139,92,246,0.25)' : 'rgba(255,255,255,0.1)', color: showSubtitles ? '#a78bfa' : '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+        >
+          <Subtitles style={{ width: 20, height: 20 }} />
+        </button>
+
+        {/* Toggle Transcript Side Drawer */}
+        <button
+          onClick={() => setIsDrawerOpen(p => !p)}
+          style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: isDrawerOpen ? 'rgba(59,130,246,0.25)' : 'rgba(255,255,255,0.1)', color: isDrawerOpen ? '#60a5fa' : '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+        >
+          <Sidebar style={{ width: 20, height: 20 }} />
+        </button>
+
+        {/* Submit Answer Action (When Candidate is Speaking) */}
+        {avatarState === AVATAR_STATES.LISTENING && (
+          <button
+            onClick={() => handleSubmitAnswer(stt.transcript)}
+            style={{ padding: '10px 20px', borderRadius: 20, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff', border: 'none', fontWeight: 800, fontSize: 13, cursor: 'pointer', boxShadow: '0 4px 16px rgba(16,185,129,0.4)' }}
+          >
+            Submit Answer
+          </button>
+        )}
+
+        {/* End Call Button */}
+        <button
+          onClick={handleEndInterview}
+          style={{ width: 44, height: 44, borderRadius: '50%', border: 'none', background: '#ef4444', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 16px rgba(239,68,68,0.4)' }}
+        >
+          <PhoneOff style={{ width: 20, height: 20 }} />
+        </button>
       </div>
     </div>
   )

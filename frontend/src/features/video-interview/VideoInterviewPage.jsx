@@ -1,21 +1,3 @@
-/**
- * VideoInterviewPage.jsx
- * 
- * Entry point for the Video Interview feature.
- * Renders inside the Dashboard layout at route /dashboard/video-interview.
- * 
- * IMPORTANT: This is a PRESENTATION LAYER. It does not change how questions
- * are generated, how answers are evaluated, how sessions are stored, or how
- * interview history works. The Video Interview page only consumes the
- * existing interview APIs and state.
- * 
- * Flow:
- *   1. No Resume Guard → if no resumeData, prompt user to upload
- *   2. Interview Setup → select interviewer, configure difficulty
- *   3. Interview Room → delegates to VideoInterviewRoom
- * 
- * @module VideoInterviewPage
- */
 import React, { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -37,8 +19,19 @@ import {
 import { useApp } from '../../context/AppContext'
 import VideoInterviewRoom from './components/VideoInterviewRoom'
 
-// ─── Persona Data ────────────────────────────────────────────
 const PERSONAS = {
+  nagma_hr: {
+    id: 'nagma_hr',
+    name: 'Nagma HR',
+    title: 'Senior Talent Acquisition Partner',
+    company: 'TalentForge AI',
+    photo: '/interviewers/sarah_chen.png',
+    focus: 'Specializes in background walkthroughs, soft skills, core career motivations, and supportive behavioral guidance.',
+    accentColor: '#10B981',
+    accentBg: 'rgba(16,185,129,0.15)',
+    skills: ['HR Introduction', 'Career Goals', 'Behavioral', 'Soft Skills'],
+    badge: 'Friendly & Supportive'
+  },
   sarah: {
     id: 'sarah',
     name: 'Sarah Chen',
@@ -49,6 +42,7 @@ const PERSONAS = {
     accentColor: '#8B5CF6',
     accentBg: 'rgba(139,92,246,0.15)',
     skills: ['Behavioral', 'Leadership', 'Culture Fit', 'Soft Skills'],
+    badge: 'Standard HR'
   },
   marcus: {
     id: 'marcus',
@@ -60,6 +54,7 @@ const PERSONAS = {
     accentColor: '#06B6D4',
     accentBg: 'rgba(6,182,212,0.15)',
     skills: ['Technical', 'System Design', 'Debugging', 'Architecture'],
+    badge: 'Bar-Raiser Technical'
   },
 }
 
@@ -69,7 +64,6 @@ const DIFFICULTIES = [
   { value: 'Hard', color: '#ef4444', label: 'Hard', desc: 'Senior-level depth' },
 ]
 
-// ─── Shared Styles ───────────────────────────────────────────
 const glassCard = {
   background: 'rgba(15,23,42,0.7)',
   backdropFilter: 'blur(12px)',
@@ -87,7 +81,6 @@ const pageContainer = {
   overflowY: 'auto',
 }
 
-// ─── No Resume Guard Screen ─────────────────────────────────
 function NoResumeScreen() {
   const navigate = useNavigate()
 
@@ -114,474 +107,180 @@ function NoResumeScreen() {
         animate={{ scale: 1 }}
         transition={{ delay: 0.2 }}
       >
-        {/* Icon */}
         <div style={{
           width: '72px',
           height: '72px',
-          borderRadius: '50%',
-          background: 'rgba(139,92,246,0.1)',
-          border: '1px solid rgba(139,92,246,0.2)',
+          borderRadius: '20px',
+          background: 'linear-gradient(135deg, rgba(139,92,246,0.2) 0%, rgba(59,130,246,0.2) 100%)',
+          border: '1px solid rgba(139,92,246,0.3)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          margin: '0 auto 24px',
+          margin: '0 auto 24px auto',
         }}>
-          <FileText style={{ width: '32px', height: '32px', color: '#8B5CF6' }} />
+          <FileText style={{ width: '36px', height: '36px', color: '#a78bfa' }} />
         </div>
 
-        <h2 style={{
-          fontSize: '22px',
-          fontWeight: '700',
-          color: '#e2e8f0',
-          marginBottom: '12px',
-        }}>
+        <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#f8fafc', marginBottom: '12px' }}>
           Resume Required
         </h2>
-
-        <p style={{
-          fontSize: '14px',
-          color: '#94a3b8',
-          lineHeight: '1.6',
-          marginBottom: '32px',
-        }}>
-          To conduct a personalized AI interview, we need your resume data. 
-          Please upload and analyze your resume first in the Resume Analysis module.
+        <p style={{ fontSize: '14px', color: '#94a3b8', lineHeight: '1.6', marginBottom: '32px' }}>
+          To generate personalized, context-aware interview questions with our AI avatars, please upload your resume first.
         </p>
 
-        <motion.button
+        <button
           onClick={() => navigate('/dashboard/resume')}
           style={{
+            width: '100%',
+            padding: '14px 24px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+            color: '#ffffff',
+            fontWeight: '700',
+            fontSize: '15px',
+            border: 'none',
+            cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px',
-            width: '100%',
-            padding: '14px 24px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #7C3AED, #8B5CF6)',
-            color: '#fff',
-            fontSize: '15px',
-            fontWeight: '600',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
+            boxShadow: '0 8px 24px rgba(139,92,246,0.3)',
           }}
-          whileHover={{ scale: 1.02, boxShadow: '0 0 24px rgba(139,92,246,0.3)' }}
-          whileTap={{ scale: 0.98 }}
         >
-          Go to Resume Analysis
-          <ArrowRight style={{ width: '16px', height: '16px' }} />
-        </motion.button>
+          <span>Upload Resume Now</span>
+          <ArrowRight style={{ width: '18px', height: '18px' }} />
+        </button>
       </motion.div>
     </motion.div>
   )
 }
 
-// ─── Interviewer Card ────────────────────────────────────────
-function InterviewerCard({ persona, isSelected, onSelect }) {
-  const data = PERSONAS[persona]
-  
-  return (
-    <motion.button
-      onClick={() => onSelect(persona)}
-      style={{
-        ...glassCard,
-        padding: '24px',
-        cursor: 'pointer',
-        position: 'relative',
-        overflow: 'hidden',
-        textAlign: 'left',
-        width: '100%',
-        border: isSelected
-          ? `2px solid ${data.accentColor}`
-          : '1px solid rgba(255,255,255,0.08)',
-        boxShadow: isSelected
-          ? `0 0 30px ${data.accentColor}22, inset 0 0 30px ${data.accentColor}08`
-          : 'none',
-        transition: 'all 0.3s ease',
-      }}
-      whileHover={{ scale: 1.01, y: -2 }}
-      whileTap={{ scale: 0.99 }}
-    >
-      {/* Selected badge */}
-      {isSelected && (
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          style={{
-            position: 'absolute',
-            top: '12px',
-            right: '12px',
-            width: '28px',
-            height: '28px',
-            borderRadius: '50%',
-            background: data.accentColor,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <CheckCircle style={{ width: '16px', height: '16px', color: '#fff' }} />
-        </motion.div>
-      )}
-
-      {/* Avatar + Info */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-        <div style={{
-          width: '64px',
-          height: '64px',
-          borderRadius: '50%',
-          overflow: 'hidden',
-          border: `2px solid ${isSelected ? data.accentColor : 'rgba(255,255,255,0.1)'}`,
-          flexShrink: 0,
-        }}>
-          <img
-            src={data.photo}
-            alt={data.name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        </div>
-        <div>
-          <h3 style={{ fontSize: '17px', fontWeight: '700', color: '#e2e8f0', marginBottom: '2px' }}>
-            {data.name}
-          </h3>
-          <p style={{ fontSize: '12px', fontWeight: '600', color: data.accentColor, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            {data.title}
-          </p>
-          <p style={{ fontSize: '11px', color: '#64748b' }}>{data.company}</p>
-        </div>
-      </div>
-
-      {/* Description */}
-      <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.5', marginBottom: '12px' }}>
-        {data.focus}
-      </p>
-
-      {/* Skills tags */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-        {data.skills.map(skill => (
-          <span
-            key={skill}
-            style={{
-              fontSize: '10px',
-              fontWeight: '600',
-              padding: '3px 8px',
-              borderRadius: '6px',
-              background: data.accentBg,
-              color: data.accentColor,
-            }}
-          >
-            {skill}
-          </span>
-        ))}
-      </div>
-
-      {/* CTA */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '8px',
-        marginTop: '16px',
-        padding: '10px',
-        borderRadius: '10px',
-        background: isSelected
-          ? `linear-gradient(135deg, ${data.accentColor}dd, ${data.accentColor})`
-          : 'rgba(255,255,255,0.04)',
-        color: isSelected ? '#fff' : '#94a3b8',
-        fontSize: '13px',
-        fontWeight: '600',
-        transition: 'all 0.3s',
-      }}>
-        {isSelected ? 'Selected' : 'Select & Start Interview'}
-        <ChevronRight style={{ width: '14px', height: '14px' }} />
-      </div>
-    </motion.button>
-  )
-}
-
-// ─── Interview Setup Screen ──────────────────────────────────
-function InterviewSetup({ resumeData, candidateName, onStart }) {
-  const [selectedPersona, setSelectedPersona] = useState('sarah')
+export default function VideoInterviewPage() {
+  const { resumeData } = useApp()
+  const [selectedPersona, setSelectedPersona] = useState('nagma_hr')
   const [selectedDifficulty, setSelectedDifficulty] = useState('Medium')
   const [numQuestions, setNumQuestions] = useState(5)
-
-  const resumeScore = resumeData?.coach_report?.current_score
-    || resumeData?.resume_score?.total
-    || resumeData?.score
-    || null
+  const [isInRoom, setIsInRoom] = useState(false)
 
   const handleStart = useCallback(() => {
-    onStart({
-      persona: selectedPersona,
-      difficulty: selectedDifficulty,
-      numQuestions,
-    })
-  }, [selectedPersona, selectedDifficulty, numQuestions, onStart])
-
-  return (
-    <motion.div
-      style={pageContainer}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
-    >
-      {/* Page Header */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-          <Sparkles style={{ width: '24px', height: '24px', color: '#8B5CF6' }} />
-          <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#e2e8f0' }}>
-            AI Video Interview Room
-          </h1>
-        </div>
-        <p style={{ fontSize: '14px', color: '#94a3b8', marginLeft: '36px' }}>
-          Conduct a dynamic voice-driven mock interview with our interactive virtual recruiters.
-        </p>
-      </div>
-
-      {/* Main Grid: Interviewers + Config */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 320px', gap: '20px', flex: 1 }}>
-        {/* Interviewer Cards */}
-        {Object.keys(PERSONAS).map(key => (
-          <InterviewerCard
-            key={key}
-            persona={key}
-            isSelected={selectedPersona === key}
-            onSelect={setSelectedPersona}
-          />
-        ))}
-
-        {/* Configuration Panel */}
-        <div style={{ ...glassCard, padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Target style={{ width: '16px', height: '16px', color: '#8B5CF6' }} />
-            Interview Configuration
-          </h3>
-
-          {/* Interview Type */}
-          <div>
-            <label style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px', display: 'block' }}>
-              Interview Type
-            </label>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              background: 'rgba(139,92,246,0.1)',
-              border: '1px solid rgba(139,92,246,0.2)',
-            }}>
-              <Video style={{ width: '14px', height: '14px', color: '#8B5CF6' }} />
-              <span style={{ fontSize: '13px', fontWeight: '600', color: '#A78BFA' }}>Video Interview</span>
-            </div>
-          </div>
-
-          {/* Difficulty */}
-          <div>
-            <label style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px', display: 'block' }}>
-              Difficulty
-            </label>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {DIFFICULTIES.map(d => (
-                <motion.button
-                  key={d.value}
-                  onClick={() => setSelectedDifficulty(d.value)}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    border: selectedDifficulty === d.value
-                      ? `1px solid ${d.color}`
-                      : '1px solid rgba(255,255,255,0.06)',
-                    background: selectedDifficulty === d.value
-                      ? `${d.color}18`
-                      : 'rgba(255,255,255,0.03)',
-                    color: selectedDifficulty === d.value ? d.color : '#94a3b8',
-                    transition: 'all 0.2s',
-                  }}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  {d.label}
-                </motion.button>
-              ))}
-            </div>
-          </div>
-
-          {/* Number of Questions */}
-          <div>
-            <label style={{ fontSize: '11px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px', display: 'block' }}>
-              Questions
-            </label>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {[3, 5, 7, 10].map(n => (
-                <motion.button
-                  key={n}
-                  onClick={() => setNumQuestions(n)}
-                  style={{
-                    flex: 1,
-                    padding: '8px',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    border: numQuestions === n
-                      ? '1px solid #8B5CF6'
-                      : '1px solid rgba(255,255,255,0.06)',
-                    background: numQuestions === n
-                      ? 'rgba(139,92,246,0.15)'
-                      : 'rgba(255,255,255,0.03)',
-                    color: numQuestions === n ? '#A78BFA' : '#94a3b8',
-                    transition: 'all 0.2s',
-                  }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {n}
-                </motion.button>
-              ))}
-            </div>
-          </div>
-
-          {/* Duration Estimate */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)' }}>
-            <Clock style={{ width: '14px', height: '14px', color: '#64748b' }} />
-            <span style={{ fontSize: '12px', color: '#94a3b8' }}>Est. Duration:</span>
-            <span style={{ fontSize: '12px', fontWeight: '600', color: '#e2e8f0' }}>
-              {numQuestions * 3} min
-            </span>
-          </div>
-
-          {/* Language */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)' }}>
-            <Globe style={{ width: '14px', height: '14px', color: '#64748b' }} />
-            <span style={{ fontSize: '12px', color: '#94a3b8' }}>Language:</span>
-            <span style={{ fontSize: '12px', fontWeight: '600', color: '#e2e8f0' }}>English</span>
-          </div>
-
-          {/* Resume Status */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 12px',
-            borderRadius: '8px',
-            background: 'rgba(34,197,94,0.08)',
-            border: '1px solid rgba(34,197,94,0.15)',
-          }}>
-            <CheckCircle style={{ width: '16px', height: '16px', color: '#22c55e' }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '12px', fontWeight: '600', color: '#22c55e' }}>Resume Analyzed</div>
-              <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                {candidateName || 'Candidate'}
-                {resumeScore ? ` • Score: ${resumeScore}/100` : ''}
-              </div>
-            </div>
-          </div>
-
-          {/* Spacer */}
-          <div style={{ flex: 1 }} />
-
-          {/* Start Button */}
-          <motion.button
-            onClick={handleStart}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
-              width: '100%',
-              padding: '14px',
-              borderRadius: '12px',
-              background: `linear-gradient(135deg, ${PERSONAS[selectedPersona].accentColor}dd, ${PERSONAS[selectedPersona].accentColor})`,
-              color: '#fff',
-              fontSize: '15px',
-              fontWeight: '700',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: `0 4px 20px ${PERSONAS[selectedPersona].accentColor}33`,
-              transition: 'all 0.2s',
-            }}
-            whileHover={{ scale: 1.02, boxShadow: `0 6px 30px ${PERSONAS[selectedPersona].accentColor}44` }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Zap style={{ width: '18px', height: '18px' }} />
-            Start Interview
-            <ArrowRight style={{ width: '16px', height: '16px' }} />
-          </motion.button>
-        </div>
-      </div>
-    </motion.div>
-  )
-}
-
-// ─── Main Page Component ─────────────────────────────────────
-export default function VideoInterviewPage() {
-  const { resumeData, candidateName } = useApp()
-  
-  // Page state: 'setup' | 'room'
-  const [pageState, setPageState] = useState('setup')
-  const [interviewConfig, setInterviewConfig] = useState(null)
-
-  const handleStart = useCallback((config) => {
-    setInterviewConfig(config)
-    setPageState('room')
+    setIsInRoom(true)
   }, [])
 
-  const handleExit = useCallback(() => {
-    setPageState('setup')
-    setInterviewConfig(null)
+  const handleExitRoom = useCallback(() => {
+    setIsInRoom(false)
   }, [])
 
-  // ─── No Resume Guard ───────────────────────────────────
   if (!resumeData) {
     return <NoResumeScreen />
   }
 
-  // ─── Interview Room ────────────────────────────────────
-  if (pageState === 'room' && interviewConfig) {
+  if (isInRoom) {
     return (
-      <AnimatePresence mode="wait">
-        <motion.div
-          key="room"
-          style={{ height: '100%', width: '100%' }}
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.98 }}
-          transition={{ duration: 0.3 }}
-        >
-          <VideoInterviewRoom
-            persona={interviewConfig.persona}
-            difficulty={interviewConfig.difficulty}
-            numQuestions={interviewConfig.numQuestions}
-            onExit={handleExit}
-          />
-        </motion.div>
-      </AnimatePresence>
+      <VideoInterviewRoom
+        persona={selectedPersona}
+        difficulty={selectedDifficulty}
+        numQuestions={numQuestions}
+        onExit={handleExitRoom}
+      />
     )
   }
 
-  // ─── Interview Setup ───────────────────────────────────
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key="setup"
-        style={{ height: '100%', width: '100%' }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <InterviewSetup
-          resumeData={resumeData}
-          candidateName={candidateName}
-          onStart={handleStart}
-        />
+    <div style={pageContainer}>
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+        <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#f8fafc', margin: 0 }}>
+          1080p Real AI Video Interview Call Stage
+        </h1>
+        <p style={{ fontSize: '14px', color: '#94a3b8', marginTop: '4px', margin: 0 }}>
+          Experience a full-screen 16:9 Google Meet & Zoom style HD AI video interview call.
+        </p>
       </motion.div>
-    </AnimatePresence>
+
+      {/* Select Persona */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+        {Object.values(PERSONAS).map((persona) => {
+          const isSelected = selectedPersona === persona.id
+          return (
+            <motion.div
+              key={persona.id}
+              onClick={() => setSelectedPersona(persona.id)}
+              style={{
+                ...glassCard,
+                padding: '24px',
+                cursor: 'pointer',
+                border: isSelected ? `2px solid ${persona.accentColor}` : '1px solid rgba(255,255,255,0.08)',
+                boxShadow: isSelected ? `0 0 24px ${persona.accentColor}33` : 'none',
+                position: 'relative',
+              }}
+              whileHover={{ scale: 1.02 }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+                <img
+                  src={persona.photo}
+                  alt={persona.name}
+                  style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${persona.accentColor}` }}
+                />
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#f8fafc', margin: 0 }}>{persona.name}</h3>
+                  <div style={{ fontSize: '12px', color: persona.accentColor, fontWeight: '600', marginTop: '2px' }}>{persona.title}</div>
+                  <span style={{ fontSize: '10px', fontWeight: '800', padding: '2px 8px', borderRadius: '10px', background: persona.accentBg, color: persona.accentColor, display: 'inline-block', marginTop: '6px' }}>
+                    {persona.badge}
+                  </span>
+                </div>
+              </div>
+              <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.5', margin: 0 }}>{persona.focus}</p>
+            </motion.div>
+          )
+        })}
+      </div>
+
+      {/* Setup Options & Start */}
+      <div style={{ ...glassCard, padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px' }}>
+        <div>
+          <div style={{ fontSize: '14px', fontWeight: '700', color: '#f8fafc', marginBottom: '8px' }}>Difficulty Level</div>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {DIFFICULTIES.map((d) => (
+              <button
+                key={d.value}
+                onClick={() => setSelectedDifficulty(d.value)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '10px',
+                  border: selectedDifficulty === d.value ? `1.5px solid ${d.color}` : '1px solid rgba(255,255,255,0.08)',
+                  background: selectedDifficulty === d.value ? `${d.color}22` : 'rgba(255,255,255,0.03)',
+                  color: selectedDifficulty === d.value ? d.color : '#94a3b8',
+                  fontWeight: '700',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button
+          onClick={handleStart}
+          style={{
+            padding: '16px 36px',
+            borderRadius: '14px',
+            background: 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)',
+            color: '#ffffff',
+            fontWeight: '800',
+            fontSize: '16px',
+            border: 'none',
+            cursor: 'pointer',
+            boxShadow: '0 8px 24px rgba(16,185,129,0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+          }}
+        >
+          <Video style={{ width: '20px', height: '20px' }} />
+          <span>Launch 1080p Video Call Stage</span>
+        </button>
+      </div>
+    </div>
   )
 }
