@@ -469,23 +469,24 @@ export default function CommunicationCoachPage() {
               </div>
 
               {/* Input query */}
-              <div className="flex gap-2.5">
+              <div className="flex flex-col sm:flex-row gap-2.5 w-full">
                 <input
                   type="text"
                   value={mentorQuestion}
                   onChange={e => setMentorQuestion(e.target.value)}
                   placeholder="Ask about normalizations, SQL loops, system latency, or STAR scenarios..."
-                  className="input-base text-xs flex-1"
+                  className="w-full bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-white px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-medium"
                   onKeyDown={e => e.key === 'Enter' && handleAskMentor()}
                 />
                 <button
                   onClick={handleAskMentor}
                   disabled={mentorLoading}
-                  className="btn-primary text-xs shrink-0"
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md transition-all shrink-0 flex items-center justify-center"
                 >
                   {mentorLoading ? 'Querying...' : 'Ask Sarah'}
                 </button>
               </div>
+
 
               {/* Mentor response card */}
               {mentorAnswer && (

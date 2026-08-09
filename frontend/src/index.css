@@ -300,20 +300,37 @@
     @apply h-screen flex flex-col py-6 px-4 shrink-0 transition-all duration-300;
   }
 
+  /* Sidebar links */
+  .sidebar-link {
+    @apply flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 cursor-pointer;
+    color: #475569;
+  }
+
+  .dark .sidebar-link {
+    color: #cbd5e1;
+  }
+
+  .sidebar-link:hover {
+    @apply bg-indigo-50/80 text-indigo-700 dark:bg-white/10 dark:text-cyan-300;
+  }
+
+  .sidebar-link.active {
+    @apply bg-indigo-600 text-white font-bold shadow-md shadow-indigo-500/25 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border dark:border-cyan-500/40;
+  }
+
   .sidebar-item {
-    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-[#94a3b8] transition-colors duration-200 cursor-pointer font-medium mb-1;
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-slate-700 dark:text-slate-200 transition-colors duration-200 cursor-pointer font-semibold mb-1;
   }
 
   .sidebar-item:hover {
-    background-color: rgba(255, 255, 255, 0.03);
-    color: var(--color-text-primary);
+    @apply bg-indigo-50 text-indigo-700 dark:bg-white/10 dark:text-cyan-300;
   }
 
   .sidebar-item-active {
-    background-color: rgba(99, 102, 241, 0.1);
-    color: var(--color-primary-400);
+    @apply bg-indigo-600 text-white dark:bg-cyan-500/20 dark:text-cyan-300;
     position: relative;
   }
+
   
   .sidebar-item-active::before {
     content: '';
