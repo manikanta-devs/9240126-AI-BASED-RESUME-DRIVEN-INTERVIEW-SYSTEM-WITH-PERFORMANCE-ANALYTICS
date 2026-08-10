@@ -5,11 +5,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "http://18.61.78.226/api/:path*"
+      "destination": "https://mca-final-project.onrender.com/api/:path*"
     },
     {
       "source": "/health",
-      "destination": "http://18.61.78.226/health"
+      "destination": "https://mca-final-project.onrender.com/health"
     },
     {
       "source": "/(.*)",
@@ -17,3 +17,4 @@
     }
   ]
 }
+
