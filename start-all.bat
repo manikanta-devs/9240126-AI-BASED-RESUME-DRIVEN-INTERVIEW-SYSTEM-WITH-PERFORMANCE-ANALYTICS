@@ -1,5 +1,5 @@
 @echo off
-title TalentForge AI - Self-Healing College Launcher
+title TalentForge AI - Self-Healing Advanced Launcher
 echo.
 echo ============================================================
 echo   TalentForge AI v4.1 - Self-Healing 1-Click Launcher
@@ -10,11 +10,7 @@ echo.
 echo [1/4] Checking Python Virtual Environment (.venv)...
 IF NOT EXIST ".venv\Scripts\python.exe" (
     echo   [!] Virtual environment missing. Running automatic setup...
-    python -m venv .venv
-    call .venv\Scripts\activate.bat
-    pip install --upgrade pip -q
-    pip install -r backend\requirements.txt -q
-    python -m spacy download en_core_web_sm
+    call setup.bat
     echo   [OK] Python environment self-healed!
 ) ELSE (
     echo   [OK] Python environment verified.
@@ -38,8 +34,8 @@ echo.
 echo [3/4] Launching Backend Server on http://localhost:5000...
 start "TalentForge AI Backend (Port 5000)" cmd /k ".venv\Scripts\python.exe backend\app.py"
 
-:: Wait 4 seconds for backend to bind to port 5000
-timeout /t 4 /nobreak >nul
+:: Wait 3 seconds for backend to bind to port 5000
+timeout /t 3 /nobreak >nul
 
 :: 4. Launch Frontend Dev Server
 echo.
@@ -59,6 +55,7 @@ echo ============================================================
 echo   SUCCESS! TalentForge AI is running in Protected Mode.
 echo   - 100% Offline Zero-Key Fallback Enabled
 echo   - Automatic Failover Active across 6 AI Engines
+echo   - Interactive Control Center: start-advanced-control-center.bat
 echo   Press any key to close launcher window (servers remain active).
 echo ============================================================
 pause >nul
