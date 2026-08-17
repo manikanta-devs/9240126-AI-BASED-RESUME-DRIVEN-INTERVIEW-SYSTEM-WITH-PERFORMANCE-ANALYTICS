@@ -65,14 +65,15 @@ export default function Sidebar() {
 
             {!collapsed && badge && (
               <span className={clsx(
-                'px-1.5 py-0.5 text-[9px] font-bold rounded-full uppercase tracking-wider',
-                badge === '3D' && 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20',
-                badge === 'AI' && 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20',
-                badge === 'New' && 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
+                'px-1.5 py-0.5 text-[9px] font-extrabold rounded-full uppercase tracking-wider',
+                badge === '3D' && 'bg-purple-500/15 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/30',
+                badge === 'AI' && 'bg-cyan-500/15 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30',
+                badge === 'New' && 'bg-indigo-500/15 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30'
               )}>
                 {badge}
               </span>
             )}
+
           </NavLink>
         ))}
       </nav>

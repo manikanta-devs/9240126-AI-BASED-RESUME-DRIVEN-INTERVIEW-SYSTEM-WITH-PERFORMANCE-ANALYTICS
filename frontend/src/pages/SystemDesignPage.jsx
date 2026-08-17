@@ -59,16 +59,14 @@ export default function SystemDesignPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 p-2 text-slate-100">
-
-
+    <div className="max-w-7xl mx-auto space-y-6 p-2 text-slate-800 dark:text-slate-100 select-none">
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Problem Prompts Selector & Input */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
-            <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-              <Server className="w-4 h-4 text-cyan-400" /> Select Scenario
+          <div className="bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-md backdrop-blur-md">
+            <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
+              <Server className="w-4 h-4 text-cyan-600 dark:text-cyan-400" /> Select Scenario
             </h2>
 
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
@@ -80,19 +78,19 @@ export default function SystemDesignPage() {
                     onClick={() => { setSelectedPrompt(p); setResult(null); }}
                     className={`w-full text-left p-3.5 rounded-xl border transition-all text-xs ${
                       active
-                        ? 'bg-cyan-950/40 border-cyan-500 text-white ring-1 ring-cyan-500/50'
-                        : 'bg-slate-800/40 border-slate-800 text-slate-300 hover:border-slate-700'
+                        ? 'bg-cyan-500/10 dark:bg-cyan-950/40 border-cyan-500 text-slate-900 dark:text-white font-bold ring-1 ring-cyan-500/50 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-700'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold text-sm text-slate-100">{p.title}</span>
-                      <span className={`px-2 py-0.5 rounded font-semibold text-[10px] ${
-                        p.difficulty === 'Hard' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'
+                      <span className="font-bold text-sm text-slate-900 dark:text-slate-100">{p.title}</span>
+                      <span className={`px-2 py-0.5 rounded font-extrabold text-[10px] ${
+                        p.difficulty === 'Hard' ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300' : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
                       }`}>
                         {p.difficulty}
                       </span>
                     </div>
-                    <p className="text-slate-400 line-clamp-2 mt-1">{p.description}</p>
+                    <p className="text-slate-600 dark:text-slate-400 font-medium line-clamp-2 mt-1">{p.description}</p>
                   </button>
                 );
               })}
@@ -100,18 +98,18 @@ export default function SystemDesignPage() {
           </div>
 
           {selectedPrompt && (
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <div className="bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-md backdrop-blur-md">
               <div className="space-y-2">
-                <h3 className="text-lg font-bold text-cyan-300">{selectedPrompt.title}</h3>
-                <p className="text-xs text-slate-300">{selectedPrompt.description}</p>
+                <h3 className="text-lg font-bold text-cyan-600 dark:text-cyan-300">{selectedPrompt.title}</h3>
+                <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">{selectedPrompt.description}</p>
               </div>
 
               <div>
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Key Requirements</h4>
-                <ul className="space-y-1 text-xs text-slate-300">
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-2">Key Requirements</h4>
+                <ul className="space-y-1 text-xs text-slate-700 dark:text-slate-300 font-medium">
                   {selectedPrompt.key_requirements.map((req, i) => (
                     <li key={i} className="flex items-start gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0 mt-0.5" />
                       <span>{req}</span>
                     </li>
                   ))}
@@ -120,7 +118,7 @@ export default function SystemDesignPage() {
 
               <form onSubmit={handleEvaluate} className="space-y-4 pt-2">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Your Proposed Architectural Design & Trade-offs
                   </label>
                   <textarea
@@ -128,7 +126,7 @@ export default function SystemDesignPage() {
                     value={solution}
                     onChange={(e) => setSolution(e.target.value)}
                     placeholder="Describe your load balancing, database choice (SQL/NoSQL/Redis), sharding key, queueing mechanism (Kafka/SQS), and single points of failure mitigation..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-100 focus:ring-2 focus:ring-cyan-500 focus:outline-none placeholder:text-slate-600"
+                    className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl p-3 text-xs text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-cyan-500 focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-600 shadow-inner"
                   />
                 </div>
 
@@ -155,34 +153,34 @@ export default function SystemDesignPage() {
         {/* Right Column: Evaluation Results */}
         <div className="lg:col-span-7 space-y-6">
           {result ? (
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-6">
+            <div className="bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6 shadow-xl backdrop-blur-md">
               {/* Score Badges */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-cyan-950/40 border border-cyan-500/30 rounded-xl p-3 text-center">
-                  <div className="text-xs font-medium text-cyan-400">Architecture</div>
-                  <div className="text-2xl font-black text-cyan-200 mt-1">{result.architecture_score}%</div>
+                <div className="bg-cyan-500/10 dark:bg-cyan-950/40 border border-cyan-500/30 rounded-xl p-3 text-center">
+                  <div className="text-xs font-bold text-cyan-700 dark:text-cyan-400">Architecture</div>
+                  <div className="text-2xl font-black text-cyan-800 dark:text-cyan-200 mt-1">{result.architecture_score}%</div>
                 </div>
-                <div className="bg-teal-950/40 border border-teal-500/30 rounded-xl p-3 text-center">
-                  <div className="text-xs font-medium text-teal-400">Scalability</div>
-                  <div className="text-2xl font-black text-teal-200 mt-1">{result.scalability_score}%</div>
+                <div className="bg-teal-500/10 dark:bg-teal-950/40 border border-teal-500/30 rounded-xl p-3 text-center">
+                  <div className="text-xs font-bold text-teal-700 dark:text-teal-400">Scalability</div>
+                  <div className="text-2xl font-black text-teal-800 dark:text-teal-200 mt-1">{result.scalability_score}%</div>
                 </div>
-                <div className="bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-3 text-center">
-                  <div className="text-xs font-medium text-indigo-400">Reliability</div>
-                  <div className="text-2xl font-black text-indigo-200 mt-1">{result.reliability_score}%</div>
+                <div className="bg-indigo-500/10 dark:bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-3 text-center">
+                  <div className="text-xs font-bold text-indigo-700 dark:text-indigo-400">Reliability</div>
+                  <div className="text-2xl font-black text-indigo-800 dark:text-indigo-200 mt-1">{result.reliability_score}%</div>
                 </div>
-                <div className="bg-purple-950/40 border border-purple-500/30 rounded-xl p-3 text-center">
-                  <div className="text-xs font-medium text-purple-400">Overall</div>
-                  <div className="text-2xl font-black text-purple-200 mt-1">{result.overall_design_score}%</div>
+                <div className="bg-purple-500/10 dark:bg-purple-950/40 border border-purple-500/30 rounded-xl p-3 text-center">
+                  <div className="text-xs font-bold text-purple-700 dark:text-purple-400">Overall</div>
+                  <div className="text-2xl font-black text-purple-800 dark:text-purple-200 mt-1">{result.overall_design_score}%</div>
                 </div>
               </div>
 
               {/* SPOFs Alert */}
               {result.single_points_of_failure?.length > 0 && (
                 <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 space-y-2">
-                  <div className="flex items-center gap-2 text-rose-300 font-bold text-sm">
-                    <ShieldAlert className="w-4 h-4 text-rose-400" /> Single Points of Failure (SPOFs) Identified
+                  <div className="flex items-center gap-2 text-rose-700 dark:text-rose-300 font-bold text-sm">
+                    <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" /> Single Points of Failure (SPOFs) Identified
                   </div>
-                  <ul className="list-disc list-inside text-xs text-rose-200 space-y-1">
+                  <ul className="list-disc list-inside text-xs text-rose-800 dark:text-rose-200 font-medium space-y-1">
                     {result.single_points_of_failure.map((spof, idx) => (
                       <li key={idx}>{spof}</li>
                     ))}
@@ -192,20 +190,20 @@ export default function SystemDesignPage() {
 
               {/* Database & Trade-off Analysis */}
               <div className="space-y-3">
-                <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                  <Database className="w-4 h-4 text-cyan-400" /> Database & Trade-off Evaluation
+                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <Database className="w-4 h-4 text-cyan-600 dark:text-cyan-400" /> Database & Trade-off Evaluation
                 </h3>
-                <p className="text-xs text-slate-300 leading-relaxed bg-slate-950 p-3 rounded-xl border border-slate-800">
+                <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800">
                   {result.database_choice_analysis}
                 </p>
 
                 {result.tradeoff_analysis?.length > 0 && (
                   <div className="space-y-1.5 pt-2">
-                    <h4 className="text-xs font-semibold text-slate-400">Key Architectural Trade-offs</h4>
+                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-400">Key Architectural Trade-offs</h4>
                     <div className="space-y-1">
                       {result.tradeoff_analysis.map((t, idx) => (
-                        <div key={idx} className="text-xs text-slate-300 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
+                        <div key={idx} className="text-xs text-slate-700 dark:text-slate-300 font-medium flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0" />
                           <span>{t}</span>
                         </div>
                       ))}
@@ -217,19 +215,19 @@ export default function SystemDesignPage() {
               {/* Mermaid Diagram View */}
               {result.recommended_mermaid_diagram && (
                 <div className="space-y-2">
-                  <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                    <Code2 className="w-4 h-4 text-indigo-400" /> Target Architecture Flow (Mermaid JS)
+                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                    <Code2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Target Architecture Flow (Mermaid JS)
                   </h3>
-                  <pre className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs text-cyan-300 font-mono overflow-x-auto">
+                  <pre className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-xs text-cyan-300 font-mono overflow-x-auto select-text">
                     {result.recommended_mermaid_diagram}
                   </pre>
                 </div>
               )}
             </div>
           ) : (
-            <div className="bg-slate-900/40 border border-slate-800 border-dashed rounded-2xl p-12 text-center text-slate-500 space-y-3">
-              <Sparkles className="w-8 h-8 text-cyan-500 mx-auto opacity-50" />
-              <p className="text-sm font-medium text-slate-400">
+            <div className="bg-white/80 dark:bg-slate-900/40 border border-slate-300 dark:border-slate-800 border-dashed rounded-2xl p-12 text-center space-y-3 shadow-md backdrop-blur-sm">
+              <Sparkles className="w-8 h-8 text-cyan-600 dark:text-cyan-400 mx-auto" />
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-relaxed max-w-md mx-auto">
                 Select a System Design scenario, enter your architectural solution, and click Evaluate to see deep Staff-level feedback.
               </p>
             </div>
