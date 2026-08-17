@@ -200,16 +200,16 @@ export default function ResumePage() {
       <AdvancedToolPanel type="resume" />
 
       {/* --- CANDIDATE CREDENTIAL NODE --- */}
-      <div className="card p-5 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="card p-5 shadow-md dark:shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-650 to-indigo-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
             <User className="w-5 h-5 text-white" />
           </div>
           <div>
             <h3 className="text-sm font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
               Candidate Credential Node <span className="px-2 py-0.5 rounded-full bg-violet-500/10 border border-violet-500/20 text-[8px] font-mono text-violet-650 dark:text-violet-400 uppercase tracking-widest font-bold">Active</span>
             </h3>
-            <p className="text-[10px] text-slate-450 dark:text-gray-505 font-mono uppercase">LINK IDENTIFIER TO PERSONALIZED QUESTION DATASET</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono uppercase font-bold">LINK IDENTIFIER TO PERSONALIZED QUESTION DATASET</p>
           </div>
         </div>
         <div className="flex-1 max-w-sm">
@@ -218,14 +218,16 @@ export default function ResumePage() {
             placeholder="Enter candidate name..."
             value={candidateName}
             onChange={e => setCandidateName(e.target.value)}
-            className="w-full bg-black/5 dark:bg-slate-955/40 border border-black/5 dark:border-white/5 rounded-xl px-4 py-2.5 text-xs text-slate-800 dark:text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50 font-medium transition-colors"
+            className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-violet-500 font-semibold transition-colors shadow-inner"
             maxLength={50}
           />
         </div>
       </div>
 
+
       {/* --- THE SCANNER CHAMBER (UPLOAD & PASTE) --- */}
-      <div className="card p-6 shadow-2xl relative overflow-hidden">
+      <div className="card p-6 shadow-md dark:shadow-2xl relative overflow-hidden bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
+
         {/* Decorative Grid Lines */}
         <div className="absolute inset-0 bg-grid-pattern opacity-[0.02] pointer-events-none" />
         
@@ -323,8 +325,8 @@ export default function ResumePage() {
                 className={clsx(
                   'border border-dashed rounded-2xl p-10 text-center transition-all duration-300 cursor-pointer relative overflow-hidden min-h-[220px] flex flex-col items-center justify-center',
                   isDragActive
-                    ? 'border-cyan-500 bg-cyan-500/[0.02] shadow-[0_0_15px_rgba(6,182,212,0.05)]'
-                    : 'border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-slate-950/20 hover:border-violet-500/30 hover:bg-black/[0.04] dark:hover:bg-slate-950/40'
+                    ? 'border-cyan-500 bg-cyan-500/[0.05] shadow-[0_0_15px_rgba(6,182,212,0.1)]'
+                    : 'border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40 hover:border-violet-500/40 hover:bg-slate-100 dark:hover:bg-slate-950/60'
                 )}
               >
                 <input {...getInputProps()} />
@@ -340,17 +342,18 @@ export default function ResumePage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="w-12 h-12 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex items-center justify-center mx-auto">
-                      <FileText className="w-5 h-5 text-slate-500 dark:text-gray-500" />
+                    <div className="w-12 h-12 rounded-2xl bg-slate-200/50 dark:bg-white/[0.02] border border-slate-300 dark:border-white/5 flex items-center justify-center mx-auto">
+                      <FileText className="w-5 h-5 text-slate-600 dark:text-gray-400" />
                     </div>
                     <div>
-                      <p className="text-xs font-black text-slate-700 dark:text-gray-300">
+                      <p className="text-xs font-black text-slate-900 dark:text-slate-100">
                         {isDragActive ? 'Release to upload...' : 'Drag & drop your resume file'}
                       </p>
-                      <p className="text-[10px] text-slate-450 dark:text-gray-500 mt-1">or click to browse local directory</p>
+                      <p className="text-[10px] text-slate-600 dark:text-slate-400 font-semibold mt-1">or click to browse local directory</p>
                     </div>
                   </div>
                 )}
+
               </motion.div>
             ) : (
               <motion.div
@@ -360,12 +363,13 @@ export default function ResumePage() {
                 className="space-y-3"
               >
                 <textarea
-                  className="w-full bg-black/[0.02] dark:bg-slate-950/40 rounded-2xl border border-black/5 dark:border-white/5 text-xs text-slate-800 dark:text-white placeholder-gray-500 p-4 resize-none h-36 focus:outline-none focus:border-violet-500/50 leading-relaxed"
+                  className="w-full bg-slate-100 dark:bg-slate-950 rounded-2xl border border-slate-300 dark:border-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 p-4 resize-none h-36 focus:outline-none focus:border-violet-500 font-semibold leading-relaxed shadow-inner"
                   placeholder="Paste raw resume text details here..."
                   value={textInput}
                   onChange={e => setTextInput(e.target.value)}
                   disabled={loading}
                 />
+
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-mono text-slate-500 dark:text-gray-500">{textInput.length} characters</span>
                   <button
