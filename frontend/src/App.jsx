@@ -15,7 +15,6 @@ const InterviewPage = lazy(() => import('./pages/InterviewPage'))
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'))
 const ResultsPage = lazy(() => import('./pages/ResultsPage'))
 const QuizPage = lazy(() => import('./pages/QuizPage'))
-const VideoInterviewPage = lazy(() => import('./features/video-interview/VideoInterviewPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const SystemDesignPage = lazy(() => import('./pages/SystemDesignPage'))
 import ProtectedRoute from './components/ProtectedRoute'
@@ -34,7 +33,7 @@ function AnimatedRoutes() {
             <Route path="coach" element={<CommunicationCoachPage />} />
             <Route path="resume" element={<ResumePage />} />
             <Route path="interview" element={<InterviewPage />} />
-            <Route path="video-interview" element={<VideoInterviewPage />} />
+            <Route path="video-interview" element={<Navigate to="/dashboard/interview" replace />} />
             <Route path="quiz" element={<QuizPage />} />
             <Route path="system-design" element={<SystemDesignPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
@@ -58,15 +57,12 @@ export default function App() {
             duration: 4000,
             style: {
               borderRadius: '14px',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: '14px',
               background: '#0f172a',
-              color: '#e2e8f0',
-              border: '1px solid rgba(255,255,255,0.06)',
-              boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
-            },
-            success: { iconTheme: { primary: '#6366f1', secondary: '#fff' } },
-            error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
+              color: '#f8fafc',
+              border: '1px solid rgba(255,255,255,0.08)',
+              fontSize: '13px',
+              fontFamily: 'Inter, sans-serif'
+            }
           }}
         />
         <Suspense fallback={<FullPageLoader text="Loading TalentForge AI..." />}>

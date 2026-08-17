@@ -391,11 +391,12 @@ export default function CommunicationCoachPage() {
 
   return (
     <motion.div 
-      className="space-y-6 text-slate-800 dark:text-slate-100 select-none pb-12" 
+      className="space-y-6 text-slate-800 dark:text-slate-100 select-none pt-2 pb-12" 
       initial={{ opacity: 0, y: 16 }} 
       animate={{ opacity: 1, y: 0 }} 
       transition={{ duration: 0.4 }}
     >
+
       <AdvancedToolPanel type="coach" />
       
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 items-start">
@@ -632,8 +633,9 @@ export default function CommunicationCoachPage() {
                   <select
                     value={roadmapTopic}
                     onChange={e => setRoadmapTopic(e.target.value)}
-                    className="flex-1 input-base text-xs"
+                    className="flex-1 bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-white px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
                   >
+
                     <option value="">(Recommended) DBMS & SQL Roadmap</option>
                     <option value="python">Python Programming Roadmap</option>
                     <option value="javascript">JavaScript / React Roadmap</option>

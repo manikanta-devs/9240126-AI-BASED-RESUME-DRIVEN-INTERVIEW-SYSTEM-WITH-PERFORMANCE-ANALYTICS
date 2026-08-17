@@ -59,25 +59,8 @@ export default function SystemDesignPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 p-4 sm:p-6 text-slate-100">
-      {/* Page Title */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20">
-              <Cpu className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400 bg-clip-text text-transparent">
-                System Design Studio & Evaluator
-              </h1>
-              <p className="text-sm text-slate-400 mt-1">
-                Solve distributed systems architecture problems & receive Staff Engineer level SPOF and trade-off feedback.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="max-w-7xl mx-auto space-y-6 p-2 text-slate-100">
+
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

@@ -395,7 +395,8 @@ export default function ResumePage() {
             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
               <div className="space-y-2">
                 <span className="text-[8px] font-mono tracking-widest text-violet-400 font-extrabold uppercase border-b border-violet-500/20 pb-0.5">ATS Diagnostic HUD</span>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white">{candidateName || 'Candidate'} — Executive Summary</h3>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white">{candidateName || localStorage.getItem('username') || 'Candidate'} — Executive Summary</h3>
+
                 <p className="text-[11px] text-slate-500 dark:text-gray-400 leading-relaxed max-w-2xl font-medium">
                   {resumeData.coach_report?.summary || resumeData.summary || 'Summary loaded.'}
                 </p>

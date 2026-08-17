@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { clsx } from 'clsx'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   FileText, Mic, BarChart2, Home, ChevronLeft, Brain,
-  ChevronRight, LogOut, Sun, Moon, Briefcase, Video, User, Cpu
+  ChevronRight, LogOut, Sun, Moon, Briefcase, User, Cpu
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import AppLogo from './AppLogo'
@@ -12,8 +12,7 @@ import AppLogo from './AppLogo'
 const NAV_ITEMS = [
   { to: '/dashboard',           icon: Home,      label: 'Dashboard',       badge: null },
   { to: '/dashboard/resume',    icon: FileText,  label: 'Resume Analysis', badge: null },
-  { to: '/dashboard/interview', icon: Briefcase, label: 'Interview',       badge: null },
-  { to: '/dashboard/video-interview', icon: Video, label: '3D Interview', badge: '3D' },
+  { to: '/dashboard/interview', icon: Briefcase, label: 'Interview',       badge: 'AI' },
   { to: '/dashboard/coach',     icon: Mic,       label: 'Coach',           badge: 'New' },
   { to: '/dashboard/quiz',      icon: Brain,     label: 'Quiz Practice',   badge: null },
   { to: '/dashboard/system-design', icon: Cpu,   label: 'System Design',   badge: 'New' },
@@ -58,90 +57,70 @@ export default function Sidebar() {
             )}
             title={label}
           >
-            <div className="relative">
-              <Icon className="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110" />
-            </div>
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.span
-                   className="flex-1 truncate"
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -8 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  {label}
-                </motion.span>
-              )}
-            </AnimatePresence>
-            <AnimatePresence>
-              {!collapsed && badge && (
-                <motion.span
-                  className={clsx(
-                    'px-1.5 py-0.5 text-[10px] font-bold rounded-md',
-                    badge === '3D'
-                      ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 shadow-[0_0_8px_rgba(6,182,212,0.25)]'
-                      : 'bg-primary-100 text-primary-700 dark:bg-violet-500/15 dark:text-violet-300 border border-violet-500/15'
-                  )}
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.5 }}
-                >
-                  {badge}
-                </motion.span>
-              )}
-            </AnimatePresence>
+            <Icon className="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110" />
+
+            {!collapsed && (
+              <span className="flex-1 text-xs font-semibold tracking-wide truncate">{label}</span>
+            )}
+
+            {!collapsed && badge && (
+              <span className={clsx(
+                'px-1.5 py-0.5 text-[9px] font-bold rounded-full uppercase tracking-wider',
+                badge === '3D' && 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20',
+                badge === 'AI' && 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20',
+                badge === 'New' && 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
+              )}>
+                {badge}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
 
-      {/* Bottom controls */}
-      <div className={clsx(
-        'border-t border-gray-100 dark:border-white/5 p-3 space-y-1',
-        collapsed && 'flex flex-col items-center'
-      )}>
+      {/* Footer / Controls */}
+      <div className="p-3 border-t border-gray-100 dark:border-white/5 space-y-1">
+        {/* Dark Mode Toggle */}
         <button
           onClick={toggleDark}
-          className={clsx('sidebar-link w-full group', collapsed ? 'justify-center px-0' : '')}
-          title={darkMode ? 'Switch to Light mode' : 'Switch to Dark mode'}
+          className={clsx(
+            'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium',
+            'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-white/5',
+            'transition-colors duration-150',
+            collapsed && 'justify-center px-0'
+          )}
+          title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
         >
-          {darkMode
-            ? <Sun className="w-5 h-5 shrink-0 text-amber-500 transition-transform duration-200 group-hover:rotate-45" />
-            : <Moon className="w-5 h-5 shrink-0 text-slate-700 transition-transform duration-200 group-hover:-rotate-12" />
-          }
-          {!collapsed && <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
+          {darkMode ? (
+            <Sun className="w-4 h-4 text-amber-400 shrink-0" />
+          ) : (
+            <Moon className="w-4 h-4 text-indigo-500 shrink-0" />
+          )}
+          {!collapsed && (
+            <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
+          )}
         </button>
 
+        {/* Collapse Toggle */}
         <button
-          onClick={() => {
-            localStorage.removeItem('token')
-            localStorage.removeItem('username')
-            window.location.href = '/'
-          }}
+          onClick={() => setCollapsed(!collapsed)}
           className={clsx(
-            'sidebar-link w-full group text-red-500 hover:text-red-600 hover:bg-red-500/10',
-            collapsed ? 'justify-center px-0' : ''
+            'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium',
+            'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300',
+            'hover:bg-gray-100 dark:hover:bg-white/5 transition-colors duration-150',
+            collapsed && 'justify-center px-0'
           )}
-          title="Logout"
+          title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
         >
-          <LogOut className="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
-          {!collapsed && <span>Logout</span>}
+          {collapsed ? (
+            <ChevronRight className="w-4 h-4 shrink-0" />
+          ) : (
+            <>
+              <ChevronLeft className="w-4 h-4 shrink-0" />
+              <span>Collapse</span>
+            </>
+          )}
         </button>
       </div>
-
-      {/* Collapse button */}
-      <motion.button
-        onClick={() => setCollapsed(c => !c)}
-        className="absolute -right-3 top-6 w-6 h-6 bg-white dark:bg-surface-800 border border-gray-200 dark:border-white/10 rounded-full flex items-center justify-center shadow-md hover:shadow-lg transition-all z-10"
-        title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        whileHover={{ scale: 1.15 }}
-        whileTap={{ scale: 0.9 }}
-      >
-        {collapsed
-          ? <ChevronRight className="w-3.5 h-3.5 text-gray-500" />
-          : <ChevronLeft className="w-3.5 h-3.5 text-gray-500" />
-        }
-      </motion.button>
     </motion.aside>
   )
 }

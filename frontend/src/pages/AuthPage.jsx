@@ -168,13 +168,9 @@ export default function AuthPage() {
 
         {/* Footer Stat / Trust */}
         <div className="relative z-10 pt-6 border-t border-slate-800/40 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex -space-x-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-bold text-white ring-2 ring-slate-900">JD</div>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-500 flex items-center justify-center text-xs font-bold text-white ring-2 ring-slate-900">AS</div>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-xs font-bold text-white ring-2 ring-slate-900">MK</div>
-            </div>
-            <span className="text-xs text-slate-400 font-medium">Joined by 10,000+ candidates</span>
+          <div className="flex items-center gap-2 text-xs text-indigo-300 font-semibold font-mono">
+            <Shield className="w-4 h-4 text-emerald-400" />
+            <span>Multi-Provider AI Engine</span>
           </div>
 
           <div className="flex items-center gap-1 text-xs text-slate-400 font-mono">
@@ -182,6 +178,7 @@ export default function AuthPage() {
             <span>Zero-Failover Stack</span>
           </div>
         </div>
+
       </div>
 
       {/* ─── RIGHT SIDE: Auth Form Container ─────────────────────── */}
