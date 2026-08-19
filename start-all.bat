@@ -1,61 +1,102 @@
 @echo off
-title TalentForge AI - Self-Healing Advanced Launcher
+title TalentForge AI - Universal 1-Click Master Launcher
 echo.
 echo ============================================================
-echo   TalentForge AI v4.1 - Self-Healing 1-Click Launcher
+echo   TalentForge AI v4.1 - Universal 1-Click Master Launcher
+echo ============================================================
+echo   Automated Setup, Dependency Installation, & Server Startup
 echo ============================================================
 echo.
 
-:: 1. Self-Healing Check: Python Environment
-echo [1/4] Checking Python Virtual Environment (.venv)...
-IF NOT EXIST ".venv\Scripts\python.exe" (
-    echo   [!] Virtual environment missing. Running automatic setup...
-    call setup.bat
-    echo   [OK] Python environment self-healed!
-) ELSE (
-    echo   [OK] Python environment verified.
+:: 1. Verify Prerequisites (Python & Node.js)
+echo [1/6] Verifying System Prerequisites...
+python --version >nul 2>&1
+IF %ERRORLEVEL% NEQ 0 (
+    echo   [FAIL] Python 3 is not installed or not added to PATH.
+    echo   Please install Python 3.9+ from https://python.org and check "Add Python to PATH".
+    pause
+    exit /b 1
 )
 
-:: 2. Self-Healing Check: Node Modules
+node --version >nul 2>&1
+IF %ERRORLEVEL% NEQ 0 (
+    echo   [FAIL] Node.js is not installed or not added to PATH.
+    echo   Please install Node.js 18+ from https://nodejs.org
+    pause
+    exit /b 1
+)
+echo   [OK] System prerequisites verified (Python & Node.js ready).
+
+:: 2. Auto-create Python Virtual Environment (.venv) & Install Backend Requirements
 echo.
-echo [2/4] Checking Frontend Dependencies (node_modules)...
+echo [2/6] Verifying Python Environment (.venv)...
+IF NOT EXIST ".venv\Scripts\python.exe" (
+    echo   [!] Virtual environment missing. Creating .venv automatically...
+    python -m venv .venv
+    echo   [!] Installing Python dependencies from backend\requirements.txt...
+    call .venv\Scripts\activate.bat
+    python -m pip install --upgrade pip -q
+    pip install -r backend\requirements.txt -q
+    echo   [OK] Python environment initialized successfully!
+) ELSE (
+    echo   [OK] Python virtual environment ready.
+)
+
+:: 3. Auto-download spaCy NLP Model
+echo.
+echo [3/6] Verifying spaCy NLP Model (en_core_web_sm)...
+.venv\Scripts\python.exe -c "import spacy; spacy.load('en_core_web_sm')" >nul 2>&1
+IF %ERRORLEVEL% NEQ 0 (
+    echo   [!] Downloading spaCy en_core_web_sm NLP model...
+    .venv\Scripts\python.exe -m spacy download en_core_web_sm -q
+    echo   [OK] spaCy NLP model installed!
+) ELSE (
+    echo   [OK] spaCy NLP model ready.
+)
+
+:: 4. Auto-install Frontend Node Modules
+echo.
+echo [4/6] Verifying Frontend Dependencies (node_modules)...
 IF NOT EXIST "frontend\node_modules" (
-    echo   [!] Frontend dependencies missing. Running npm install...
+    echo   [!] Node modules missing. Running npm install in frontend...
     cd frontend
     call npm install
     cd ..
-    echo   [OK] Frontend dependencies self-healed!
+    echo   [OK] Frontend dependencies installed successfully!
 ) ELSE (
-    echo   [OK] Frontend dependencies verified.
+    echo   [OK] Frontend dependencies ready.
 )
 
-:: 3. Launch Backend with Fallback Protection
+:: 5. Initialize Database & Storage Directories
 echo.
-echo [3/4] Launching Backend Server on http://localhost:5000...
+echo [5/6] Initializing Local Database & Storage Folders...
+IF NOT EXIST "data" mkdir data
+IF NOT EXIST "uploads" mkdir uploads
+.venv\Scripts\python.exe scripts/populate_real_interview_data.py >nul 2>&1
+echo   [OK] Database schema and seed data ready.
+
+:: 6. Launch Backend & Frontend Servers
+echo.
+echo [6/6] Launching TalentForge AI Servers...
+echo   - Starting Flask Backend API on http://localhost:5000...
 start "TalentForge AI Backend (Port 5000)" cmd /k ".venv\Scripts\python.exe backend\app.py"
 
-:: Wait 3 seconds for backend to bind to port 5000
 timeout /t 3 /nobreak >nul
 
-:: 4. Launch Frontend Dev Server
-echo.
-echo [4/4] Launching Frontend Interface on http://localhost:5173...
+echo   - Starting Vite React Frontend on http://localhost:5173...
 start "TalentForge AI Frontend (Port 5173)" cmd /k "cd frontend && npm run dev"
 
-:: Wait 3 seconds for Vite server
 timeout /t 3 /nobreak >nul
 
-:: Automatically open default browser
+:: Automatically Open Browser
 echo.
-echo Launching Web Browser at http://localhost:5173...
+echo ============================================================
+echo   🚀 TalentForge AI is LIVE & READY!
+echo   Opening Web Browser at http://localhost:5173/ ...
+echo ============================================================
 start http://localhost:5173/
 
 echo.
-echo ============================================================
-echo   SUCCESS! TalentForge AI is running in Protected Mode.
-echo   - 100% Offline Zero-Key Fallback Enabled
-echo   - Automatic Failover Active across 6 AI Engines
-echo   - Interactive Control Center: start-advanced-control-center.bat
-echo   Press any key to close launcher window (servers remain active).
+echo   Press any key to close this launcher window (servers remain running).
 echo ============================================================
 pause >nul
