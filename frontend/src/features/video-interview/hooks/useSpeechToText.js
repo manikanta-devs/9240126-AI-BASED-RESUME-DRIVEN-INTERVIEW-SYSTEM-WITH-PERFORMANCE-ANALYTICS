@@ -54,8 +54,21 @@ export function useSpeechToText() {
     }
 
     rec.onend = () => {
-      setIsListening(false)
+      if (recognitionRef.current === rec && isListening) {
+        setTimeout(() => {
+          if (recognitionRef.current === rec && isListening) {
+            try {
+              rec.start()
+            } catch (e) {
+              console.warn('Auto-restart speech recognition failed:', e)
+            }
+          }
+        }, 200)
+      } else {
+        setIsListening(false)
+      }
     }
+
 
     return () => {
       if (recognitionRef.current) {

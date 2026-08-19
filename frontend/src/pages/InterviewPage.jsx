@@ -1704,17 +1704,21 @@ export default function InterviewPage() {
       }
 
       recognition.onend = () => {
-        if (recognitionRef.current === recognition) {
-          try {
-            recognition.start()
-          } catch (err) {
-            console.error('Failed to restart speech recognition:', err)
-            setIsListening(false)
-          }
+        if (recognitionRef.current === recognition && isListeningRef.current) {
+          setTimeout(() => {
+            if (recognitionRef.current === recognition && isListeningRef.current) {
+              try {
+                recognition.start()
+              } catch (err) {
+                console.warn('Failed to restart speech recognition:', err)
+              }
+            }
+          }, 200)
         } else {
           setIsListening(false)
         }
       }
+
 
       recognitionRef.current = recognition
       setIsListening(true)
